@@ -41,17 +41,17 @@ class TestLocal(TestCase):
         local_post = dict(response_post.json['local'])
         
         
-        #POST
+        #POST       
         response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {refresh_token}"})
         self.assertEqual(response_get.status_code, 200)
         
-        local_get = dict(response_get.json['local'])
+        local_get = dict(response_get.json)
         local_get.pop('password_generated', None)
         local_get.pop('datetime_created', None)
         local_post.pop('password_generated', None)
         local_post.pop('datetime_created', None)
 
-        self.assertEqual(local_get, self.local_post)
+        self.assertEqual(local_get, local_post)
                 
 
 if __name__ == '__main__':

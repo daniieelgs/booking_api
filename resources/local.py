@@ -1,6 +1,8 @@
 
 import datetime
 import traceback
+
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from helpers.security import generatePassword, generateTokens, generateUUID
 from flask import make_response, request
 from flask_smorest import Blueprint, abort
@@ -23,8 +25,10 @@ class Local(MethodView):
     #TODO crear admin token para poder crear listar y eliminar locales
     
     
+    @blp.response(200, LocalSchema)
+    @jwt_required(refresh=True)
     def get(self):
-        raise NotImplementedError()
+        return LocalModel.query.get_or_404(get_jwt_identity())
     
     
     @blp.arguments(LocalSchema)
