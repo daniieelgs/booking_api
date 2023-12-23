@@ -24,7 +24,7 @@ class Local(MethodView):
     
     
     def get(self):
-        pass
+        raise NotImplementedError()
     
     
     @blp.arguments(LocalSchema)
