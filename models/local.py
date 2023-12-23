@@ -7,7 +7,7 @@ class LocalModel(db.Model):
     id = db.Column(db.String(32), primary_key=True)
     name = db.Column(db.String(45), unique=False, nullable=False)
     tlf = db.Column(db.String(13), unique=False, nullable=False)
-    email = db.Column(db.String(70), unique=False, nullable=False)
+    email = db.Column(db.String(70), unique=True, nullable=False)
     address = db.Column(db.String(120), unique=False, nullable=True)
     postal_code = db.Column(db.String(5), unique=False, nullable=True)
     village = db.Column(db.String(45), unique=False, nullable=True)
