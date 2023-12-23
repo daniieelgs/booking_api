@@ -1,4 +1,3 @@
-import os
 import random
 import traceback
 from flask import Flask, jsonify, make_response, redirect, request, render_template
@@ -19,6 +18,7 @@ from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
 from globals import DEBUG, SECRET_JWT, DATABASE_URI, API_PREFIX
+from helpers.path import checkAndCreatePath
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -31,10 +31,7 @@ def create_app(config: Config = DefaultConfig()):
     PUBLIC_FOLDER = config.public_folder
     PUBLIC_FOLDER_URL = config.public_folder_url
     
-    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, 'images', 'logos')
-        
-    if not os.path.exists(path):
-        os.mkdir(path)
+    checkAndCreatePath(PUBLIC_FOLDER, 'images', 'logos')
     
     nltk.download('punkt')
     
