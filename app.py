@@ -98,7 +98,7 @@ def create_app(config: Config = DefaultConfig()):
             
             if not session_token: return True
             
-            return not (session_token.jti == jti and session_token.user_id == identity)
+            return not (session_token.jti == jti and session_token.local_id == identity)
             
         except KeyError:
             return True

@@ -43,3 +43,6 @@ def deleteAndCommit(*models):
     db.session.commit()
     
     return True
+
+def rollback():
+    db.session.rollback()

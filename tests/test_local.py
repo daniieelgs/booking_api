@@ -20,10 +20,84 @@ class TestLocal(TestCase):
         db.session.remove()
         db.drop_all()
 
+    def create_local(self):
+        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_post.status_code, 201)
+        response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_post_repited.status_code, 409)
+        
+        self.refresh_token = response_post.json['refresh_token']
+        self.access_token = response_post.json['access_token']
+        self.local_post = dict(response_post.json['local'])
+        self.password_generated = self.local_post.pop('password_generated', None)
+
+    def get_local(self):
+        response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"})
+        self.assertEqual(response_get.status_code, 200)
+        
+        self.local_get = dict(response_get.json)
+
+        self.assertEqual(self.local_get, self.local_post)
+
+    def update_local(self):
+        self.data['name'] = 'Local-Test-2'
+        self.data['village'] = 'Test Village 2'
+        self.data['location'] = 'FR'
+        
+        response_put = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_put.status_code, 401)
+        response_put = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token}"}, data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_put.status_code, 200)
+        
+        self.local_get['name'] = self.data['name']
+        self.local_get['village'] = self.data['village']
+        self.local_get['location'] = self.data['location']
+        
+        local_put = dict(response_put.json)
+        self.assertNotEqual(local_put['datetime_updated'], self.local_get['datetime_updated'])
+        local_put.pop('datetime_updated', None)
+        self.local_get.pop('datetime_updated', None)
+        self.assertEqual(local_put, self.local_get)
+
+    def delete_local(self):
+        response = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json')
+        
+        self.refresh_token = response.json['refresh_token']
+        self.access_token = response.json['access_token']
+
+        response_delete = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        self.assertEqual(response_delete.status_code, 401)
+        response_delete = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        self.assertEqual(response_delete.status_code, 204)
+        
+        
+        response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"})
+        self.assertEqual(response_get.status_code, 401)
+
+    def login_local(self):
+        response_login = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json')
+        self.assertEqual(response_login.status_code, 200)
+
+    def logout_local(self):     
+        response = self.client.post(getUrl(ENDPOINT, 'logout'), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        self.assertEqual(response.status_code, 204)
+        
+        response = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+        
+    def logout_all_local(self):
+        refresh_token1 = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json').json['refresh_token']
+        refresh_token2 = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json').json['refresh_token']
+        response = self.client.post(getUrl(ENDPOINT, 'logout/all'), headers={'Authorization': f"Bearer {refresh_token1}"}, content_type='application/json')
+        self.assertEqual(response.status_code, 204)
+        
+        response = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {refresh_token2}"}, content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+
+
     def test_integration_local(self):
 
-        #GET
-        data = {
+        self.data = {
             "name": "Local-Test",
             "tlf": "123456789",
             "email": "email@test.com",
@@ -34,25 +108,26 @@ class TestLocal(TestCase):
             "location": "ES"
         }
 
-        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(data), content_type='application/json')
-        self.assertEqual(response_post.status_code, 201)
-        
-        refresh_token = response_post.json['refresh_token']
-        local_post = dict(response_post.json['local'])
-        
-        
         #POST
-        response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {refresh_token}"})
-        self.assertEqual(response_get.status_code, 200)
+        self.create_local()
         
-        local_get = dict(response_get.json['local'])
-        local_get.pop('password_generated', None)
-        local_get.pop('datetime_created', None)
-        local_post.pop('password_generated', None)
-        local_post.pop('datetime_created', None)
-
-        self.assertEqual(local_get, self.local_post)
-                
+        #GET
+        self.get_local()
+        
+        #PUT
+        self.update_local()
+        
+        #Login
+        self.login_local()
+        
+        #Logout #TODO
+        self.logout_local()        
+        
+        #Logout All #TODO
+        self.logout_all_local()
+        
+        #DELETE
+        self.delete_local()
 
 if __name__ == '__main__':
     unittest.main()
