@@ -1,15 +1,9 @@
-import random
 import traceback
-from flask import Flask, jsonify, make_response, redirect, request, render_template
+from flask import Flask, jsonify, request
 from flask_smorest import abort, Api
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
-
-from flask_swagger import swagger
-from flask_swagger_ui import get_swaggerui_blueprint
-
-from flasgger import Swagger
 
 import nltk
 from config import Config
@@ -17,7 +11,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import DEBUG, SECRET_JWT, DATABASE_URI, API_PREFIX
+from globals import DEBUG
 from helpers.path import checkAndCreatePath
 from models.session_token import SessionTokenModel
 
@@ -41,12 +35,12 @@ def create_app(config: Config = DefaultConfig()):
     app.debug = DEBUG
     app.jinja_env.auto_reload = DEBUG
     
-    app.config['API_TITLE'] = config.api_title #Booking API
-    app.config['API_VERSION'] = config.api_version #v1
-    app.config['OPENAPI_VERSION'] = config.openapi_version #3.0.3
-    app.config['OPENAPI_URL_PREFIX'] = config.openapi_url_prefix #/
-    app.config['OPENAPI_SWAGGER_UI_PATH'] = config.openapi_swagger_ui_path #/swagger-ui
-    app.config['OPENAPI_SWAGGER_UI_URL'] = config.openapi_swagger_ui_url #https://cdn.jsdelivr.net/npm/swagger-ui-dist/
+    app.config['API_TITLE'] = config.api_title
+    app.config['API_VERSION'] = config.api_version
+    app.config['OPENAPI_VERSION'] = config.openapi_version
+    app.config['OPENAPI_URL_PREFIX'] = config.openapi_url_prefix if DEBUG else None
+    app.config['OPENAPI_SWAGGER_UI_PATH'] = config.openapi_swagger_ui_path if DEBUG else None
+    app.config['OPENAPI_SWAGGER_UI_URL'] = config.openapi_swagger_ui_url
 
         
     # @app.route('/openapi.json')
@@ -62,7 +56,9 @@ def create_app(config: Config = DefaultConfig()):
     app.config['JWT_TOKEN_LOCATION'] = ['headers']
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
+
     
+        
     db.init_app(app)
     
     Migrate(app, db)
