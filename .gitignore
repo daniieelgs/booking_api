@@ -1,0 +1,7 @@
+.env
+public
+migrations
+__pycache__
+.pytest_cache
+instance
+*.db
