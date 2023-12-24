@@ -46,3 +46,8 @@ def generateTokens(localId, access_token = False, refresh_token = True, claims =
  
 def generateUUID():
     return uuid.uuid4().hex
+
+def logOutAll(local_id):
+    
+    SessionTokenModel.query.filter(SessionTokenModel.local_id == local_id).delete()
+    db.session.commit()

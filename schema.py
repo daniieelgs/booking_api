@@ -21,4 +21,8 @@ class LocalTokensSchema(Schema):
     access_token = fields.Str(required=False, dump_only=True)
     refresh_token = fields.Str(required=False, dump_only=True)
     local = fields.Nested(LocalSchema(), dump_only=True)
+    
+class LoginLocalSchema(Schema):
+    email = fields.Str(required=True)
+    password = fields.Str(required=True)
 

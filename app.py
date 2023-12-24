@@ -1,4 +1,3 @@
-import os
 import random
 import traceback
 from flask import Flask, jsonify, make_response, redirect, request, render_template
@@ -13,26 +12,26 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from flasgger import Swagger
 
 import nltk
+from config import Config
 
 from db import db, deleteAndCommit
+from default_config import DefaultConfig
 
 from globals import DEBUG, SECRET_JWT, DATABASE_URI, API_PREFIX
+from helpers.path import checkAndCreatePath
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
 
 #TODO desarrollas sistema de LOGs
 
-def create_app():
+def create_app(config: Config = DefaultConfig()):
 
-    TEMPLATE_FOLDER = 'templates'
-    PUBLIC_FOLDER = 'public'
-    PUBLIC_FOLDER_URL = 'public'
+    TEMPLATE_FOLDER = config.template_folder
+    PUBLIC_FOLDER = config.public_folder
+    PUBLIC_FOLDER_URL = config.public_folder_url
     
-    path = os.path.join(os.getcwd(), 'public', 'images', 'logos')
-        
-    if not os.path.exists(path):
-        os.mkdir(path)
+    checkAndCreatePath(PUBLIC_FOLDER, 'images', 'logos')
     
     nltk.download('punkt')
     
@@ -54,11 +53,11 @@ def create_app():
     #     return redirect('./public/resources/openapi.json')
     
     ##BBDD
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+    app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri
     
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     
-    app.config['JWT_SECRET_KEY'] = SECRET_JWT
+    app.config['JWT_SECRET_KEY'] = config.secret_jwt
     app.config['JWT_TOKEN_LOCATION'] = ['headers']
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
@@ -76,7 +75,7 @@ def create_app():
     
     jwt = JWTManager(app)
     
-    def getApiPrefix(url): return f"/{API_PREFIX}/{url}"
+    def getApiPrefix(url): return f"/{config.api_prefix}/{url}"
     
     ##JWT CHECK
     
@@ -96,7 +95,7 @@ def create_app():
             
             if not session_token: return True
             
-            return not (session_token.jti == jti and session_token.user_id == identity)
+            return not (session_token.jti == jti and session_token.local_id == identity)
             
         except KeyError:
             return True
