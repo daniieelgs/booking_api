@@ -1,12 +1,11 @@
-from flask import abort
 from flask.views import MethodView
-from flask_smorest import Blueprint
+from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
 from schema import WorkGroupSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import traceback
 
 from globals import DEBUG
@@ -27,9 +26,9 @@ class WorkGroupGetAll(MethodView):
 @blp.route('')
 class WorkGroup(MethodView):
 
-    #TODO: no poder crear dos work groups con el mismo nombre y local
     @blp.arguments(WorkGroupSchema)
     @blp.response(404, description='The local was not found')
+    @blp.response(409, description='The name is already in use')
     @blp.response(201, WorkGroupSchema)
     @jwt_required(refresh=True)
     def post(self, work_group_data):
@@ -46,6 +45,10 @@ class WorkGroup(MethodView):
         
         try:
             addAndCommit(work_group)
+        except IntegrityError as e:
+            traceback.print_exc()
+            rollback()
+            abort(409, message = 'The name is already in use.')
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
@@ -83,10 +86,10 @@ class WorkGroupByID(MethodView):
         return WorkGroupModel.query.get_or_404(work_group_id)
 
 
-    #TODO: no poder crear dos work groups con el mismo nombre y local
     @blp.arguments(WorkGroupSchema)
     @blp.response(404, description='The work group was not found')
     @blp.response(403, description='You are not allowed to update this work group')
+    @blp.response(409, description='The name is already in use')
     @blp.response(200, WorkGroupSchema)
     @jwt_required(refresh=True)
     def put(self, work_group_data, work_group_id):
@@ -102,6 +105,10 @@ class WorkGroupByID(MethodView):
             setattr(work_group, key, value)
         try:
             addAndCommit(work_group)
+        except IntegrityError as e:
+            traceback.print_exc()
+            rollback()
+            abort(409, message = 'The name is already in use.')
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()

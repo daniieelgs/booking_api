@@ -1,4 +1,5 @@
 from db import db
+from sqlalchemy import UniqueConstraint
 
 class WorkGroupModel(db.Model):
     __tablename__ = 'work_group'
@@ -14,3 +15,4 @@ class WorkGroupModel(db.Model):
     services = db.relationship('ServiceModel', back_populates='work_group', lazy='dynamic')
     local = db.relationship('LocalModel', back_populates='work_groups')
 
+    __table_args__ = (UniqueConstraint('name', 'local_id', name='name'),)
