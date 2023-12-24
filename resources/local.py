@@ -1,5 +1,4 @@
 
-import datetime
 import traceback
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
@@ -11,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from passlib.hash import pbkdf2_sha256
 
-from db import db, deleteAndCommit, addAndCommit, rollback
+from db import deleteAndCommit, addAndCommit, rollback
 
 from globals import DEBUG
 from models.session_token import SessionTokenModel

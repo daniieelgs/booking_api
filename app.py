@@ -22,6 +22,7 @@ from helpers.path import checkAndCreatePath
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
+from resources.work_group import blp as WorkGroupBlueprint
 
 #TODO desarrollas sistema de LOGs
 
@@ -141,6 +142,7 @@ def create_app(config: Config = DefaultConfig()):
     ##Routes
     
     api.register_blueprint(LocalBlueprint, url_prefix=getApiPrefix('local'))
+    api.register_blueprint(WorkGroupBlueprint, url_prefix=getApiPrefix('work_group'))
     
     ##Loal Routes
     
