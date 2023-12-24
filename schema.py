@@ -25,4 +25,12 @@ class LocalTokensSchema(Schema):
 class LoginLocalSchema(Schema):
     email = fields.Str(required=True)
     password = fields.Str(required=True)
+    
+class WorkGroupSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    name = fields.Str(required=True)
+    description = fields.Str()
+    local_id = fields.Str(required=True, dump_only=True)
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
 

@@ -8,6 +8,6 @@ class ConfigTest(DefaultConfig):
         self.database_uri = TEST_DATABASE_URI
         
 def getUrl(*url) -> str:
-    return f"{config_test.api_prefix}/{'/'.join(url)}"
+    return f"{config_test.api_prefix}/{'/'.join([str(u) for u in url])}"
 
 config_test = ConfigTest()
