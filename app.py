@@ -41,12 +41,12 @@ def create_app(config: Config = DefaultConfig()):
     app.debug = DEBUG
     app.jinja_env.auto_reload = DEBUG
     
-    app.config['API_TITLE'] = 'Booking API'
-    app.config['API_VERSION'] = 'v1'
-    app.config['OPENAPI_VERSION'] = '3.0.3'
-    app.config['OPENAPI_URL_PREFIX'] = '/'
-    app.config['OPENAPI_SWAGGER_UI_PATH'] = '/swagger-ui'
-    app.config['OPENAPI_SWAGGER_UI_URL'] = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/'
+    app.config['API_TITLE'] = config.api_title #Booking API
+    app.config['API_VERSION'] = config.api_version #v1
+    app.config['OPENAPI_VERSION'] = config.openapi_version #3.0.3
+    app.config['OPENAPI_URL_PREFIX'] = config.openapi_url_prefix #/
+    app.config['OPENAPI_SWAGGER_UI_PATH'] = config.openapi_swagger_ui_path #/swagger-ui
+    app.config['OPENAPI_SWAGGER_UI_URL'] = config.openapi_swagger_ui_url #https://cdn.jsdelivr.net/npm/swagger-ui-dist/
 
         
     # @app.route('/openapi.json')
