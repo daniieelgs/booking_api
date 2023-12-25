@@ -47,6 +47,9 @@ class TestWorkGroup(TestCase):
         self.data2['name'] = 'work group test 2'
         
         #Local 1
+        response = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+
         response = self.client.post(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token1}"}, data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response.status_code, 201)
         self.work_group_post = dict(response.json)
@@ -79,18 +82,21 @@ class TestWorkGroup(TestCase):
 
     def get_all_work_groups(self):
         #Local 1
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(response.status_code, 200)
         data = response.json
         self.assertEqual(len(data), 2)
         
         #Local 2
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(response.status_code, 200)
         data = response.json
         self.assertEqual(len(data), 2)
 
     def update_work_group(self):
+        response = self.client.put(getUrl(ENDPOINT, self.work_group_post['id']), data=json.dumps(self.data2), content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+        
         response = self.client.put(getUrl(ENDPOINT, self.work_group_post['id']), headers={'Authorization': f"Bearer {self.refresh_token1}"}, data=json.dumps(self.data2), content_type='application/json')
         self.assertEqual(response.status_code, 409) #Check if the name is already in use
         
@@ -114,10 +120,10 @@ class TestWorkGroup(TestCase):
         response = self.client.delete(getUrl(ENDPOINT, self.work_group_post['id']), headers={'Authorization': f"Bearer {self.access_token1}"}, content_type='application/json')
         self.assertEqual(response.status_code, 204)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(len(response.json), 1)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 2)
     
     def delete_all_work_groups(self):
@@ -127,10 +133,10 @@ class TestWorkGroup(TestCase):
         response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token2}"}, content_type='application/json')
         self.assertEqual(response.status_code, 204)
 
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 0)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(len(response.json), 1)
 
     def test_integration_work_group(self):

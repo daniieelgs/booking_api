@@ -11,4 +11,10 @@ class WorkerModel(db.Model):
     image = db.Column(db.String(300))
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
-
+    
+    work_groups = db.relationship(
+        'WorkGroupModel', 
+        secondary='work_group_worker', 
+        back_populates='workers',
+        lazy='dynamic'
+    )
