@@ -87,6 +87,17 @@ class WorkGroup(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
 
+@blp.route('/<int:work_group_id>/workers')
+class WorkGroupWorkerByID(MethodView):
+
+    @blp.response(404, description='The work group was not found')
+    @blp.response(200, WorkGroupWorkerSchema)
+    def get(self, work_group_id):
+        """
+        Retrieves a work group by ID with their workers.
+        """
+        return WorkGroupModel.query.get_or_404(work_group_id)
+
 @blp.route('/<int:work_group_id>')
 class WorkGroupByID(MethodView):
 

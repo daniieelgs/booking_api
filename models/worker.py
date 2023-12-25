@@ -12,5 +12,9 @@ class WorkerModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
     
-    work_groups = db.relationship('WorkGroupModel', secondary='work_group_worker', lazy='dynamic')
-
+    work_groups = db.relationship(
+        'WorkGroupModel', 
+        secondary='work_group_worker', 
+        back_populates='workers',
+        lazy='dynamic'
+    )
