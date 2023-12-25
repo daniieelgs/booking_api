@@ -12,7 +12,7 @@ from globals import DEBUG
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
 
-@blp.route('/<string:local_id>')
+@blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 
     @blp.response(404, description='The local was not found')

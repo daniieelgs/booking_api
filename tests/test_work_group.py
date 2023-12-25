@@ -79,13 +79,13 @@ class TestWorkGroup(TestCase):
 
     def get_all_work_groups(self):
         #Local 1
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(response.status_code, 200)
         data = response.json
         self.assertEqual(len(data), 2)
         
         #Local 2
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(response.status_code, 200)
         data = response.json
         self.assertEqual(len(data), 2)
@@ -114,10 +114,10 @@ class TestWorkGroup(TestCase):
         response = self.client.delete(getUrl(ENDPOINT, self.work_group_post['id']), headers={'Authorization': f"Bearer {self.access_token1}"}, content_type='application/json')
         self.assertEqual(response.status_code, 204)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(len(response.json), 1)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 2)
     
     def delete_all_work_groups(self):
@@ -127,10 +127,10 @@ class TestWorkGroup(TestCase):
         response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token2}"}, content_type='application/json')
         self.assertEqual(response.status_code, 204)
 
-        response = self.client.get(getUrl(ENDPOINT, self.local_id2))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 0)
         
-        response = self.client.get(getUrl(ENDPOINT, self.local_id1))
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
         self.assertEqual(len(response.json), 1)
 
     def test_integration_work_group(self):
