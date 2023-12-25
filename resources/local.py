@@ -24,7 +24,7 @@ blp = Blueprint('local', __name__, description='local CRUD')
 class Local(MethodView):
     #TODO crear admin token para poder crear listar y eliminar locales
     #TODO endpoint para refrescar el token
-    #TODO añadir campo descripcion opcional
+    #TODO get local publico
     
     @blp.response(404, description='The local does not exist')
     @blp.response(200, LocalSchema)
@@ -168,3 +168,12 @@ class LocalLogoutAll(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not log-out all tokens.')
         
         return {}
+    
+@blp.route('/refresh')
+class LocalRefresh(MethodView):
+    
+    @jwt_required(refresh=True)
+    @blp.response(200, LocalTokensSchema)
+    def post(self):
+        refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
+        return {'refresh_token': refresh_token}
