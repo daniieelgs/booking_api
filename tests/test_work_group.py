@@ -47,6 +47,9 @@ class TestWorkGroup(TestCase):
         self.data2['name'] = 'work group test 2'
         
         #Local 1
+        response = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+
         response = self.client.post(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token1}"}, data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response.status_code, 201)
         self.work_group_post = dict(response.json)
@@ -91,6 +94,9 @@ class TestWorkGroup(TestCase):
         self.assertEqual(len(data), 2)
 
     def update_work_group(self):
+        response = self.client.put(getUrl(ENDPOINT, self.work_group_post['id']), data=json.dumps(self.data2), content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+        
         response = self.client.put(getUrl(ENDPOINT, self.work_group_post['id']), headers={'Authorization': f"Bearer {self.refresh_token1}"}, data=json.dumps(self.data2), content_type='application/json')
         self.assertEqual(response.status_code, 409) #Check if the name is already in use
         

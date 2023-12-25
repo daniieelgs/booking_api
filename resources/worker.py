@@ -62,8 +62,8 @@ class Worker(MethodView):
         if local is None:
             abort(404, message = f"The local [{get_jwt_identity()}] was not found.")
         
-        work_groups_ids = worker_data.pop('work_groups')
-        
+        work_groups_ids = set(worker_data.pop('work_groups'))
+                
         if not work_groups_ids:
             abort(404, message = f"The work groups were not found.")
         
@@ -143,7 +143,7 @@ class WorkerByID(MethodView):
         if worker.work_groups.first().local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to update this work group.')
             
-        work_groups_ids = worker_data.pop('work_groups')
+        work_groups_ids = set(worker_data.pop('work_groups'))
         
         if not work_groups_ids:
             abort(404, message = f"The work groups were not found.")
