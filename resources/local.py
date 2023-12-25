@@ -86,16 +86,10 @@ class Local(MethodView):
         
         local = LocalModel.query.get_or_404(get_jwt_identity())
         
-        local.name = local_data['name']
-        local.tlf = local_data['tlf']
-        local.email = local_data['email']
-        local.address = local_data['address']
-        local.postal_code = local_data['postal_code']
-        local.village = local_data['village']
-        local.province = local_data['province']
-        local.location = local_data['location']
-        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
+        for key, value in local_data.items():
+            setattr(local, key, value)
         
+        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
         
         try:
             addAndCommit(local)

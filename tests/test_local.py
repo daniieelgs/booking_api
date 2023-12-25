@@ -120,10 +120,10 @@ class TestLocal(TestCase):
         #Login
         self.login_local()
         
-        #Logout #TODO
+        #Logout
         self.logout_local()        
         
-        #Logout All #TODO
+        #Logout All
         self.logout_all_local()
         
         #DELETE

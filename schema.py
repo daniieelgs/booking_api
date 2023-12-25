@@ -7,6 +7,7 @@ class LocalSchema(Schema):
     name = fields.Str(required=True)
     tlf = fields.Str(required=True)
     email = fields.Str(required=True)
+    description = fields.Str()
     address = fields.Str()
     postal_code = fields.Str()
     village = fields.Str()
