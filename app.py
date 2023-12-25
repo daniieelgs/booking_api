@@ -5,6 +5,8 @@ from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
 
+from flask_cors import CORS
+
 import nltk
 from config import Config
 
@@ -32,6 +34,7 @@ def create_app(config: Config = DefaultConfig()):
     nltk.download('punkt')
     
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=PUBLIC_FOLDER)
+    CORS(app)
         
     app.debug = DEBUG
     app.jinja_env.auto_reload = DEBUG
