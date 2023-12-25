@@ -12,6 +12,8 @@ from globals import DEBUG
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
 
+#TODO : add a method to get all workers from a work group
+
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 
@@ -133,6 +135,6 @@ class WorkGroupByID(MethodView):
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not create the local.')
+            abort(500, message = str(e) if DEBUG else 'Could not delete the work group.')
         return {}
 

@@ -11,7 +11,7 @@ class WorkGroupModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
 
-    workers = db.relationship('WorkerModel', secondary='work_group_worker', backref=db.backref('work_groups', lazy='dynamic'))
+    workers = db.relationship('WorkerModel', secondary='work_group_worker', lazy='dynamic')
     services = db.relationship('ServiceModel', back_populates='work_group', lazy='dynamic')
     local = db.relationship('LocalModel', back_populates='work_groups')
 
