@@ -38,6 +38,10 @@ class TestLocal(TestCase):
         self.local_get = dict(response_get.json)
 
         self.assertEqual(self.local_get, self.local_post)
+        
+    def get_public_local(self):
+        response_get = self.client.get(getUrl(ENDPOINT, self.local_post['id']))
+        self.assertEqual(response_get.status_code, 200)
 
     def update_local(self):
         self.data['name'] = 'Local-Test-2'
@@ -73,6 +77,16 @@ class TestLocal(TestCase):
         
         response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"})
         self.assertEqual(response_get.status_code, 401)
+
+    def refresh(self):
+        response_refresh = self.client.post(getUrl(ENDPOINT, 'refresh'), content_type='application/json')
+        self.assertEqual(response_refresh.status_code, 401)
+        
+        response_refresh = self.client.post(getUrl(ENDPOINT, 'refresh'), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        self.assertEqual(response_refresh.status_code, 200)
+        
+        self.refresh_token = response_refresh.json['refresh_token']
+        self.assertEqual('access_token' in response_refresh.json, False)
 
     def login_local(self):
         response_login = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json')
@@ -113,17 +127,21 @@ class TestLocal(TestCase):
         
         #GET
         self.get_local()
+        self.get_public_local()
         
         #PUT
         self.update_local()
         
+        #Refresh Token
+        self.refresh()
+        
         #Login
         self.login_local()
         
-        #Logout #TODO
+        #Logout
         self.logout_local()        
         
-        #Logout All #TODO
+        #Logout All
         self.logout_all_local()
         
         #DELETE

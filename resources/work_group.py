@@ -12,8 +12,6 @@ from globals import DEBUG
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
 
-#TODO : add a method to get all workers from a work group
-
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 

@@ -14,18 +14,27 @@ from db import deleteAndCommit, addAndCommit, rollback
 
 from globals import DEBUG
 from models.session_token import SessionTokenModel
-from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema
+from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
 
 from models import LocalModel
 
 blp = Blueprint('local', __name__, description='local CRUD')
 
+#TODO crear admin token para poder crear listar y eliminar locales
+    
+@blp.route('<string:local_id>')
+class Local(MethodView):
+
+    @blp.response(404, description='The local does not exist')
+    @blp.response(200, PublicLocalSchema)
+    def get(self, local_id):
+        """
+        Returns the public local data
+        """
+        return LocalModel.query.get_or_404(local_id)
 @blp.route('')
 class Local(MethodView):
-    #TODO crear admin token para poder crear listar y eliminar locales
-    #TODO endpoint para refrescar el token
-    #TODO añadir campo descripcion opcional
-    
+
     @blp.response(404, description='The local does not exist')
     @blp.response(200, LocalSchema)
     @jwt_required(refresh=True)
@@ -86,16 +95,10 @@ class Local(MethodView):
         
         local = LocalModel.query.get_or_404(get_jwt_identity())
         
-        local.name = local_data['name']
-        local.tlf = local_data['tlf']
-        local.email = local_data['email']
-        local.address = local_data['address']
-        local.postal_code = local_data['postal_code']
-        local.village = local_data['village']
-        local.province = local_data['province']
-        local.location = local_data['location']
-        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
+        for key, value in local_data.items():
+            setattr(local, key, value)
         
+        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
         
         try:
             addAndCommit(local)
@@ -174,3 +177,12 @@ class LocalLogoutAll(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not log-out all tokens.')
         
         return {}
+    
+@blp.route('/refresh')
+class LocalRefresh(MethodView):
+    
+    @jwt_required(refresh=True)
+    @blp.response(200, LocalTokensSchema)
+    def post(self):
+        refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
+        return {'refresh_token': refresh_token}
