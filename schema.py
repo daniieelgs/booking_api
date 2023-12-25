@@ -33,4 +33,21 @@ class WorkGroupSchema(Schema):
     local_id = fields.Str(required=True, dump_only=True)
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
+    
+    
+class WorkerSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    name = fields.Str(required=True)
+    last_name = fields.Str()
+    email = fields.Str()
+    tlf = fields.Str()
+    image = fields.Str()
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
+    work_groups = fields.List(fields.Int(), required=True, load_only=True)
 
+class WorkGroupWorkerSchema(WorkGroupSchema):
+    workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
+class WorkerWorkGroupSchema(WorkerSchema):
+    work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
+    

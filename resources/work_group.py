@@ -2,7 +2,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
-from schema import WorkGroupSchema
+from schema import WorkGroupSchema, WorkGroupWorkerSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -12,6 +12,8 @@ from globals import DEBUG
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
 
+#TODO : add a method to get all workers from a work group
+
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 
@@ -20,6 +22,17 @@ class WorkGroupGetAll(MethodView):
     def get(self, local_id):
         """
         Retrieves all work groups.
+        """
+        return LocalModel.query.get_or_404(local_id).work_groups
+    
+@blp.route('/local/<string:local_id>/workers')
+class WorkGroupWorkersGetAll(MethodView):
+
+    @blp.response(404, description='The local was not found')
+    @blp.response(200, WorkGroupWorkerSchema(many=True))
+    def get(self, local_id):
+        """
+        Retrieves all work groups with their workers.
         """
         return LocalModel.query.get_or_404(local_id).work_groups
     
@@ -133,6 +146,6 @@ class WorkGroupByID(MethodView):
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not create the local.')
+            abort(500, message = str(e) if DEBUG else 'Could not delete the work group.')
         return {}
 
