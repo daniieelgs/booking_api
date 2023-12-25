@@ -23,7 +23,8 @@ blp = Blueprint('local', __name__, description='local CRUD')
 @blp.route('')
 class Local(MethodView):
     #TODO crear admin token para poder crear listar y eliminar locales
-    
+    #TODO endpoint para refrescar el token
+    #TODO añadir campo descripcion opcional
     
     @blp.response(404, description='The local does not exist')
     @blp.response(200, LocalSchema)
