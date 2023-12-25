@@ -38,6 +38,10 @@ class TestLocal(TestCase):
         self.local_get = dict(response_get.json)
 
         self.assertEqual(self.local_get, self.local_post)
+        
+    def get_public_local(self):
+        response_get = self.client.get(getUrl(ENDPOINT, self.local_post['id']))
+        self.assertEqual(response_get.status_code, 200)
 
     def update_local(self):
         self.data['name'] = 'Local-Test-2'
@@ -123,6 +127,7 @@ class TestLocal(TestCase):
         
         #GET
         self.get_local()
+        self.get_public_local()
         
         #PUT
         self.update_local()
