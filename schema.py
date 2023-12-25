@@ -34,6 +34,7 @@ class WorkGroupSchema(Schema):
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     
+    
 class WorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     name = fields.Str(required=True)
@@ -45,7 +46,8 @@ class WorkerSchema(Schema):
     datetime_updated = fields.DateTime(dump_only=True)
     work_groups = fields.List(fields.Int(), required=True, load_only=True)
 
-
+class WorkGroupWorkerSchema(WorkGroupSchema):
+    workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
 class WorkerWorkGroupSchema(WorkerSchema):
     work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
     

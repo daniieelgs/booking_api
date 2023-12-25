@@ -24,8 +24,6 @@ def getAllWorkers(local_id):
     
     return workers
 
-#TODO : add a method to get all work groups from a worker
-
 @blp.route('/local/<string:local_id>')
 class WorkersGetAll(MethodView):
 
