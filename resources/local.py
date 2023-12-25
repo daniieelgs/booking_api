@@ -140,6 +140,9 @@ class AccessLocal(MethodView):
     @blp.response(401, description='Invalid credentials')
     @blp.response(200, LocalTokensSchema)
     def post(self, login_data):
+        """
+        Login a local with email and password
+        """
         
         local = LocalModel.query.filter_by(email=login_data['email']).first()
         
@@ -156,6 +159,9 @@ class LocalLogout(MethodView):
     @jwt_required(refresh=True)
     @blp.response(204, description='Logout user and expire the refresh-token')
     def post(self):
+        """
+        Logout user and expire the refresh-token
+        """
         tokenId = get_jwt().get('token')
         
         deleteAndCommit(SessionTokenModel.query.get(tokenId))
@@ -168,7 +174,9 @@ class LocalLogoutAll(MethodView):
     @jwt_required(refresh=True)
     @blp.response(204, description='Logout user and expire all the refresh-token')
     def post(self):
-        
+        """
+        Logout user and expire all refresh-tokens
+        """
         try:
             logOutAll(get_jwt_identity())
         except SQLAlchemyError as e:
@@ -184,5 +192,8 @@ class LocalRefresh(MethodView):
     @jwt_required(refresh=True)
     @blp.response(200, LocalTokensSchema)
     def post(self):
+        """
+        Refresh the refresh-token
+        """
         refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
         return {'refresh_token': refresh_token}
