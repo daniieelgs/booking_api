@@ -14,18 +14,27 @@ from db import deleteAndCommit, addAndCommit, rollback
 
 from globals import DEBUG
 from models.session_token import SessionTokenModel
-from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema
+from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
 
 from models import LocalModel
 
 blp = Blueprint('local', __name__, description='local CRUD')
 
+#TODO crear admin token para poder crear listar y eliminar locales
+    
+@blp.route('<string:local_id>')
+class Local(MethodView):
+
+    @blp.response(404, description='The local does not exist')
+    @blp.response(200, PublicLocalSchema)
+    def get(self, local_id):
+        """
+        Returns the public local data
+        """
+        return LocalModel.query.get_or_404(local_id)
 @blp.route('')
 class Local(MethodView):
-    #TODO crear admin token para poder crear listar y eliminar locales
-    #TODO endpoint para refrescar el token
-    #TODO get local publico
-    
+
     @blp.response(404, description='The local does not exist')
     @blp.response(200, LocalSchema)
     @jwt_required(refresh=True)
