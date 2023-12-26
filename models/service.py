@@ -15,3 +15,6 @@ class ServiceModel(db.Model):
     
     work_group = db.relationship('WorkGroupModel', back_populates='services')
     service_bookings = db.relationship('ServiceBookingModel', back_populates='service', lazy='dynamic')
+    
+    def __str__(self) -> str:
+        return f'ServiceModel({self.id}, {self.name}, {self.duration}, {self.price}, {self.work_group_id}, {self.description}, {self.datetime_created}, {self.datetime_updated})'

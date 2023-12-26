@@ -54,3 +54,16 @@ class WorkGroupWorkerSchema(WorkGroupSchema):
 class WorkerWorkGroupSchema(WorkerSchema):
     work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
     
+class ServiceSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    name = fields.Str(required=True)
+    description = fields.Str()
+    duration = fields.Int(required=True)
+    price = fields.Float(required=True)
+    work_group = fields.Int(required=True, load_only=True)
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
+    
+class ServiceWorkGroup(ServiceSchema):
+    work_group = fields.Nested(WorkGroupSchema(), dump_only=True)
+    
