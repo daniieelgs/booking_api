@@ -1,3 +1,4 @@
+from sqlalchemy import UniqueConstraint
 from db import db
 import datetime
 
@@ -15,3 +16,5 @@ class ServiceModel(db.Model):
     
     work_group = db.relationship('WorkGroupModel', back_populates='services')
     service_bookings = db.relationship('ServiceBookingModel', back_populates='service', lazy='dynamic')
+    
+    __table_args__ = (UniqueConstraint('name', 'work_group_id', name='name'),)
