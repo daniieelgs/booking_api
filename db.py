@@ -27,7 +27,7 @@ def addAndCommit(*models):
     if len(models) == 0: return False
     
     for model in models:
-        if model:db.session.add(addDateTimes(model))
+        if model:db.session.add(model)
         
     db.session.commit()
     
@@ -44,5 +44,33 @@ def deleteAndCommit(*models):
     
     return True
 
+def deleteAndFlush(*models):
+    
+    if len(models) == 0: return False
+    
+    for model in models:
+        if model: db.session.delete(model)
+
+    db.session.flush()
+
+    return True
+
+def addAndFlush(*models):
+    
+    if len(models) == 0: return False
+    
+    for model in models:
+        if model:db.session.add(model)
+
+    db.session.flush()
+
+    return True
+
 def rollback():
     db.session.rollback()
+    
+def commit():
+    db.session.commit()
+    
+def flush():
+    db.session.flush()

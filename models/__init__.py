@@ -7,3 +7,5 @@ from models.status import StatusModel
 from models.work_group_worker import WorkGroupWorkerModel
 from models.work_group import WorkGroupModel
 from models.worker import WorkerModel
+from models.weekday import WeekdayModel
+from models.timetable import TimetableModel

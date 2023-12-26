@@ -21,6 +21,7 @@ from resources.local import blp as LocalBlueprint
 from resources.work_group import blp as WorkGroupBlueprint
 from resources.worker import blp as WorkerBlueprint
 from resources.service import blp as ServiceBlueprint
+from resources.timetable import blp as TimetableBlueprint
 
 #TODO desarrollas sistema de LOGs
 
@@ -146,6 +147,7 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(WorkGroupBlueprint, url_prefix=getApiPrefix('work_group'))
     api.register_blueprint(WorkerBlueprint, url_prefix=getApiPrefix('worker'))
     api.register_blueprint(ServiceBlueprint, url_prefix=getApiPrefix('service'))
+    api.register_blueprint(TimetableBlueprint, url_prefix=getApiPrefix('timetable'))
     
     ##Loal Routes
     

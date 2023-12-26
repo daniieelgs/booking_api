@@ -6,7 +6,7 @@ from tests import config_test, getUrl
 
 ENDPOINT = 'worker'
 
-class TestWorkGroup(TestCase):
+class TestWorker(TestCase):
     def create_app(self):
         app = create_app(config_test)
         return app
