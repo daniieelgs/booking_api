@@ -64,6 +64,9 @@ class ServiceSchema(Schema):
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     
+class WorkGroupServiceSchema(WorkGroupSchema):
+    services = fields.Nested(ServiceSchema, many=True, dump_only=True)
+
 class ServiceWorkGroup(ServiceSchema):
     work_group = fields.Nested(WorkGroupSchema(), dump_only=True)
     
