@@ -2,7 +2,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
-from schema import WorkGroupSchema, WorkGroupWorkerSchema
+from schema import WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -31,6 +31,17 @@ class WorkGroupWorkersGetAll(MethodView):
     def get(self, local_id):
         """
         Retrieves all work groups with their workers.
+        """
+        return LocalModel.query.get_or_404(local_id).work_groups
+    
+@blp.route('/local/<string:local_id>/services')
+class WorkGroupServicesGetAll(MethodView):
+
+    @blp.response(404, description='The local was not found')
+    @blp.response(200, WorkGroupServiceSchema(many=True))
+    def get(self, local_id):
+        """
+        Retrieves all work groups with their services.
         """
         return LocalModel.query.get_or_404(local_id).work_groups
     
@@ -93,6 +104,17 @@ class WorkGroupWorkerByID(MethodView):
     def get(self, work_group_id):
         """
         Retrieves a work group by ID with their workers.
+        """
+        return WorkGroupModel.query.get_or_404(work_group_id)
+    
+@blp.route('/<int:work_group_id>/services')
+class WorkGroupServicesByID(MethodView):
+
+    @blp.response(404, description='The work group was not found')
+    @blp.response(200, WorkGroupServiceSchema)
+    def get(self, work_group_id):
+        """
+        Retrieves a work group by ID with their services.
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
 
