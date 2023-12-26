@@ -7,4 +7,4 @@ class WeekdayModel(db.Model):
     weekday = db.Column(db.String(2), nullable=False)
     name = db.Column(db.String(45), nullable=False)
 
-    timetables = db.relationship('TimetableModel', backref='weekday', lazy='dynamic')
+    timetables = db.relationship('TimetableModel', back_populates='weekday', lazy='dynamic')

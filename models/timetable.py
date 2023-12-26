@@ -10,5 +10,5 @@ class TimetableModel(db.Model):
     local_id = db.Column(db.String(32), db.ForeignKey('local.id'), nullable=False)
     weekday_id = db.Column(db.Integer, db.ForeignKey('weekday.id'), nullable=False)
 
-    local = db.relationship('LocalModel', backref='timetables', lazy='dynamic')
-    weekday = db.relationship('WeekdayModel', backref='timetables', lazy=True)
+    local = db.relationship('LocalModel', back_populates='timetables')
+    weekday = db.relationship('WeekdayModel', back_populates='timetables')
