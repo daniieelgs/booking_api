@@ -3,7 +3,6 @@ import traceback
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from helpers.security import generatePassword, generateTokens, generateUUID, logOutAll
-from flask import make_response, request
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError

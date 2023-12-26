@@ -70,3 +70,15 @@ class WorkGroupServiceSchema(WorkGroupSchema):
 class ServiceWorkGroup(ServiceSchema):
     work_group = fields.Nested(WorkGroupSchema(), dump_only=True)
     
+class WeekDaySchema(Schema):
+    weekday = fields.Str(required=True, dump_only=True)
+    name = fields.Str(required=True, dump_only=True)
+    
+class TimetableSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    opening_time = fields.Time(required=True)
+    closing_time = fields.Time(required=True)
+    description = fields.Str()
+    local_id = fields.Str(required=True, dump_only=True)
+    weekday_short = fields.Str(required=True, load_only=True)
+    weekday = fields.Nested(WeekDaySchema(), dump_only=True)

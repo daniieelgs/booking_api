@@ -3,10 +3,10 @@ from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import WorkGroupSchema, WorkerSchema, WorkerWorkGroupSchema
-from db import db, addAndCommit, deleteAndCommit, rollback
+from schema import WorkerSchema, WorkerWorkGroupSchema
+from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 import traceback
 
 from globals import DEBUG
