@@ -9,7 +9,7 @@ import traceback
 from globals import DEBUG
 from models.timetable import TimetableModel
 from models.weekday import WeekdayModel
-from schema import TimetableSchema
+from schema import TimetableSchema, WeekDaySchema
 
 blp = Blueprint('timetable', __name__, description='Timetable CRUD')
 
@@ -47,7 +47,15 @@ class TimetableDay(MethodView):
         
         return weekdays if weekdays else ({}, 204)
     
-
+@blp.route('/weekdays')
+class TimetableDayDelete(MethodView):
+    
+    @blp.response(200, WeekDaySchema(many=True))
+    def get(self):
+        """
+        Retrieves all weekdays.
+        """
+        return WeekdayModel.query.all()
 @blp.route('/week/<string:week>')
 class TimetableDayDelete(MethodView):
     @blp.response(404, description='The local was not found. The day was not found.')
