@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from models.local import LocalModel
-from db import addAndCommit, delete, deleteAndCommit, rollback
+from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
@@ -35,9 +35,11 @@ class TimetableDay(MethodView):
         """
         Retrieves timetable from a day.
         """      
-        timetable = LocalModel.query.get_or_404(local_id).timetables
+        LocalModel.query.get_or_404(local_id)
         
-        weekday_id = WeekdayModel.query.filter_by(weekday=week.upper()).first()
+        week = week.upper()
+        
+        weekday_id = WeekdayModel.query.filter_by(weekday=week).first()
         
         if not weekday_id: abort(404, message=f'The day [{week}] was not found.')
         
@@ -67,7 +69,9 @@ class TimetableDayDelete(MethodView):
         """
         local = LocalModel.query.get(get_jwt_identity())
         
-        weekday_id = WeekdayModel.query.filter_by(weekday=week.upper()).first()
+        week = week.upper()
+        
+        weekday_id = WeekdayModel.query.filter_by(weekday=week).first()
         
         if not weekday_id: abort(404, message=f'The day [{week}] was not found.')
         
@@ -99,9 +103,11 @@ class Timetable(MethodView):
         timetables = []
         
         for timetable_data in timetables_data:
-            weekday = timetable_data.pop('weekday_short').upper()
+            weekday_short = timetable_data.pop('weekday_short').upper()
             
-            weekday = WeekdayModel.query.filter_by(weekday=weekday).first()
+            weekday = WeekdayModel.query.filter_by(weekday=weekday_short).first()
+                    
+            if not weekday: abort(404, message=f'The day [{weekday_short}] was not found.')
                     
             timetable = TimetableModel(**timetable_data)
             timetable.weekday = weekday
@@ -109,9 +115,13 @@ class Timetable(MethodView):
             
             timetables.append(timetable)
         
-        try:
-            delete(*local.timetables)
-            addAndCommit(*timetables)
+        old_timetables = local.timetables.all()
+        
+        try: 
+            deleteAndFlush(*old_timetables)
+            flush()
+            addAndFlush(*timetables)
+            commit()
         except OperationalError as e:
             traceback.print_exc()
             rollback()
