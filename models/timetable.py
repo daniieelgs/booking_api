@@ -1,3 +1,4 @@
+from sqlalchemy import UniqueConstraint
 from db import db
 
 class TimetableModel(db.Model):

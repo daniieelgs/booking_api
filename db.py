@@ -44,5 +44,17 @@ def deleteAndCommit(*models):
     
     return True
 
+def delete(*models):
+    
+    if len(models) == 0: return False
+    
+    for model in models:
+        if model: db.session.delete(model)
+        
+    return True
+
 def rollback():
     db.session.rollback()
+    
+def commit():
+    db.session.commit()
