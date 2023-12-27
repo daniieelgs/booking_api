@@ -12,6 +12,7 @@ class WorkerModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
     
+    bookings = db.relationship('BookingModel', back_populates='worker', lazy='dynamic')
     work_groups = db.relationship(
         'WorkGroupModel', 
         secondary='work_group_worker', 

@@ -13,6 +13,7 @@ from schema import TimetableSchema, WeekDaySchema
 
 blp = Blueprint('timetable', __name__, description='Timetable CRUD')
 
+#TODO : cambiar trigger a logica en flask
 @blp.route('/local/<string:local_id>/week')
 class TimetableWeek(MethodView):
 
@@ -125,7 +126,7 @@ class Timetable(MethodView):
         except OperationalError as e:
             traceback.print_exc()
             rollback()
-            abort(409, message = str(e.orig).split("'")[1])
+            abort(409, message = "BBDD: " + str(e.orig).split("'")[1])
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
