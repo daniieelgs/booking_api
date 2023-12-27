@@ -16,7 +16,6 @@ class BookingModel(db.Model):
     client_name = db.Column(db.String(45))
     client_tlf = db.Column(db.String(13))
     comment = db.Column(db.Text)
-    done = db.Column(db.Boolean, nullable=False)
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable=False)
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)

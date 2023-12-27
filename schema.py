@@ -38,20 +38,28 @@ class WorkGroupSchema(Schema):
     datetime_updated = fields.DateTime(dump_only=True)
     
     
-class WorkerSchema(Schema):
+class PublicWorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     name = fields.Str(required=True)
     last_name = fields.Str()
+    image = fields.Str()
+    
+class WorkerSchema(PublicWorkerSchema):
     email = fields.Str()
     tlf = fields.Str()
-    image = fields.Str()
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     work_groups = fields.List(fields.Int(), required=True, load_only=True)
 
+class PublicWorkGroupWorkerSchema(WorkGroupSchema):
+    workers = fields.Nested(PublicWorkerSchema, many=True, dump_only=True)
+
 class WorkGroupWorkerSchema(WorkGroupSchema):
     workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
+    
 class WorkerWorkGroupSchema(WorkerSchema):
+    work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
+class PublicWorkerWorkGroupSchema(PublicWorkerSchema):
     work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
     
 class ServiceSchema(Schema):
@@ -82,3 +90,22 @@ class TimetableSchema(Schema):
     local_id = fields.Str(required=True, dump_only=True)
     weekday_short = fields.Str(required=True, load_only=True)
     weekday = fields.Nested(WeekDaySchema(), dump_only=True)
+
+class StatusSchema(Schema):
+    status = fields.Str(required=True, dump_only=True)
+    name = fields.Str(dump_only=True)
+    
+class PublicBookingSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    datetime = fields.DateTime(required=True)
+    datetime_end = fields.DateTime(required=True, dump_only=True)
+    worker = fields.Nested(WorkerSchema(), dump_only=True)    
+
+class BookingSchema(PublicBookingSchema):
+    client_name = fields.Str(required=True)
+    client_tlf = fields.Str(required=True)
+    comment = fields.Str()
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
+    status = fields.Nested(StatusSchema(), dump_only=True)
+    

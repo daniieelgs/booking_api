@@ -3,7 +3,7 @@ from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import WorkerSchema, WorkerWorkGroupSchema
+from schema import PublicWorkerSchema, PublicWorkerWorkGroupSchema, WorkerSchema, WorkerWorkGroupSchema
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,6 +12,8 @@ import traceback
 from globals import DEBUG
 
 blp = Blueprint('worker', __name__, description='Workers CRUD')
+
+#TODO : testar publics
 
 def getAllWorkers(local_id):
     workers = set()
@@ -28,10 +30,10 @@ def getAllWorkers(local_id):
 class WorkersGetAll(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, WorkerSchema(many=True))
+    @blp.response(200, PublicWorkerSchema(many=True))
     def get(self, local_id):
         """
-        Retrieves all workers.
+        Retrieves all public data workers.
         """      
         return getAllWorkers(local_id)
     
@@ -39,15 +41,24 @@ class WorkersGetAll(MethodView):
 class WorkersGetAllWorkGroups(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, WorkerWorkGroupSchema(many=True))
+    @blp.response(200, PublicWorkerWorkGroupSchema(many=True))
     def get(self, local_id):
         """
-        Recover all workers with the work groups to which they belong.
+        Recover all public data workers with the work groups to which they belong.
         """                
         return getAllWorkers(local_id)
     
 @blp.route('')
 class Worker(MethodView):
+
+    @blp.response(404, description='The local was not found')
+    @blp.response(200, WorkerSchema(many=True))
+    @jwt_required(refresh=True)
+    def get(self):
+        """
+        Retrieves all data workers.
+        """
+        return getAllWorkers(get_jwt_identity())
 
     @blp.arguments(WorkerSchema)
     @blp.response(404, description='The local was not found. The work groups were not found or does not belong to the local session token.')
@@ -106,25 +117,60 @@ class Worker(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the workers.')
 
-@blp.route('/<int:worker_id>/work_group')
+@blp.route('/private/<int:worker_id>/work_group')
 class WorkerWorkGroupByID(MethodView):
 
     @blp.response(404, description='The worker was not found')
     @blp.response(200, WorkerWorkGroupSchema)
+    @jwt_required(refresh=True)
     def get(self, worker_id):
         """
-        Retrieves a worker by ID.
+        Retrieves a public data worker by ID.
+        """
+        worker = WorkerModel.query.get_or_404(worker_id)
+        
+        if worker.work_groups.first().local_id != get_jwt_identity():
+            abort(403, message = 'You are not allowed to access this worker.')
+        
+        return worker
+
+@blp.route('/<int:worker_id>/work_group')
+class PublicWorkerWorkGroupByID(MethodView):
+
+    @blp.response(404, description='The worker was not found')
+    @blp.response(200, PublicWorkerWorkGroupSchema)
+    def get(self, worker_id):
+        """
+        Retrieves a public data worker by ID.
         """
         return WorkerModel.query.get_or_404(worker_id)
 
-@blp.route('/<int:worker_id>')
+@blp.route('/private/<int:worker_id>')
 class WorkerByID(MethodView):
 
     @blp.response(404, description='The worker was not found')
     @blp.response(200, WorkerSchema)
+    @jwt_required(refresh=True)
     def get(self, worker_id):
         """
-        Retrieves a worker by ID.
+        Retrieves a data worker by ID.
+        """
+        
+        worker = WorkerModel.query.get_or_404(worker_id)
+        
+        if Worker.work_groups.first().local_id != get_jwt_identity():
+            abort(403, message = 'You are not allowed to access this worker.')
+        
+        return worker
+
+@blp.route('/<int:worker_id>')
+class PublicWorkerByID(MethodView):
+
+    @blp.response(404, description='The worker was not found')
+    @blp.response(200, PublicWorkerSchema)
+    def get(self, worker_id):
+        """
+        Retrieves a public data worker by ID.
         """
         return WorkerModel.query.get_or_404(worker_id)
 

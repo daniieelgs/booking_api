@@ -2,7 +2,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from models import WorkGroupModel
 from models.local import LocalModel
-from schema import WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
+from schema import PublicWorkGroupWorkerSchema, WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -11,6 +11,8 @@ import traceback
 from globals import DEBUG
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
+
+#TODO : testar publics
 
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
@@ -27,12 +29,24 @@ class WorkGroupGetAll(MethodView):
 class WorkGroupWorkersGetAll(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, WorkGroupWorkerSchema(many=True))
+    @blp.response(200, PublicWorkGroupWorkerSchema(many=True))
     def get(self, local_id):
+        """
+        Retrieves all public data work groups with their workers.
+        """
+        return LocalModel.query.get_or_404(local_id).work_groups
+    
+@blp.route('/workers')
+class WorkGroupWorkersGetAll(MethodView):
+
+    @blp.response(404, description='The local was not found')
+    @blp.response(200, WorkGroupWorkerSchema(many=True))
+    @jwt_required(refresh=True)
+    def get(self):
         """
         Retrieves all work groups with their workers.
         """
-        return LocalModel.query.get_or_404(local_id).work_groups
+        return LocalModel.query.get_or_404(get_jwt_identity()).work_groups
     
 @blp.route('/local/<string:local_id>/services')
 class WorkGroupServicesGetAll(MethodView):
@@ -97,15 +111,32 @@ class WorkGroup(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
 
 @blp.route('/<int:work_group_id>/workers')
+class PublicWorkGroupWorkerByID(MethodView):
+
+    @blp.response(404, description='The work group was not found')
+    @blp.response(200, PublicWorkGroupWorkerSchema)
+    def get(self, work_group_id):
+        """
+        Retrieves a public data work group by ID with their workers.
+        """
+        return WorkGroupModel.query.get_or_404(work_group_id)
+    
+@blp.route('/private/<int:work_group_id>/workers')
 class WorkGroupWorkerByID(MethodView):
 
     @blp.response(404, description='The work group was not found')
     @blp.response(200, WorkGroupWorkerSchema)
+    @jwt_required(refresh=True)
     def get(self, work_group_id):
         """
         Retrieves a work group by ID with their workers.
         """
-        return WorkGroupModel.query.get_or_404(work_group_id)
+        work_group = WorkGroupModel.query.get_or_404(work_group_id)
+        
+        if work_group.local_id != get_jwt_identity():
+            abort(403, message = 'You are not allowed to see this work group.')
+        
+        return work_group
     
 @blp.route('/<int:work_group_id>/services')
 class WorkGroupServicesByID(MethodView):
