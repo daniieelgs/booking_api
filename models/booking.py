@@ -22,13 +22,14 @@ class BookingModel(db.Model):
     worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=False)
     
     status = db.relationship('StatusModel')
-    bookings = db.relationship(
+    service_bookings = db.relationship('ServiceBookingModel', back_populates='booking', lazy='dynamic')
+    services = db.relationship(
         'ServiceModel',
         secondary='service_booking',
         back_populates='bookings',
         lazy='dynamic'
     )
-    worker = db.relationship('WorkerModel', back_populates='bookings', lazy='dyanmic')
+    worker = db.relationship('WorkerModel', back_populates='bookings')
     
     @property
     def local_id(self):
@@ -38,6 +39,14 @@ class BookingModel(db.Model):
             work_group = db.session.query(WorkGroupModel).filter_by(id=work_group_worker.work_group_id).first()
             if work_group:
                 return work_group.local_id
+        return None
+    
+    @property
+    def work_group_id(self):
+        
+        work_group_worker = db.session.query(WorkGroupWorkerModel).filter_by(worker_id=self.worker_id).first()
+        if work_group_worker:
+            return work_group_worker.work_group_id
         return None
     
     @property

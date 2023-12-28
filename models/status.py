@@ -1,5 +1,4 @@
 from db import db
-import datetime
 
 class StatusModel(db.Model):
     __tablename__ = 'status'

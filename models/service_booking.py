@@ -1,5 +1,4 @@
 from db import db
-import datetime
 
 class ServiceBookingModel(db.Model):
     __tablename__ = 'service_booking'
