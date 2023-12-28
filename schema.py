@@ -111,5 +111,4 @@ class BookingSchema(PublicBookingSchema):
     
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
-    format = fields.Str(required=False, load_only=True)
     

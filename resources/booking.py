@@ -4,6 +4,7 @@ from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import getBookings
+from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.TimetableController import getTimetable
 from models.booking import BookingModel
 from models.local import LocalModel
@@ -62,7 +63,11 @@ class SeePublicBooking(MethodView):
         worker_id = request.args.get('worker_id', None)
         work_group_id = request.args.get('work_group_id', None)
         
-        return getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
+        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
+        
+        print(bookings)
+        
+        return bookings
     
 @blp.route('/local/<string:local_id>/week')
 class SeePublicBookingWeek(MethodView):
@@ -99,14 +104,17 @@ class SeePublicBookingWeek(MethodView):
 @blp.route('/local/<string:local_id>')
 class Booking(MethodView):
     
-    #TODO : comprobar timetable del local
+    # TODO : comprobar timetable del local
     # TODO : comprobar que el trabajador tiene el horario disponible
+    # TODO : definir comportamiento al eliminar un servicio, trabajador o work group y al actualizar el timetable
+    # TODO : ver las reservas que tiene un trabajador
+    # TODO : definir comportamiento al cambiar un trabajador de work group o un servicio de work group
+    # TODO : crear sesion token para modificar la reserva
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
     @blp.response(400, description='Invalid date format.')
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available.')
     @blp.response(201, BookingSchema)
-    @jwt_required(fresh=True)
     def post(self, new_booking, local_id):
         """
         Creates a new booking.
@@ -116,11 +124,10 @@ class Booking(MethodView):
         if not local:
             abort(404, message=f'The local [{local_id}] was not found.')
         
-        format = new_booking['format'] if 'format' in new_booking else DEFAULT_FORMAT
         worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
         
         try:
-            datetime_init = datetime.strptime(new_booking['datetime'], format)
+            datetime_init = new_booking['datetime']
         except ValueError:
             abort(400, message='Invalid date format.')
         
@@ -129,7 +136,7 @@ class Booking(MethodView):
                 
         for service_id in set(new_booking['services_ids']):
             service = ServiceModel.query.get(service_id)
-            if not service:
+            if not service or service.work_group.local_id != local_id:
                 abort(404, message=f'The service [{service_id}] was not found.')
             total_duration += service.duration
             
@@ -140,6 +147,8 @@ class Booking(MethodView):
             
         if not services:
             abort(404, message='The service was not found.')
+        
+        new_booking.pop('services_ids')
         
         datetime_end = datetime_init + timedelta(minutes=total_duration)
                 
@@ -153,10 +162,10 @@ class Booking(MethodView):
         
         if worker_id:
             worker = WorkerModel.query.get(worker_id)
-            if not worker:
+            if not worker or worker.work_groups.first().local_id != local_id:
                 abort(404, message=f'The worker [{worker_id}] was not found.')
             
-            if worker.work_group_id != services[0].work_group_id:
+            if services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
                 abort(409, message='The worker must be from the same work group that the services.')
                 
             if getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id):
@@ -182,7 +191,6 @@ class Booking(MethodView):
         if not status:
             abort(500, message='The status was not found.')
         
-        new_booking['local_id'] = local_id
         new_booking['status_id'] = status.id
         new_booking['worker_id'] = worker_id
         
@@ -195,5 +203,7 @@ class Booking(MethodView):
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+        
+        start_waiter_booking_status(booking.id)
         
         return booking

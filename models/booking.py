@@ -8,6 +8,8 @@ from models.work_group import WorkGroupModel
 from models.work_group_worker import WorkGroupWorkerModel
 from models.worker import WorkerModel
 
+# TODO : añadir precio total
+
 class BookingModel(db.Model):
     __tablename__ = 'booking'
     
@@ -22,12 +24,11 @@ class BookingModel(db.Model):
     worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=False)
     
     status = db.relationship('StatusModel')
-    service_bookings = db.relationship('ServiceBookingModel', back_populates='booking', lazy='dynamic')
     services = db.relationship(
         'ServiceModel',
         secondary='service_booking',
         back_populates='bookings',
-        lazy='dynamic'
+        overlaps="booking,service_bookings,service"
     )
     worker = db.relationship('WorkerModel', back_populates='bookings')
     
@@ -58,3 +59,8 @@ class BookingModel(db.Model):
             return datetime_end
         else:
             return None
+        
+    @property
+    def total_price(self):
+        total_price = sum(service_booking.service.price for service_booking in self.service_bookings)
+        return total_price

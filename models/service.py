@@ -14,12 +14,11 @@ class ServiceModel(db.Model):
     datetime_updated = db.Column(db.DateTime, nullable=True)
     
     work_group = db.relationship('WorkGroupModel', back_populates='services')
-    service_bookings = db.relationship('ServiceBookingModel', back_populates='service', lazy='dynamic')
     bookings = db.relationship(
         'BookingModel',
         secondary='service_booking',
         back_populates='services',
-        lazy='dynamic'
+        overlaps="service,service_bookings,booking"
     )
     
     __table_args__ = (UniqueConstraint('name', 'work_group_id', name='name'),)

@@ -9,5 +9,5 @@ class ServiceBookingModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
     
-    service = db.relationship('ServiceModel', back_populates='service_bookings')
-    booking = db.relationship('BookingModel', back_populates='service_bookings')
+    service = db.relationship('ServiceModel', backref='service_bookings')
+    booking = db.relationship('BookingModel', backref='service_bookings')

@@ -6,9 +6,16 @@ from models.service import ServiceModel
 from models.status import StatusModel
 from models.work_group import WorkGroupModel
 
-def getBookings(datetime_init, datetime_end, local_id, status = None, worker_id = None, work_group_id = None):
+def getAllLocalBookings(local_id):
+    work_group = WorkGroupModel.query.filter_by(local_id=local_id).all()
+    workers = [wg.workers.all() for wg in work_group]
+    worker_ids = set([worker.id for worker_list in workers for worker in worker_list])
+    return BookingModel.query.filter(BookingModel.worker_id.in_(worker_ids)).all()
 
-    bookings = BookingModel.query.filter(BookingModel.local_id == local_id).all()
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, work_group_id = None):
+
+    bookings = getAllLocalBookings(local_id)
+
 
     status_ids = [StatusModel.query.filter(StatusModel.status == s).first().id for s in status] if status else None
 
