@@ -202,5 +202,5 @@ class LocalRefresh(MethodView):
         if token.user_session.user != LOCAL_ROLE: # TODO : testear
             abort(403, message = 'You are not allowed to refresh this token.')
         
-        refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
+        refresh_token = generateTokens(get_jwt_identity(), get_jwt_identity(), refresh_token=True)
         return {'refresh_token': refresh_token}
