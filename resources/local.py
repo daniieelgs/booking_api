@@ -11,7 +11,7 @@ from passlib.hash import pbkdf2_sha256
 
 from db import deleteAndCommit, addAndCommit, rollback
 
-from globals import DEBUG
+from globals import DEBUG, LOCAL_ROLE
 from models.session_token import SessionTokenModel
 from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
 
@@ -66,7 +66,7 @@ class Local(MethodView):
 
         try:
             addAndCommit(local)
-            access_token, refresh_token = generateTokens(local.id, access_token=True, refresh_token=True)
+            access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
         except IntegrityError as e:
             traceback.print_exc()
             rollback()
@@ -148,7 +148,7 @@ class AccessLocal(MethodView):
         if not local or not pbkdf2_sha256.verify(login_data['password'], local.password):
             abort(401, message = 'Invalid credentials.')
             
-        access_token, refresh_token = generateTokens(local.id, access_token=True, refresh_token=True)
+        access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
             
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
         
@@ -194,5 +194,13 @@ class LocalRefresh(MethodView):
         """
         Refresh the refresh-token
         """
+        token = get_jwt()
+        tokenId = token.get('token')
+        
+        token = SessionTokenModel.query.get_or_404(tokenId)
+        
+        if token.user_session.user != LOCAL_ROLE: # TODO : testear
+            abort(403, message = 'You are not allowed to refresh this token.')
+        
         refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
         return {'refresh_token': refresh_token}

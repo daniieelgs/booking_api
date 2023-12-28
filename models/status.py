@@ -6,3 +6,5 @@ class StatusModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(1), nullable=False, unique=True)
     name = db.Column(db.String(45))
+    
+    bookings = db.relationship('BookingModel', back_populates='status')

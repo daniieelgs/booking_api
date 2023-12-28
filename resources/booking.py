@@ -6,6 +6,7 @@ from flask_smorest import Blueprint, abort
 from helpers.BookingController import getBookings
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.TimetableController import getTimetable
+from helpers.security import generateTokens
 from models.booking import BookingModel
 from models.local import LocalModel
 from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
@@ -13,12 +14,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
 
-from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, WEEK_DAYS
+from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from models.service import ServiceModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingSchema, PublicBookingSchema
+from schema import BookingSchema, NewBookingSchema, PublicBookingSchema
 
 blp = Blueprint('booking', __name__, description='Timetable CRUD')
 
@@ -114,7 +115,7 @@ class Booking(MethodView):
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
     @blp.response(400, description='Invalid date format.')
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available.')
-    @blp.response(201, BookingSchema)
+    @blp.response(201, NewBookingSchema)
     def post(self, new_booking, local_id):
         """
         Creates a new booking.
@@ -198,12 +199,23 @@ class Booking(MethodView):
         booking.services = services
         
         try:
-            addAndCommit(booking)
-        except SQLAlchemyError as e:
+            addAndFlush(booking)
+            
+            timeout = start_waiter_booking_status(booking.id, 0.083)
+        
+            diff = datetime_end - datetime_init
+            
+            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60), user_role=USER_ROLE)
+            
+            commit()
+            
+            return {
+                "booking": booking,
+                "timeout": timeout,
+                "session_token": token
+            }
+            
+        except Exception as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
-        
-        start_waiter_booking_status(booking.id)
-        
-        return booking

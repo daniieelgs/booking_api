@@ -23,7 +23,7 @@ class BookingModel(db.Model):
     datetime_updated = db.Column(db.DateTime, nullable=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=False)
     
-    status = db.relationship('StatusModel')
+    status = db.relationship('StatusModel', back_populates='bookings')
     services = db.relationship(
         'ServiceModel',
         secondary='service_booking',

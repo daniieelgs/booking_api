@@ -2,6 +2,7 @@ from models.local import LocalModel
 from models.service_booking import ServiceBookingModel
 from models.service import ServiceModel
 from models.booking import BookingModel
+from models.user_session import UserSessionModel
 from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.work_group_worker import WorkGroupWorkerModel

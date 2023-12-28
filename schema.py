@@ -112,3 +112,8 @@ class BookingSchema(PublicBookingSchema):
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
     
+class NewBookingSchema(Schema):
+    booking = fields.Nested(BookingSchema(), required=True)
+    session_token = fields.Str(required=True)
+    timeout = fields.Float(required=True)
+    

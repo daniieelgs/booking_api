@@ -8,3 +8,6 @@ class SessionTokenModel(db.Model):
     local_id = db.Column(db.Integer, db.ForeignKey('local.id'), unique=False, nullable=False)
     local = db.relationship('LocalModel', back_populates='tokens')
     datetime_created = db.Column(db.DateTime, nullable=True)
+    user_session_id = db.Column(db.Integer, db.ForeignKey('user_session.id'), nullable=False)
+    
+    user_session = db.relationship('UserSessionModel', back_populates='tokens')
