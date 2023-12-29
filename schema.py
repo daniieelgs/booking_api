@@ -97,9 +97,9 @@ class StatusSchema(Schema):
     
 class PublicBookingSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
-    datetime = fields.DateTime(required=True)
+    datetime_init = fields.DateTime(required=True)
     datetime_end = fields.DateTime(required=True, dump_only=True)
-    worker = fields.Nested(WorkerSchema(), dump_only=True)    
+    worker = fields.Nested(PublicWorkerSchema(), dump_only=True)    
 
 class BookingSchema(PublicBookingSchema):
     client_name = fields.Str(required=True)
@@ -108,6 +108,7 @@ class BookingSchema(PublicBookingSchema):
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     status = fields.Nested(StatusSchema(), dump_only=True)
+    total_price = fields.Float(required=True, dump_only=True)
     
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)

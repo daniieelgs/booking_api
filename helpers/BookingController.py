@@ -5,10 +5,11 @@ import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
 from globals import CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.TimetableController import getTimetable
+from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
-from helpers.error.BookingError.PastDateException import PastDateException
+from helpers.error.DataError.PastDateException import PastDateException
 from helpers.error.BookingError.WorkerUnavailable import WorkerUnavailableException
 from helpers.error.BookingError.WrongServiceWorkGroupException import WrongServiceWorkGroupException
 from helpers.error.BookingError.WrongWorkerWorkGroupException import WrongWorkerWorkGroupException
@@ -34,19 +35,37 @@ from datetime import datetime, timedelta
 
 from models.worker import WorkerModel
 
-def getAllLocalBookings(local_id):
+def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     work_group = WorkGroupModel.query.filter_by(local_id=local_id).all()
     workers = [wg.workers.all() for wg in work_group]
     worker_ids = set([worker.id for worker_list in workers for worker in worker_list])
-    return BookingModel.query.filter(BookingModel.worker_id.in_(worker_ids)).all()
+    
+    query = BookingModel.query.filter(BookingModel.worker_id.in_(worker_ids))
+    
+    if datetime_init and datetime_end:
+        query = query.filter(and_(BookingModel.datetime_end > datetime_init, 
+                                  BookingModel.datetime_init < datetime_end))
+    elif datetime_init:
+        query = query.filter(BookingModel.datetime_end > datetime_init)
+    
+    return query
 
 def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, work_group_id = None):
 
-    bookings = getAllLocalBookings(local_id)
+    bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
     status_ids = [StatusModel.query.filter(StatusModel.status == s).first().id for s in status] if status else None
 
-    return [booking for booking in bookings if (booking.datetime_end > datetime_init and booking.datetime < datetime_end) and (booking.status_id in status_ids if status_ids else True) and (booking.worker_id == worker_id if worker_id else True) and (booking.work_group_id == work_group_id if work_group_id else True)]
+    if status_ids:
+        bookings_query = bookings_query.filter(BookingModel.status_id.in_(status_ids))
+        
+    if worker_id:
+        bookings_query = bookings_query.filter(BookingModel.worker_id == worker_id)
+        
+    if work_group_id:
+        bookings_query = bookings_query.filter(BookingModel.work_group_id == work_group_id)
+
+    return bookings_query.all()
 
 def getBookingBySession(token):
     
@@ -171,6 +190,8 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     booking = bookingModel or BookingModel(**new_booking)
     booking.services = services
     
+    booking = calculatEndTimeBooking(booking) #TODO : al actualizar el tiempo de un service actualizar el tiempo de todos sus bookings
+    
     if bookingModel:
         for key, value in new_booking.items():
             setattr(booking, key, value)
@@ -180,4 +201,10 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     except SQLAlchemyError as e:
         rollback()
         raise e
+    return booking
+
+def calculatEndTimeBooking(booking):
+    total_duration = sum(service.duration for service in booking.services)
+    datetime_end = booking.datetime_init + timedelta(minutes=total_duration)
+    booking.datetime_end = datetime_end
     return booking

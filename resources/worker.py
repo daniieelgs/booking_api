@@ -1,19 +1,25 @@
+from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
+from helpers.BookingController import getBookings
+from helpers.DataController import getDataRequest
+from helpers.error.DataError.UnspecifedDateException import UnspecifedDateException
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import PublicWorkerSchema, PublicWorkerWorkGroupSchema, WorkerSchema, WorkerWorkGroupSchema
+from schema import BookingSchema, PublicWorkerSchema, PublicWorkerWorkGroupSchema, WorkerSchema, WorkerWorkGroupSchema
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 import traceback
 
-from globals import DEBUG
+from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
 blp = Blueprint('worker', __name__, description='Workers CRUD')
 
 #TODO : testar publics
+
+# TODO : ver las reservas que tiene un trabajador
 
 def getAllWorkers(local_id):
     workers = set()
@@ -158,7 +164,7 @@ class WorkerByID(MethodView):
         
         worker = WorkerModel.query.get_or_404(worker_id)
         
-        if Worker.work_groups.first().local_id != get_jwt_identity():
+        if worker.work_groups.first().local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to access this worker.')
         
         return worker
