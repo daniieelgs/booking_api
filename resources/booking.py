@@ -3,10 +3,22 @@ import random
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import getBookings
+from helpers.BookingController import createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.TimetableController import getTimetable
-from helpers.security import generateTokens
+from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
+from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
+from helpers.error.BookingError.PastDateException import PastDateException
+from helpers.error.BookingError.WorkerUnavailable import WorkerUnavailableException
+from helpers.error.BookingError.WrongServiceWorkGroupException import WrongServiceWorkGroupException
+from helpers.error.BookingError.WrongWorkerWorkGroupException import WrongWorkerWorkGroupException
+from helpers.error.ModelNotFoundException import ModelNotFoundException
+from helpers.error.SecurityError.InvalidTokenException import InvalidTokenException
+from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvidedException
+from helpers.error.SecurityError.TokenNotFound import TokenNotFoundException
+from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundException
+from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
+from helpers.security import decodeToken, generateTokens
 from models.booking import BookingModel
 from models.local import LocalModel
 from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
@@ -16,6 +28,7 @@ import traceback
 
 from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from models.service import ServiceModel
+from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
@@ -29,6 +42,19 @@ blp = Blueprint('booking', __name__, description='Timetable CRUD')
 
 DEFAULT_FORMAT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_FORMAT_DATA = '%Y-%m-%d'
+
+def getBookingBySession(token):
+    try:
+        return getBookingBySessionHelper(token)
+    except NoTokenProvidedException as e:
+        abort(400, message=str(e))
+    except InvalidTokenException as e:
+        abort(401, message=str(e))
+    except TokenNotFoundException as e:
+        abort(404, message=str(e))
+    except Exception as e:
+        traceback.print_exc()
+        abort(500, message=str(e) if DEBUG else 'Could not get the booking.')
 
 @blp.route('/local/<string:local_id>')
 class SeePublicBooking(MethodView):
@@ -114,98 +140,24 @@ class Booking(MethodView):
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
     @blp.response(400, description='Invalid date format.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available.')
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
     @blp.response(201, NewBookingSchema)
     def post(self, new_booking, local_id):
         """
         Creates a new booking.
         """
-        
-        local = LocalModel.query.get(local_id)
-        if not local:
-            abort(404, message=f'The local [{local_id}] was not found.')
-        
-        worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
-        
         try:
-            datetime_init = new_booking['datetime']
-        except ValueError:
-            abort(400, message='Invalid date format.')
-        
-        total_duration = 0
-        services = []
-                
-        for service_id in set(new_booking['services_ids']):
-            service = ServiceModel.query.get(service_id)
-            if not service or service.work_group.local_id != local_id:
-                abort(404, message=f'The service [{service_id}] was not found.')
-            total_duration += service.duration
+            booking = createOrUpdateBooking(new_booking, local_id, commit=False)
             
-            if len(services) > 0 and service.work_group_id != services[0].work_group_id:
-                abort(409, message='The services must be from the same work group.')
-                
-            services.append(service)
-            
-        if not services:
-            abort(404, message='The service was not found.')
-        
-        new_booking.pop('services_ids')
-        
-        datetime_end = datetime_init + timedelta(minutes=total_duration)
-                
-        week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[datetime_init.weekday()]).first()
-        
-        if not week_day:
-            abort(500, message='The weekday was not found.')
-        
-        if not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
-            abort(409, message='The local is not available.')
-        
-        if worker_id:
-            worker = WorkerModel.query.get(worker_id)
-            if not worker or worker.work_groups.first().local_id != local_id:
-                abort(404, message=f'The worker [{worker_id}] was not found.')
-            
-            if services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
-                abort(409, message='The worker must be from the same work group that the services.')
-                
-            if getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id):
-                abort(409, message='The worker is not available.')
-                
-        else: 
-            workers = list(services[0].work_group.workers.all())
-            
-            random.shuffle(workers)
-            
-            for worker in workers:
-                if getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id):
-                    continue
-                
-                worker_id = worker.id
-                break
-            
-            if not worker_id:
-                abort(409, message='There is already a booking in that time.')
-        
-        status = StatusModel.query.filter_by(status=PENDING_STATUS).first()
-        
-        if not status:
-            abort(500, message='The status was not found.')
-        
-        new_booking['status_id'] = status.id
-        new_booking['worker_id'] = worker_id
-        
-        booking = BookingModel(**new_booking)
-        booking.services = services
-        
-        try:
-            addAndFlush(booking)
+            datetime_end = booking.datetime_end
             
             timeout = start_waiter_booking_status(booking.id, 0.083)
-        
-            diff = datetime_end - datetime_init
+                
+            diff = datetime_end - datetime.now()
             
-            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60), user_role=USER_ROLE)
+            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+            
+            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
             
             commit()
             
@@ -214,8 +166,106 @@ class Booking(MethodView):
                 "timeout": timeout,
                 "session_token": token
             }
-            
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
             rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
+             
+           
+@blp.route('')
+class BookingSession(MethodView):
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
+    @blp.response(200, BookingSchema)
+    def get(self):
+        """
+        Retrieves a booking session.
+        """
+        return getBookingBySession(request.args.get('session', None))
+    
+    @blp.arguments(BookingSchema)
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
+    @blp.response(200, BookingSchema)
+    def put(self, booking_data):
+        """
+        Updates a booking session.
+        """
+        
+        booking = getBookingBySession(request.args.get('session', None))        
+                
+        try:
+            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
+        except Exception as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
+        
+        raise NotImplementedError
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
+    @blp.response(204, description='The booking was deleted.')
+    def delete(self):
+        """
+        Deletes a booking session.
+        """
+        booking = getBookingBySession(request.args.get('session', None))
+        
+        try:
+            deleteAndCommit(booking)
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
+            
+        return {}
+        
+@blp.route('confirm')
+class BookingConfirm(MethodView):
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
+    @blp.response(200, BookingSchema)
+    def get(self):
+        """
+        Confirms a booking. Change the status to confirmed.
+        """
+        booking = getBookingBySession(request.args.get('session', None))
+        
+        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
+        
+        if not status:
+            abort(500, message='The status was not found.')
+            
+        booking.status_id = status.id
+        
+        try:
+            addAndCommit(booking)
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
+            
+        return booking

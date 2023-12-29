@@ -47,6 +47,9 @@ def generateTokens(identity, localId, access_token = False, refresh_token = True
 
     return token_fresh if token_fresh else token_refresh
  
+def decodeToken(token):
+    return decode_token(token)
+ 
 def generateUUID():
     return uuid.uuid4().hex
 
