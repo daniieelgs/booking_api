@@ -121,3 +121,23 @@ class NewBookingSchema(Schema):
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)
     
+    
+class BookingParams(Schema):
+    date = fields.Date(required=False, description='Specify a date to view reservations for the entire day')
+    datetime_init = fields.DateTime(required=False, description='Specify an initial datetime')
+    datetime_end = fields.DateTime(required=False, description='Specify an end datetime')
+    format = fields.Str(description='Specify the format of date parameters. Default: %Y-%m-%d %H:%M:%S')
+    worker_id = fields.Int(required=False, description='Worker ID to filter bookings')
+    work_group_id = fields.Int(required=False, description='Work group ID to filter bookings')
+    
+class BookingWeekParams(BookingParams):
+    days = fields.Int(required=False, description='Specify the number of days to view reservations. Default: 7 days')
+    
+class BookingAdminParams(BookingParams):
+    status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
+    
+class BookingAdminWeekParams(BookingWeekParams):
+    status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
+    
+class BookingSessionParams(Schema):
+    session = fields.Str(required=True)

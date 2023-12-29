@@ -28,15 +28,15 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
 
-from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET
+from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET
 from models.service import ServiceModel
 from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminSchema, BookingSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
+from schema import BookingAdminParams, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingSchema, BookingSessionParams, BookingWeekParams, NewBookingSchema, PublicBookingSchema, StatusSchema
 
-blp = Blueprint('booking', __name__, description='Timetable CRUD')
+blp = Blueprint('booking', __name__, description='Booking CRUD')
 
 def getBookingBySession(token):
     try:
@@ -54,6 +54,7 @@ def getBookingBySession(token):
 @blp.route('/local/<string:local_id>')
 class SeePublicBooking(MethodView):
     
+    @blp.arguments(BookingParams, location='query')
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
@@ -61,14 +62,6 @@ class SeePublicBooking(MethodView):
     def get(self, local_id):
         """
         Retrieves public bookings from specific DateTime.
-        Parameters GET:
-            - date: specify a date to view reservations for the entire day
-            - datetime_init: specify a initial datetime to view reservations from that datetime
-            - datetime_end: specify a end datetime to view reservations until that datetime
-            (Yo have to specify date or datetime_init and datetime_end)
-            - format: specify the format of the date, datetime_init and datetime_end parameters (optional). Default format: '%Y-%m-%d' or '%Y-%m-%d %H:%M:%S'
-            - worker_id: specify a worker id to view reservations from that worker (optional)
-            - work_group_id: specify a work group id to view reservations from that work group (optional)
         """      
         
         try:
@@ -88,6 +81,7 @@ class SeePublicBooking(MethodView):
 @blp.route('/local/<string:local_id>/week')
 class SeePublicBookingWeek(MethodView):
     
+    @blp.arguments(BookingWeekParams, location='query')
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
@@ -95,12 +89,6 @@ class SeePublicBookingWeek(MethodView):
     def get(self, local_id):
         """
         Retrieves public bookings from a week
-        Parameters GET:
-            - date: Specify a date to see the reservations for the entire week on that day
-            - format: specify the format of the date, datetime_init and datetime_end parameters (optional). Default format: '%Y-%m-%d'
-            - days: specify the number of days to see the reservations from the date (optional). Default: 7 
-            - worker_id: specify a worker id to view reservations from that worker (optional)
-            - work_group_id: specify a work group id to view reservations from that work group (optional)
         """
         
         try:
@@ -118,6 +106,7 @@ class SeePublicBookingWeek(MethodView):
 @blp.route('/all')
 class SeePublicBookingWeek(MethodView):
     
+    @blp.arguments(BookingAdminParams, location='query')
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
@@ -125,16 +114,7 @@ class SeePublicBookingWeek(MethodView):
     @jwt_required(refresh=True)
     def get(self):
         """
-        Retrieves public bookings from specific DateTime.
-        Parameters GET:
-            - date: specify a date to view reservations for the entire day
-            - datetime_init: specify a initial datetime to view reservations from that datetime
-            - datetime_end: specify a end datetime to view reservations until that datetime
-            (Yo have to specify date or datetime_init and datetime_end)
-            - format: specify the format of the date, datetime_init and datetime_end parameters (optional). Default format: '%Y-%m-%d' or '%Y-%m-%d %H:%M:%S'
-            - worker_id: specify a worker id to view reservations from that worker (optional)
-            - work_group_id: specify a work group id to view reservations from that work group (optional)
-            - status: list of booking status (ej: C,P) (optional)
+        Retrieves private data bookings from specific DateTime.
         """      
         
         try:
@@ -157,6 +137,7 @@ class SeePublicBookingWeek(MethodView):
 @blp.route('/all/week')
 class SeePublicBookingWeek(MethodView):
     
+    @blp.arguments(BookingAdminWeekParams, location='query')
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
@@ -164,14 +145,7 @@ class SeePublicBookingWeek(MethodView):
     @jwt_required(refresh=True)
     def get(self):
         """
-        Retrieves public bookings from a week
-        Parameters GET:
-            - date: Specify a date to see the reservations for the entire week on that day
-            - format: specify the format of the date, datetime_init and datetime_end parameters (optional). Default format: '%Y-%m-%d'
-            - days: specify the number of days to see the reservations from the date (optional). Default: 7 
-            - worker_id: specify a worker id to view reservations from that worker (optional)
-            - work_group_id: specify a work group id to view reservations from that work group (optional)
-            - status: list of booking status (ej: C,P) (optional)
+        Retrieves private data bookings from a week
         """
         
         try:
@@ -318,6 +292,7 @@ class BookingAdmin(MethodView):
 @blp.route('')
 class BookingSession(MethodView):
     
+    @blp.arguments(BookingSessionParams, location='query')
     @blp.response(404, description='The booking was not found.')
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
@@ -326,8 +301,9 @@ class BookingSession(MethodView):
         """
         Retrieves a booking session.
         """
-        return getBookingBySession(request.args.get('session', None))
+        return getBookingBySession(request.args.get(SESSION_GET, None))
     
+    @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
     @blp.response(400, description='Invalid date format. No session token provided.')
@@ -339,7 +315,7 @@ class BookingSession(MethodView):
         Updates a booking session.
         """
         
-        booking = getBookingBySession(request.args.get('session', None))        
+        booking = getBookingBySession(request.args.get(SESSION_GET, None))        
                 
         try:
             return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
@@ -356,6 +332,7 @@ class BookingSession(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
     
+    @blp.arguments(BookingSessionParams, location='query')
     @blp.response(404, description='The booking was not found.')
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
@@ -364,7 +341,7 @@ class BookingSession(MethodView):
         """
         Deletes a booking session.
         """
-        booking = getBookingBySession(request.args.get('session', None))
+        booking = getBookingBySession(request.args.get(SESSION_GET, None))
         
         try:
             deleteAndCommit(booking)
@@ -378,6 +355,7 @@ class BookingSession(MethodView):
 @blp.route('confirm')
 class BookingConfirm(MethodView):
     
+    @blp.arguments(BookingSessionParams, location='query')
     @blp.response(404, description='The booking was not found.')
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
@@ -386,7 +364,7 @@ class BookingConfirm(MethodView):
         """
         Confirms a booking. Change the status to confirmed.
         """
-        booking = getBookingBySession(request.args.get('session', None))
+        booking = getBookingBySession(request.args.get(SESSION_GET, None))
         
         status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
         
