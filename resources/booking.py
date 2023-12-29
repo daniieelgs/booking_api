@@ -32,11 +32,10 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingSchema, NewBookingSchema, PublicBookingSchema
+from schema import BookingSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
 
 blp = Blueprint('booking', __name__, description='Timetable CRUD')
 
-# TODO : crear trigger que comprueba que no haya otra reserva en el mismo horario con status == C|P y con el mismo trabajador
 # TODO : documentar parametro GET
 # TODO : modificar estados de las reservas
 
@@ -219,8 +218,6 @@ class BookingSession(MethodView):
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
-        
-        raise NotImplementedError
     
     @blp.response(404, description='The booking was not found.')
     @blp.response(400, description='No session token provided.')
@@ -269,3 +266,13 @@ class BookingConfirm(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
         return booking
+    
+@blp.route('status')
+class Status(MethodView):
+    
+    @blp.response(200, StatusSchema(many=True))
+    def get(self):
+        """
+        Retrieves all status
+        """        
+        return StatusModel.query.all()
