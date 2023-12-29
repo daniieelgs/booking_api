@@ -117,3 +117,6 @@ class NewBookingSchema(Schema):
     session_token = fields.Str(required=True)
     timeout = fields.Float(required=True)
     
+class BookingAdminSchema(BookingSchema):
+    new_status = fields.Str(required=True, load_only=True)
+    
