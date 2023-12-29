@@ -1,5 +1,4 @@
 from db import db
-import datetime
 
 class WorkGroupWorkerModel(db.Model):
     __tablename__ = 'work_group_worker'

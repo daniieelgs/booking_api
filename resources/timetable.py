@@ -1,5 +1,6 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
+from helpers.TimetableController import getTimetable
 from models.local import LocalModel
 from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -13,6 +14,7 @@ from schema import TimetableSchema, WeekDaySchema
 
 blp = Blueprint('timetable', __name__, description='Timetable CRUD')
 
+#TODO : cambiar trigger a logica en flask
 @blp.route('/local/<string:local_id>/week')
 class TimetableWeek(MethodView):
 
@@ -22,8 +24,7 @@ class TimetableWeek(MethodView):
         """
         Retrieves timetable from the week.
         """      
-        LocalModel.query.get_or_404(local_id)
-        return TimetableModel.query.filter_by(local_id = local_id).order_by(TimetableModel.weekday_id, TimetableModel.opening_time).all()
+        return getTimetable(LocalModel.query.get_or_404(local_id).id)
 
 @blp.route('/local/<string:local_id>/week/<string:week>')
 class TimetableDay(MethodView):
@@ -45,7 +46,7 @@ class TimetableDay(MethodView):
         
         weekday_id = weekday_id.id
         
-        weekdays = TimetableModel.query.filter_by(local_id = local_id, weekday_id = weekday_id).order_by(TimetableModel.opening_time).all()
+        weekdays = getTimetable(local_id, weekday_id)
         
         return weekdays if weekdays else ({}, 204)
     
@@ -125,7 +126,7 @@ class Timetable(MethodView):
         except OperationalError as e:
             traceback.print_exc()
             rollback()
-            abort(409, message = str(e.orig).split("'")[1])
+            abort(409, message = "BBDD: " + str(e.orig).split("'")[1])
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
