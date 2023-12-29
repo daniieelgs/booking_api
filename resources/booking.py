@@ -138,7 +138,8 @@ class Booking(MethodView):
     # TODO : crear sesion token para modificar la reserva
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
-    @blp.response(400, description='Invalid date format.')
+    @blp.response(400, description='Invalid date format. No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
     @blp.response(201, NewBookingSchema)
     def post(self, new_booking, local_id):
@@ -178,6 +179,83 @@ class Booking(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
              
+
+@blp.route('/<int:booking_id>')
+class BookingAdmin(MethodView):
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(401, description='You are not allowed to get the booking.')
+    @blp.response(200, BookingSchema)
+    @jwt_required(refresh=True)
+    def get(self, booking_id):
+        """
+        Retrieves a booking.
+        """
+        
+        booking = BookingModel.query.get_or_404(booking_id)
+        
+        if not booking.local_id == get_jwt_identity():
+            abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
+        
+        return booking
+    
+    
+    @blp.arguments(BookingSchema)
+    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
+    @blp.response(400, description='Invalid date format.')
+    @blp.response(401, description='You are not allowed to update the booking.')
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(201, NewBookingSchema)
+    @jwt_required(refresh=True)
+    def put(self, booking_data, booking_id):
+        """
+        Updates a booking.
+        """
+        
+        booking = BookingModel.query.get(booking_id)    
+                
+        if not booking:
+            abort(404, message = f'The booking [{booking_id}] was not found.')
+                
+        if booking.local_id != get_jwt_identity():
+            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+                
+        try:
+            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
+        except Exception as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(401, description='You are not allowed to delete the booking.')
+    @blp.response(204, description='The booking was deleted.')
+    @jwt_required(refresh=True)
+    def delete(self, booking_id):
+        """
+        Delete a booking.
+        """
+        
+        booking = BookingModel.query.get_or_404(booking_id)
+        
+        if not booking.local_id == get_jwt_identity():
+            abort(401, message = f'You are not allowed to delete the booking [{booking_id}].')
+        
+        try:
+            deleteAndCommit()
+            return {}
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
            
 @blp.route('')
 class BookingSession(MethodView):
@@ -193,10 +271,11 @@ class BookingSession(MethodView):
         return getBookingBySession(request.args.get('session', None))
     
     @blp.arguments(BookingSchema)
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
+    @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
+    @blp.response(400, description='Invalid date format. No session token provided.')
     @blp.response(401, description='The session token is invalid.')
-    @blp.response(200, BookingSchema)
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(201, NewBookingSchema)
     def put(self, booking_data):
         """
         Updates a booking session.
