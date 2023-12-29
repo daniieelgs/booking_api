@@ -158,7 +158,9 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
         if not worker_id:
             raise AlredyBookingExceptionException()
     
-    status = StatusModel.query.filter_by(status=PENDING_STATUS).first()
+    new_status = new_booking.pop('status_id') if 'status_id' in new_booking else PENDING_STATUS
+    
+    status = StatusModel.query.filter_by(status=new_status).first()
     
     if not status:
         raise StatusNotFoundException()
