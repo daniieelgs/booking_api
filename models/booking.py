@@ -8,13 +8,12 @@ from models.work_group import WorkGroupModel
 from models.work_group_worker import WorkGroupWorkerModel
 from models.worker import WorkerModel
 
-# TODO : añadir precio total
-
 class BookingModel(db.Model):
     __tablename__ = 'booking'
     
     id = db.Column(db.Integer, primary_key=True)
-    datetime = db.Column(db.DateTime, nullable=False)
+    datetime_init = db.Column(db.DateTime, nullable=False)
+    datetime_end = db.Column(db.DateTime, nullable=False)
     client_name = db.Column(db.String(45))
     client_tlf = db.Column(db.String(13))
     comment = db.Column(db.Text)
@@ -50,15 +49,15 @@ class BookingModel(db.Model):
             return work_group_worker.work_group_id
         return None
     
-    @property
-    def datetime_end(self):
-        total_duration = sum(service_booking.service.duration for service_booking in self.service_bookings)
+    # @property
+    # def datetime_end(self):
+    #     total_duration = sum(service_booking.service.duration for service_booking in self.service_bookings)
 
-        if self.datetime:
-            datetime_end = self.datetime + timedelta(minutes=total_duration)
-            return datetime_end
-        else:
-            return None
+    #     if self.datetime:
+    #         datetime_end = self.datetime + timedelta(minutes=total_duration)
+    #         return datetime_end
+    #     else:
+    #         return None
         
     @property
     def total_price(self):
