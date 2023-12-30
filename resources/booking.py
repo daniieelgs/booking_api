@@ -59,7 +59,7 @@ class SeePublicBooking(MethodView):
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, PublicBookingSchema(many=True))
-    def get(self, local_id):
+    def get(self, _, local_id):
         """
         Retrieves public bookings from specific DateTime.
         """      
@@ -86,7 +86,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, PublicBookingSchema(many=True))
-    def get(self, local_id):
+    def get(self, _, local_id):
         """
         Retrieves public bookings from a week
         """
@@ -112,7 +112,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, BookingSchema(many=True))
     @jwt_required(refresh=True)
-    def get(self):
+    def get(self, _):
         """
         Retrieves private data bookings from specific DateTime.
         """      
@@ -143,7 +143,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, BookingSchema(many=True))
     @jwt_required(refresh=True)
-    def get(self):
+    def get(self, _):
         """
         Retrieves private data bookings from a week
         """
@@ -297,25 +297,26 @@ class BookingSession(MethodView):
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
     @blp.response(200, BookingSchema)
-    def get(self):
+    def get(self, params):
         """
         Retrieves a booking session.
         """
-        return getBookingBySession(request.args.get(SESSION_GET, None))
+        return getBookingBySession(params[SESSION_GET])
     
+    # TODO : mostras servicios al revolver un booking
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
     @blp.response(400, description='Invalid date format. No session token provided.')
     @blp.response(401, description='The session token is invalid.')
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
-    @blp.response(201, NewBookingSchema)
-    def put(self, booking_data):
+    @blp.response(200, BookingSchema)
+    def put(self, params, booking_data):
         """
         Updates a booking session.
         """
-        
-        booking = getBookingBySession(request.args.get(SESSION_GET, None))        
+                
+        booking = getBookingBySession(params[SESSION_GET])        
                 
         try:
             return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
@@ -360,11 +361,11 @@ class BookingConfirm(MethodView):
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
     @blp.response(200, BookingSchema)
-    def get(self):
+    def get(self, params):
         """
         Confirms a booking. Change the status to confirmed.
         """
-        booking = getBookingBySession(request.args.get(SESSION_GET, None))
+        booking = getBookingBySession(params[SESSION_GET])
         
         status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
         
