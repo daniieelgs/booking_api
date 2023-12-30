@@ -1,8 +1,12 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.TimetableController import getTimetable
+from helpers.BookingController import checkTimetableBookings
+from helpers.TimetableController import getTimetable, validateTimetable
+from helpers.error.BookingError.BookingsConflictException import BookingsConflictException
+from helpers.error.TimetableError.TimetableOverlapsException import TimetableOverlapsException
+from helpers.error.TimetableError.TimetableTimesException import TimetableTimesException
 from models.local import LocalModel
-from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
+from db import db, addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
@@ -92,7 +96,7 @@ class Timetable(MethodView):
     
     @blp.arguments(TimetableSchema(many=True))
     @blp.response(404, description='The local was not found. The day was not found.')
-    @blp.response(409, description='The timetable is overlapping. The opening time is greater than the closing time.')
+    @blp.response(409, description='The timetable is overlapping. The opening time is greater than the closing time. There is a booking that overlaps with the timetable.')
     @blp.response(200, TimetableSchema(many=True))
     @jwt_required(refresh=True)
     def put(self, timetables_data):
@@ -117,16 +121,21 @@ class Timetable(MethodView):
             timetables.append(timetable)
         
         old_timetables = local.timetables.all()
-        
+                
         try: 
             deleteAndFlush(*old_timetables)
             flush()
             addAndFlush(*timetables)
+            print("CHECKING TIMETABLES")
+            validateTimetable(local.id)
+            checkTimetableBookings(local.id)
             commit()
-        except OperationalError as e:
-            traceback.print_exc()
+        except (TimetableOverlapsException, TimetableTimesException) as e:
             rollback()
-            abort(409, message = "BBDD: " + str(e.orig).split("'")[1])
+            abort(409, message = str(e))
+        except BookingsConflictException as e:
+            rollback()
+            abort(409, message = str(e))
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()

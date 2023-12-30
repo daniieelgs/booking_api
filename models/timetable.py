@@ -13,3 +13,6 @@ class TimetableModel(db.Model):
 
     local = db.relationship('LocalModel', back_populates='timetables')
     weekday = db.relationship('WeekdayModel', back_populates='timetables')
+    
+    def __str__(self):
+        return f"{self.id} - {self.opening_time} - {self.closing_time} - {self.weekday.weekday}"

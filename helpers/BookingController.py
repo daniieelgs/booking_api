@@ -8,6 +8,7 @@ from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
+from helpers.error.BookingError.BookingsConflictException import BookingsConflictException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
 from helpers.error.DataError.PastDateException import PastDateException
 from helpers.error.BookingError.WorkerUnavailable import WorkerUnavailableException
@@ -112,7 +113,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
     
     try:
-        datetime_init = new_booking['datetime']
+        datetime_init = new_booking['datetime_init']
     except ValueError:
         raise ValueError('Invalid date format.')
     
@@ -208,3 +209,14 @@ def calculatEndTimeBooking(booking):
     datetime_end = booking.datetime_init + timedelta(minutes=total_duration)
     booking.datetime_end = datetime_end
     return booking
+
+def checkTimetableBookings(local_id):
+    
+    bookings = getBookings(local_id, datetime_init = datetime.now(), datetime_end = None, status = [CONFIRMED_STATUS, PENDING_STATUS])
+    
+    for booking in bookings:
+        week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[booking.datetime_init.weekday()]).first()
+        if not getTimetable(local_id, week_day.id, datetime_init=booking.datetime_init, datetime_end=booking.datetime_end):
+            raise BookingsConflictException(f'There is a booking [{booking.id}] that overlaps with the timetable.')
+    
+    return True
