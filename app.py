@@ -27,6 +27,7 @@ from resources.timetable import blp as TimetableBlueprint
 from resources.booking import blp as BookingBlueprint
 from resources.images import blp as ImagesBlueprint
 from resources.public_images import blp as PublicImagesBlueprint
+from resources.admin import blp as AdminBlueprint
 
 #TODO desarrollas sistema de LOGs
 
@@ -162,6 +163,7 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(BookingBlueprint, url_prefix=getApiPrefix('booking'))
     api.register_blueprint(ImagesBlueprint, url_prefix=getApiPrefix('images'))
     api.register_blueprint(PublicImagesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}/images')
+    api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     
     ##Loal Routes
     
