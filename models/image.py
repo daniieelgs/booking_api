@@ -10,6 +10,6 @@ class ImageModel(db.Model):
     name = db.Column(db.String(300), nullable=False)
     type = db.Column(db.String(45), nullable=False)
     mimetype = db.Column(db.String(45), nullable=False)
-    filename = db.Column(db.String(300), nullable=False, unique=True)
+    filename = db.Column(db.String(300), nullable=False)
 
     __table_args__ = (UniqueConstraint('name', 'local_id', 'type', name='name'),)    

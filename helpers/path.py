@@ -50,3 +50,13 @@ def getImage(local_id, filename, type):
         image = f.read()
         
         return image
+
+def removeImage(local_id, filename, type):
+    
+    load_dotenv()
+
+    PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
+    
+    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, IMAGES_FOLDER, type, filename)
+    
+    os.remove(path)
