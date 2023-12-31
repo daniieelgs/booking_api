@@ -29,6 +29,16 @@ class LoginLocalSchema(Schema):
     email = fields.Str(required=True)
     password = fields.Str(required=True)
     
+    
+class ServiceSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    name = fields.Str(required=True)
+    description = fields.Str()
+    duration = fields.Int(required=True)
+    price = fields.Float(required=True)
+    work_group = fields.Int(required=True, load_only=True)
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
 class WorkGroupSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     name = fields.Str(required=True)
@@ -36,7 +46,7 @@ class WorkGroupSchema(Schema):
     local_id = fields.Str(required=True, dump_only=True)
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
-    
+        
     
 class PublicWorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
@@ -57,26 +67,15 @@ class PublicWorkGroupWorkerSchema(WorkGroupSchema):
 class WorkGroupWorkerSchema(WorkGroupSchema):
     workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
     
-class WorkerWorkGroupSchema(WorkerSchema):
-    work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
-class PublicWorkerWorkGroupSchema(PublicWorkerSchema):
-    work_groups = fields.Nested(WorkGroupSchema(), many=True, dump_only=True)
-    
-class ServiceSchema(Schema):
-    id = fields.Int(required=True, dump_only=True)
-    name = fields.Str(required=True)
-    description = fields.Str()
-    duration = fields.Int(required=True)
-    price = fields.Float(required=True)
-    work_group = fields.Int(required=True, load_only=True)
-    datetime_created = fields.DateTime(dump_only=True)
-    datetime_updated = fields.DateTime(dump_only=True)
-    
 class WorkGroupServiceSchema(WorkGroupSchema):
     services = fields.Nested(ServiceSchema, many=True, dump_only=True)
+class WorkerWorkGroupSchema(WorkerSchema):
+    work_groups = fields.Nested(WorkGroupServiceSchema(), many=True, dump_only=True)
+class PublicWorkerWorkGroupSchema(PublicWorkerSchema):
+    work_groups = fields.Nested(WorkGroupServiceSchema(), many=True, dump_only=True)
 
 class ServiceWorkGroup(ServiceSchema):
-    work_group = fields.Nested(WorkGroupSchema(), dump_only=True)
+    work_group = fields.Nested(PublicWorkGroupWorkerSchema(), dump_only=True)
     
 class WeekDaySchema(Schema):
     weekday = fields.Str(required=True, dump_only=True)
@@ -144,5 +143,8 @@ class BookingSessionParams(Schema):
     session = fields.Str(required=True)
     
 class DeleteParams(Schema):
-    force = fields.Bool(required=False, description='Force delete work group even if it has bookings.')
+    force = fields.Bool(required=False, description='Force delete item even if it has bookings.')
     comment = fields.Str(required=False, description='Comment to add to the bookings if force is True.')
+    
+class UpdateParams(Schema):
+    force = fields.Bool(required=False, description='Force update item even if it has bookings.')

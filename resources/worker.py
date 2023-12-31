@@ -7,7 +7,7 @@ from helpers.error.DataError.UnspecifedDateException import UnspecifedDateExcept
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import BookingSchema, DeleteParams, PublicWorkerSchema, PublicWorkerWorkGroupSchema, WorkerSchema, WorkerWorkGroupSchema
+from schema import BookingSchema, DeleteParams, PublicWorkerSchema, PublicWorkerWorkGroupSchema, UpdateParams, WorkerSchema, WorkerWorkGroupSchema
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
@@ -182,12 +182,14 @@ class PublicWorkerByID(MethodView):
         return WorkerModel.query.get_or_404(worker_id)
 
 
+    @blp.arguments(UpdateParams, location='query')
     @blp.arguments(WorkerSchema)
     @blp.response(404, description='The worker was not found.')
+    @blp.response(409, description='The worker has bookings with old work group.')
     @blp.response(403, description='You are not allowed to update this worker.')
     @blp.response(200, WorkerWorkGroupSchema)
     @jwt_required(refresh=True)
-    def put(self, worker_data, worker_id):
+    def put(self, params, worker_data, worker_id):
         """
         Updates a worker.
         """
@@ -208,6 +210,14 @@ class PublicWorkerByID(MethodView):
             if work_group is None or work_group.local_id != get_jwt_identity():
                 abort(404, message = f"The work group [{id}] was not found.")
             work_groups.append(work_group)
+            
+        force = params['force'] if 'force' in params else False
+                    
+        if not force and work_groups != worker.work_groups: #TODO : testar
+            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
+            
+            if bookings:
+                abort(409, message = 'The worker has bookings with old work group.')
             
         worker.work_groups = work_groups
             

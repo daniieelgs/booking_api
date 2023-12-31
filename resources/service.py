@@ -13,7 +13,7 @@ from models.service import ServiceModel
 
 from models import LocalModel
 from models.work_group import WorkGroupModel
-from schema import DeleteParams, ServiceSchema, ServiceWorkGroup
+from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, UpdateParams
 
 from datetime import datetime
 
@@ -52,13 +52,14 @@ class ServiceById(MethodView):
         """
         return ServiceModel.query.get_or_404(service_id)
     
+    @blp.arguments(UpdateParams, location='query')
     @blp.arguments(ServiceSchema)
     @blp.response(404, description='The service does not exist')
     @blp.response(403, description='You are not allowed to update this service')
-    @blp.response(409, description='The service already exists')
+    @blp.response(409, description='The service already exists. The service has bookings with workers on differents work group.')
     @blp.response(200, ServiceWorkGroup)
     @jwt_required(refresh=True)
-    def put(self, service_data, service_id):
+    def put(self, params, service_data, service_id):
         """
         Updates the service
         """
@@ -72,6 +73,16 @@ class ServiceById(MethodView):
         work_group = WorkGroupModel.query.get(work_group_id)
         if work_group is None or work_group.local_id != get_jwt_identity():
             abort(404, message = f"The work group [{work_group_id}] was not found.")
+                    
+        force = params['force'] if 'force' in params else False
+                    
+        if not force and work_group_id != service.work_group_id: #TODO : testar
+            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+            
+            bookings = [booking for booking in bookings if work_group not in list(booking.worker.work_groups.all())]
+            
+            if bookings:
+                abort(409, message = 'The service has bookings with workers on differents work group.')
                     
         for key, value in service_data.items():
             setattr(service, key, value)
