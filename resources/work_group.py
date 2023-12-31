@@ -3,7 +3,7 @@ from flask_smorest import Blueprint, abort
 from helpers.BookingController import cancelBooking, getBookings
 from models import WorkGroupModel
 from models.local import LocalModel
-from schema import PublicWorkGroupWorkerSchema, WorkGroupDeleteParams, WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
+from schema import DeleteParams, PublicWorkGroupWorkerSchema, WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -93,24 +93,24 @@ class WorkGroup(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the work group.')
         return work_group
     
-    @blp.response(404, description='The local was not found')
-    @blp.response(204, description='The work groups were deleted')
-    @jwt_required(fresh=True)
-    def delete(self):
-        """
-        Deletes all work groups.
-        """
-        try:
-            work_groups = LocalModel.query.get_or_404(get_jwt_identity()).work_groups
-            if not work_groups:
-                return {}
+    # @blp.response(404, description='The local was not found')
+    # @blp.response(204, description='The work groups were deleted')
+    # @jwt_required(fresh=True)
+    # def delete(self):
+    #     """
+    #     Deletes all work groups.
+    #     """
+    #     try:
+    #         work_groups = LocalModel.query.get_or_404(get_jwt_identity()).work_groups
+    #         if not work_groups:
+    #             return {}
 
-            deleteAndCommit(*work_groups)
+    #         deleteAndCommit(*work_groups)
 
-        except SQLAlchemyError as e:
-            traceback.print_exc()
-            rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
+    #     except SQLAlchemyError as e:
+    #         traceback.print_exc()
+    #         rollback()
+    #         abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
 
 @blp.route('/<int:work_group_id>/workers')
 class PublicWorkGroupWorkerByID(MethodView):
@@ -192,7 +192,7 @@ class WorkGroupByID(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not update de work group.')
         return work_group
 
-    @blp.arguments(WorkGroupDeleteParams, location='query')
+    @blp.arguments(DeleteParams, location='query')
     @blp.response(404, description='The work group was not found.')
     @blp.response(403, description='You are not allowed to delete this work group')
     @blp.response(409, description='The work group has workers. The work group has bookings.')

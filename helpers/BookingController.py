@@ -104,6 +104,20 @@ def getBookingBySession(token):
     
     return booking
 
+def searchWorkerBookings(local_id, datetime_init, datetime_end, workers, booking_id):
+    workers = list(workers)
+    
+    random.shuffle(workers)
+    
+    for worker in workers:
+        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
+        if bookings and (len(bookings) > 1 or bookings[0].id != booking_id):
+            continue
+        
+        return worker.id
+    
+    return None
+
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
     
     local = LocalModel.query.get(local_id)
@@ -165,15 +179,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     else: 
         workers = list(services[0].work_group.workers.all())
         
-        random.shuffle(workers)
-        
-        for worker in workers:
-            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
-            if bookings and (len(bookings) > 1 or bookings[0].id != bookingModel.id):
-                continue
-            
-            worker_id = worker.id
-            break
+        worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id)
         
         if not worker_id:
             raise AlredyBookingExceptionException()
