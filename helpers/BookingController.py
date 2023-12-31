@@ -64,7 +64,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
         bookings_query = bookings_query.filter(BookingModel.worker_id == worker_id)
         
     if work_group_id:
-        bookings_query = bookings_query.filter(BookingModel.work_group_id == work_group_id)
+        return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
     return bookings_query.all()
 
@@ -220,3 +220,6 @@ def checkTimetableBookings(local_id):
             raise BookingsConflictException(f'There is a booking [{booking.id}] that overlaps with the timetable.')
     
     return True
+
+def cancelBooking(booking: BookingModel, comment = None):
+    pass

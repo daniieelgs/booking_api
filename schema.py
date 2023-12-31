@@ -142,3 +142,7 @@ class BookingAdminWeekParams(BookingWeekParams):
     
 class BookingSessionParams(Schema):
     session = fields.Str(required=True)
+    
+class WorkGroupDeleteParams(Schema):
+    force = fields.Bool(required=False, description='Force delete work group even if it has bookings.')
+    comment = fields.Str(required=False, description='Comment to add to the bookings if force is True.')
