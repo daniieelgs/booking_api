@@ -7,12 +7,15 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from db import deleteAndCommit, addAndCommit, rollback
 
-from globals import DEBUG
+from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
+from helpers.BookingController import cancelBooking, getBookings
 from models.service import ServiceModel
 
 from models import LocalModel
 from models.work_group import WorkGroupModel
-from schema import ServiceSchema, ServiceWorkGroup
+from schema import DeleteParams, ServiceSchema, ServiceWorkGroup
+
+from datetime import datetime
 
 blp = Blueprint('service', __name__, description='service CRUD')
 
@@ -88,11 +91,12 @@ class ServiceById(MethodView):
             
         return service
     
+    @blp.arguments(DeleteParams, location='query')
     @blp.response(404, description='The service does not exist')
     @blp.response(403, description='You are not allowed to delete this service')
     @blp.response(204, description='The service was deleted')
     @jwt_required(fresh=True)
-    def delete(self, service_id):
+    def delete(self, params, service_id):
         """
         Deletes the service
         """
@@ -101,6 +105,16 @@ class ServiceById(MethodView):
         
         if service.work_group.local_id != get_jwt_identity():
             abort(403, message = "You are not allowed to delete this service.")
+        
+        force = params['force'] if 'force' in params else False
+        
+        bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+        
+        if not force and bookings: #TODO : testar
+            abort(409, message = 'The service has bookings.')
+        elif force and bookings:
+            for booking in bookings:
+                cancelBooking(booking, params['comment'] if 'comment' in params else None)
         
         try:
             deleteAndCommit(service)

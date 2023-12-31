@@ -51,7 +51,7 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     
     return query
 
-def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, work_group_id = None):
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None):
 
     bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
@@ -62,6 +62,9 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
         
     if worker_id:
         bookings_query = bookings_query.filter(BookingModel.worker_id == worker_id)
+        
+    if service_id:
+        bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
         
     if work_group_id:
         return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
