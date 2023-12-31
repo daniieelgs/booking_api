@@ -51,7 +51,7 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     
     return query
 
-def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, work_group_id = None):
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None):
 
     bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
@@ -63,8 +63,11 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     if worker_id:
         bookings_query = bookings_query.filter(BookingModel.worker_id == worker_id)
         
+    if service_id:
+        bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
+        
     if work_group_id:
-        bookings_query = bookings_query.filter(BookingModel.work_group_id == work_group_id)
+        return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
     return bookings_query.all()
 
@@ -103,6 +106,20 @@ def getBookingBySession(token):
         raise InvalidTokenException()
     
     return booking
+
+def searchWorkerBookings(local_id, datetime_init, datetime_end, workers, booking_id):
+    workers = list(workers)
+    
+    random.shuffle(workers)
+    
+    for worker in workers:
+        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
+        if bookings and (len(bookings) > 1 or bookings[0].id != booking_id):
+            continue
+        
+        return worker.id
+    
+    return None
 
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
     
@@ -165,15 +182,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     else: 
         workers = list(services[0].work_group.workers.all())
         
-        random.shuffle(workers)
-        
-        for worker in workers:
-            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
-            if bookings and (len(bookings) > 1 or bookings[0].id != bookingModel.id):
-                continue
-            
-            worker_id = worker.id
-            break
+        worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id)
         
         if not worker_id:
             raise AlredyBookingExceptionException()
@@ -220,3 +229,6 @@ def checkTimetableBookings(local_id):
             raise BookingsConflictException(f'There is a booking [{booking.id}] that overlaps with the timetable.')
     
     return True
+
+def cancelBooking(booking: BookingModel, comment = None):
+    pass

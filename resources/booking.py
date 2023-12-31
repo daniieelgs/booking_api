@@ -166,8 +166,6 @@ class SeePublicBookingWeek(MethodView):
 @blp.route('/local/<string:local_id>')
 class Booking(MethodView):
     
-    # TODO : definir comportamiento al eliminar un servicio, trabajador o work group y al actualizar el timetable
-    # TODO : definir comportamiento al cambiar un trabajador de work group o un servicio de work group
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
     @blp.response(400, description='Invalid date format. No session token provided.')
@@ -303,7 +301,6 @@ class BookingSession(MethodView):
         """
         return getBookingBySession(params[SESSION_GET])
     
-    # TODO : mostras servicios al revolver un booking
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
