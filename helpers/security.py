@@ -4,7 +4,9 @@ import datetime
 import traceback
 import uuid
 
-from globals import LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS
+import jwt
+
+from globals import JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
 
 from sqlalchemy.exc import SQLAlchemyError
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
@@ -49,6 +51,9 @@ def generateTokens(identity, localId, access_token = False, refresh_token = True
  
 def decodeToken(token):
     return decode_token(token)
+
+def decodeJWT(token):
+    return jwt.decode(token, key=SECRET_JWT, algorithms=[JWT_ALGORITHM])
  
 def generateUUID():
     return uuid.uuid4().hex
