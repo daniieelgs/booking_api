@@ -2,6 +2,7 @@
 import traceback
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from helpers.path import createPathFromLocal
 from helpers.security import generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
@@ -66,6 +67,7 @@ class Local(MethodView):
 
         try:
             addAndCommit(local)
+            createPathFromLocal(local.id)
             access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
         except IntegrityError as e:
             traceback.print_exc()

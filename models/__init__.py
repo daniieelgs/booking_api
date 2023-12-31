@@ -4,6 +4,7 @@ from models.service import ServiceModel
 from models.booking import BookingModel
 from models.user_session import UserSessionModel
 from models.session_token import SessionTokenModel
+from models.image import ImageModel
 from models.status import StatusModel
 from models.work_group_worker import WorkGroupWorkerModel
 from models.work_group import WorkGroupModel

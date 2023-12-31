@@ -15,3 +15,14 @@ class Config:
         self.openapi_swagger_ui_path = openapi_swagger_ui_path
         self.openapi_swagger_ui_url = openapi_swagger_ui_url
         
+class Settings:
+    
+    settings = None
+
+    @classmethod
+    def set_settings(cls, st):
+        cls.settings = st
+        
+    @classmethod
+    def get_settings(cls):
+        return cls.settings

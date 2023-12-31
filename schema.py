@@ -121,6 +121,8 @@ class NewBookingSchema(Schema):
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)
     
+class ImageSchema(Schema):
+    url = fields.Str(required=True)
     
 class BookingParams(Schema):
     date = fields.Date(required=False, description='Specify a date to view reservations for the entire day')
