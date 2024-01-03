@@ -42,9 +42,7 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
         
     load_dotenv()
-    
-    print(os.getenv('PUBLIC_FOLDER'))
-        
+            
     nltk.download('punkt')
     
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER)

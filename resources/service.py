@@ -5,13 +5,17 @@ from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from db import deleteAndCommit, addAndCommit, rollback
+from db import addAndFlush, commit, deleteAndCommit, addAndCommit, rollback
 
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
-from helpers.BookingController import cancelBooking, getBookings
+from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
+from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
+from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
+from models.booking import BookingModel
 from models.service import ServiceModel
 
 from models import LocalModel
+from models.status import StatusModel
 from models.work_group import WorkGroupModel
 from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, UpdateParams
 
@@ -56,7 +60,7 @@ class ServiceById(MethodView):
     @blp.arguments(ServiceSchema)
     @blp.response(404, description='The service does not exist')
     @blp.response(403, description='You are not allowed to update this service')
-    @blp.response(409, description='The service already exists. The service has bookings with workers on differents work group.')
+    @blp.response(409, description='The service already exists. The service has bookings with workers on differents work group. The new duration is not compatible with the bookings.')
     @blp.response(200, ServiceWorkGroup)
     @jwt_required(refresh=True)
     def put(self, params, service_data, service_id):
@@ -83,14 +87,27 @@ class ServiceById(MethodView):
             
             if bookings:
                 abort(409, message = 'The service has bookings with workers on differents work group.')
-                    
+            
+        check_booking = service.durations != service_data['duration']
+                                        
         for key, value in service_data.items():
             setattr(service, key, value)
             
         service.work_group = work_group
             
         try:
-            addAndCommit(service)
+            addAndFlush(service)
+            
+            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+            
+            if check_booking and not force:
+                for booking in bookings: #TODO : testar
+                    try:
+                        createOrUpdateBooking(deserializeBooking(booking), get_jwt_identity(), booking)
+                    except (LocalUnavailableException, AlredyBookingExceptionException) as e:
+                        abort(409, message = str(e))
+            
+            commit()
         except IntegrityError as e:
             traceback.print_exc()
             rollback()

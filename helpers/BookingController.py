@@ -3,7 +3,7 @@
 import random
 import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
-from globals import CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -69,7 +69,23 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     if work_group_id:
         return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
-    return bookings_query.all()
+    bookings = list(bookings_query.all())
+    
+    done_status = StatusModel.query.filter_by(status=CANCELLED_STATUS).first()
+    
+    for booking in bookings: #TODO : testar
+        if booking.end_datetime < datetime.now() and booking.status != done_status:
+            booking.status = done_status
+            try:
+                addAndCommit(booking)
+            except SQLAlchemyError as e:
+                rollback()
+                raise e
+            
+            if status_ids and done_status.id not in status_ids:
+                bookings.remove(booking)
+    
+    return bookings
 
 def getBookingBySession(token):
     
@@ -121,6 +137,17 @@ def searchWorkerBookings(local_id, datetime_init, datetime_end, workers, booking
     
     return None
 
+def deserializeBooking(booking):
+    return {
+        'worker_id': booking.worker_id,
+        'services_ids': [service.id for service in booking.services],
+        'datetime_init': booking.datetime_init,
+        'status_id': booking.status_id,
+        'client_name': booking.client_name,
+        'client_tlf': booking.client_tlf,
+        'comment': booking.comment
+    }
+
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
     
     local = LocalModel.query.get(local_id)
@@ -157,6 +184,8 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     new_booking.pop('services_ids')
     
     datetime_end = datetime_init + timedelta(minutes=total_duration)
+        
+    new_booking['datetime_end'] = datetime_end
             
     week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[datetime_init.weekday()]).first()
     
@@ -200,9 +229,18 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     booking = bookingModel or BookingModel(**new_booking)
     booking.services = services
     
-    booking = calculatEndTimeBooking(booking) #TODO : al actualizar el tiempo de un service actualizar el tiempo de todos sus bookings
+    # booking = calculatEndTimeBooking(booking) #TODO : al actualizar el tiempo de un service actualizar el tiempo de todos sus bookings
     
     if bookingModel:
+        
+        if bookingModel.status_id != status.id:
+            if status.status == CONFIRMED_STATUS:
+                confirmBooking(booking)
+            elif status.status == CANCELLED_STATUS:
+                cancelBooking(booking)
+            elif status.status == PENDING_STATUS:
+                pendingBooking(booking)
+        
         for key, value in new_booking.items():
             setattr(booking, key, value)
     
@@ -231,4 +269,10 @@ def checkTimetableBookings(local_id):
     return True
 
 def cancelBooking(booking: BookingModel, comment = None):
+    pass
+
+def confirmBooking(booking: BookingModel, comment = None):
+    pass
+
+def pendingBooking(booking: BookingModel, comment = None):
     pass

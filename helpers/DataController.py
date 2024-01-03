@@ -49,3 +49,28 @@ def getWeekDataRequest(request, field_date = DATE_GET, field_format = FORMAT_GET
         raise ValueError('Invalid date format.')
     
     return datetime_init, datetime_end
+
+
+def getMonthDataRequest(request, field_date = DATE_GET, field_format = FORMAT_GET, field_days = DAYS_GET):
+    
+    date = request.args.get(field_date, None)
+    format = request.args.get(field_format, DEFAULT_FORMAT_DATA)
+    days = request.args.get(field_days, 7)
+    
+    datetime_init = None
+    datetime_end = None
+    
+    try:
+        if date:
+            date = datetime.strptime(date, format)
+            first_day_of_month = date.replace(day=1)
+            last_day_of_month = (first_day_of_month.replace(month=first_day_of_month.month % 12 + 1) - timedelta(days=1)).replace(hour=23, minute=59, second=59)
+
+            datetime_init = first_day_of_month
+            datetime_end = last_day_of_month
+        else:
+            raise UnspecifedDateException()
+    except ValueError:
+        raise ValueError('Invalid date format.')
+    
+    return datetime_init, datetime_end
