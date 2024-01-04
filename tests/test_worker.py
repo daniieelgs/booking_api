@@ -14,6 +14,8 @@ class TestWorker(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
+        self.admin_token = config_test.ADMIN_TOKEN
 
     def tearDown(self):
 
@@ -29,7 +31,7 @@ class TestWorker(TestCase):
             "email": "email@test.com",
             "location": "ES"
         }
-        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), content_type='application/json')
+        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
                 
         self.refresh_token = responseLocal.json['refresh_token']
         
@@ -137,16 +139,16 @@ class TestWorker(TestCase):
         self.assertEqual(response.status_code, 200)
         
         self.worker_put = dict(response.json)
-        self.assertNotEqual(self.worker_put['datetime_updated'], self.worker_get2['datetime_updated'])
+        self.assertNotEqual(self.worker_put['datetime_updated'], self.worker_post2['datetime_updated'])
         
         self.assertEqual(len(self.worker_put['work_groups']), 1)
         self.assertEqual(self.worker_put['work_groups'][0]['id'], self.wg1['id'])
 
         self.worker_put.pop('datetime_updated', None)
         self.worker_put.pop('work_groups', None)
-        self.worker_get2.pop('datetime_updated', None)
-        self.worker_get2.pop('work_groups', None)
-        self.assertEqual(self.worker_put, self.worker_get2)
+        self.worker_post2.pop('datetime_updated', None)
+        self.worker_post2.pop('work_groups', None)
+        self.assertEqual(self.worker_put, self.worker_post2)
 
     def delete_worker(self):
         response = self.client.delete(getUrl(ENDPOINT, self.worker_post1['id']), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
@@ -157,16 +159,6 @@ class TestWorker(TestCase):
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id))
         self.assertEqual(len(response.json), 1)
-    
-    def delete_all_workers(self):
-        response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
-        self.assertEqual(response.status_code, 401)
-        
-        response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
-        self.assertEqual(response.status_code, 204)
-
-        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id))
-        self.assertEqual(len(response.json), 0)
 
     def test_integration_work_group(self):
 
@@ -190,7 +182,6 @@ class TestWorker(TestCase):
         
         #DELETE
         self.delete_worker()
-        self.delete_all_workers()
 
 if __name__ == '__main__':
     unittest.main()

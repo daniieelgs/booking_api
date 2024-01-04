@@ -27,7 +27,7 @@ def addAndCommit(*models):
     if len(models) == 0: return False
     
     for model in models:
-        if model:db.session.add(model)
+        if model:db.session.add(addDateTimes(model))
         
     db.session.commit()
     
@@ -60,6 +60,7 @@ def addAndFlush(*models, session = None):
     if len(models) == 0: return False
     
     for model in models:
+        model = addDateTimes(model)
         if model:db.session.add(model) if session is None else session.add(model)
 
     db.session.flush()

@@ -3,7 +3,7 @@ import random
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import cancelBooking, createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.TimetableController import getTimetable
@@ -398,10 +398,9 @@ class BookingSession(MethodView):
         booking = getBookingBySession(request.args.get(SESSION_GET, None))
         
         try:
-            deleteAndCommit(booking)
+            cancelBooking(booking)
         except SQLAlchemyError as e:
             traceback.print_exc()
-            rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
             
         return {}

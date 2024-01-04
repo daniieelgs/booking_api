@@ -14,6 +14,7 @@ class TestLocal(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
 
     def tearDown(self):
 
@@ -22,8 +23,10 @@ class TestLocal(TestCase):
 
     def create_local(self):
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_post.status_code, 401)
+        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_post.status_code, 201)
-        response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_post_repited.status_code, 409)
         
         self.refresh_token = response_post.json['refresh_token']
@@ -121,6 +124,8 @@ class TestLocal(TestCase):
             "province": "Test Province",
             "location": "ES"
         }
+
+        self.admin_token = config_test.ADMIN_TOKEN
 
         #POST
         self.create_local()

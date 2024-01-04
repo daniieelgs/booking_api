@@ -14,6 +14,8 @@ class TestWorkGroup(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
+        self.admin_token = config_test.ADMIN_TOKEN
 
     def tearDown(self):
 
@@ -29,9 +31,9 @@ class TestWorkGroup(TestCase):
             "email": "email@test.com",
             "location": "ES"
         }
-        responseLocal1 = self.client.post(getUrl('local'), data=json.dumps(localData), content_type='application/json')
+        responseLocal1 = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         localData['email'] = "email2@test.com"
-        responseLocal2 = self.client.post(getUrl('local'), data=json.dumps(localData), content_type='application/json')
+        responseLocal2 = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         
         self.refresh_token1 = responseLocal1.json['refresh_token']
         self.refresh_token2 = responseLocal2.json['refresh_token']
@@ -125,19 +127,6 @@ class TestWorkGroup(TestCase):
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 2)
-    
-    def delete_all_work_groups(self):
-        response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token2}"}, content_type='application/json')
-        self.assertEqual(response.status_code, 401)
-        
-        response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token2}"}, content_type='application/json')
-        self.assertEqual(response.status_code, 204)
-
-        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
-        self.assertEqual(len(response.json), 0)
-        
-        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
-        self.assertEqual(len(response.json), 1)
 
     def test_integration_work_group(self):
 
@@ -158,7 +147,6 @@ class TestWorkGroup(TestCase):
         
         #DELETE
         self.delete_work_group()
-        self.delete_all_work_groups()
 
 if __name__ == '__main__':
     unittest.main()

@@ -123,7 +123,7 @@ class PublicWorkGroupWorkerByID(MethodView):
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
     
-@blp.route('/private/<int:work_group_id>/workers')
+@blp.route('/private/<int:work_group_id>/workers') #TODO : testar
 class WorkGroupWorkerByID(MethodView):
 
     @blp.response(404, description='The work group was not found')
@@ -207,7 +207,7 @@ class WorkGroupByID(MethodView):
         if work_group.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to delete this work group.')
         
-        if work_group.workers:
+        if work_group.workers.all(): #TODO : testar            
             abort(409, message = 'The work group has workers.')
         
         force = params['force'] if 'force' in params else False
