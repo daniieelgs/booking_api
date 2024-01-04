@@ -15,6 +15,9 @@ class Config:
         self.openapi_swagger_ui_path = openapi_swagger_ui_path
         self.openapi_swagger_ui_url = openapi_swagger_ui_url
         
+    def config(selg, *args, **kwargs):
+        pass
+        
 class Settings:
     
     settings = None

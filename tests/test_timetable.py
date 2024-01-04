@@ -16,6 +16,8 @@ class TestTimetable(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
+        self.admin_token = config_test.ADMIN_TOKEN
 
     def tearDown(self):
 
@@ -31,7 +33,7 @@ class TestTimetable(TestCase):
             "email": "email@test.com",
             "location": "ES"
         }
-        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), content_type='application/json')
+        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
                 
         self.refresh_token = responseLocal.json['refresh_token']
         
@@ -39,56 +41,29 @@ class TestTimetable(TestCase):
                 
         self.local_id = responseLocal.json['local']['id']
                 
-        #Create week days
-        dataWD = [
-            {
-                "weekday": "MO",
-                "name": "Monday"
-            },
-            {
-                "weekday": "FR",
-                "name": "Friday"
-            },
-            {
-                "weekday": "SU",
-                "name": "Sunday"
-            }
-        ]
-
-        id = 1
-        for wd in dataWD:
-            weekday = WeekdayModel(id=id, **wd)
-            db.session.add(weekday)
-            id += 1
-            
-        db.session.commit()
+        new_timetable = {
+                "opening_time": "13:00:00",
+                "closing_time": "15:00:00",
+                "weekday_short": "fr"
+        }
         
-
-        response = self.client.get(getUrl(ENDPOINT, 'weekdays'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, dataWD)
-
-        # new_timetable = {
-        #         "opening_time": "13:00:00",
-        #         "closing_time": "15:00:00",
-        #         "weekday_short": "fr"
-        # }
-        
-        # self.data.append(new_timetable)
+        self.data.append(new_timetable)
         
         response = self.client.put(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response.status_code, 401)
         
-        # response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
-        # self.assertEqual(response.status_code, 409)
+        response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response.status_code, 409)
         
-        # self.data.pop()
-        # new_timetable['opening_time'] = '22:00:00'
-        # new_timetable['closing_time'] = '21:00:00'
-        # response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
-        # self.assertEqual(response.status_code, 409)
+        self.data.pop()
+        new_timetable['opening_time'] = '22:00:00'
+        new_timetable['closing_time'] = '21:00:00'
+        self.data.append(new_timetable)
+        response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response.status_code, 409)
         
-        # self.data.pop()
+        self.data.pop()
+
         response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
 
@@ -116,20 +91,21 @@ class TestTimetable(TestCase):
         response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
         
-        # new_timetable = {
-        #         "opening_time": "13:00:00",
-        #         "closing_time": "15:00:00",
-        #         "weekday_short": "fr"
-        # }
-        # self.data.append(new_timetable)
-        # response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
-        # self.assertEqual(response.status_code, 409)
+        new_timetable = {
+                "opening_time": "13:00:00",
+                "closing_time": "15:00:00",
+                "weekday_short": "fr"
+        }
+        self.data.append(new_timetable)
+        response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response.status_code, 409)
         
-        # response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id, 'week'))
-        # self.assertEqual(response.status_code, 200)
-        # self.assertEqual(len(dict(response.json)), 3)
+        response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id, 'week'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json), 3)
         
-        # self.data.pop()
+        self.data.pop()
+
         self.data[-1]['closing_time'] = '18:00:00'
         self.data[-1]['weekday_short'] = 'mk'
         response = self.client.put(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')

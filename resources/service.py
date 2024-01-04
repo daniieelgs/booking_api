@@ -88,7 +88,7 @@ class ServiceById(MethodView):
             if bookings:
                 abort(409, message = 'The service has bookings with workers on differents work group.')
             
-        check_booking = service.durations != service_data['duration']
+        check_booking = service.duration != service_data['duration']
                                         
         for key, value in service_data.items():
             setattr(service, key, value)

@@ -71,7 +71,10 @@ class Local(MethodView):
         if identity != ADMIN_IDENTITY:
             abort(403, message = 'You are not allowed to create a local.')
         
-        token = SessionTokenModel.query.get_or_404(id)
+        token = SessionTokenModel.query.get(id)
+        
+        if not token:
+            abort(403, message = 'The token does not exist.')
         
         if token.user_session.user != ADMIN_ROLE:
             abort(403, message = 'You are not allowed to create a local.')

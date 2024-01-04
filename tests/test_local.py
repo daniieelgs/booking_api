@@ -2,10 +2,7 @@ import json
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
-from globals import ADMIN_TOKEN
 from tests import config_test, getUrl
-
-
 
 ENDPOINT = 'local'
 
@@ -17,6 +14,7 @@ class TestLocal(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
 
     def tearDown(self):
 
@@ -24,8 +22,8 @@ class TestLocal(TestCase):
         db.drop_all()
 
     def create_local(self):
-        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
-        self.assertEqual(response_post.status_code, 403)
+        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        self.assertEqual(response_post.status_code, 401)
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_post.status_code, 201)
         response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
@@ -127,7 +125,7 @@ class TestLocal(TestCase):
             "location": "ES"
         }
 
-        self.admin_token = ADMIN_TOKEN
+        self.admin_token = config_test.ADMIN_TOKEN
 
         #POST
         self.create_local()

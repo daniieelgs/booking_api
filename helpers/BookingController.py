@@ -74,7 +74,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     done_status = StatusModel.query.filter_by(status=CANCELLED_STATUS).first()
     
     for booking in bookings: #TODO : testar
-        if booking.end_datetime < datetime.now() and booking.status != done_status:
+        if booking.datetime_end < datetime.now() and booking.status != done_status:
             booking.status = done_status
             try:
                 addAndCommit(booking)

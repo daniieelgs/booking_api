@@ -14,6 +14,8 @@ class TestService(TestCase):
     def setUp(self):
 
         db.create_all()
+        config_test.config(db = db)
+        self.admin_token = config_test.ADMIN_TOKEN
 
     def tearDown(self):
 
@@ -29,7 +31,7 @@ class TestService(TestCase):
             "email": "email@test.com",
             "location": "ES"
         }
-        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), content_type='application/json')
+        responseLocal = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
                 
         self.refresh_token = responseLocal.json['refresh_token']
         
@@ -166,7 +168,6 @@ class TestService(TestCase):
             "price": 19.99,
             "work_group": 0
         }
-
 
         #POST
         self.create_service()
