@@ -231,20 +231,21 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     
     # booking = calculatEndTimeBooking(booking) #TODO : al actualizar el tiempo de un service actualizar el tiempo de todos sus bookings
     
-    if bookingModel:
-        
-        if bookingModel.status_id != status.id:
-            if status.status == CONFIRMED_STATUS:
-                confirmBooking(booking)
-            elif status.status == CANCELLED_STATUS:
-                cancelBooking(booking)
-            elif status.status == PENDING_STATUS:
-                pendingBooking(booking)
-        
-        for key, value in new_booking.items():
-            setattr(booking, key, value)
-    
     try:
+        
+        if bookingModel:
+        
+            if bookingModel.status_id != status.id:
+                if status.status == CONFIRMED_STATUS:
+                    confirmBooking(booking)
+                elif status.status == CANCELLED_STATUS:
+                    cancelBooking(booking)
+                elif status.status == PENDING_STATUS:
+                    pendingBooking(booking)
+            
+            for key, value in new_booking.items():
+                setattr(booking, key, value)
+        
         addAndCommit(booking) if commit else addAndFlush(booking)
     except SQLAlchemyError as e:
         rollback()
@@ -269,10 +270,19 @@ def checkTimetableBookings(local_id):
     return True
 
 def cancelBooking(booking: BookingModel, comment = None):
-    pass
+    changeBookingStatus(booking, CANCELLED_STATUS)
+    
 
 def confirmBooking(booking: BookingModel, comment = None):
-    pass
+    changeBookingStatus(booking, CONFIRMED_STATUS)
 
 def pendingBooking(booking: BookingModel, comment = None):
-    pass
+    changeBookingStatus(booking, PENDING_STATUS)
+
+def changeBookingStatus(booking, status):
+    try:
+        booking.status_id = StatusModel.query.filter_by(status=status).first().id
+        addAndCommit(booking)
+    except SQLAlchemyError as e:
+        rollback()
+        raise e

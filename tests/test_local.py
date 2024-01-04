@@ -2,7 +2,10 @@ import json
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
+from globals import ADMIN_TOKEN
 from tests import config_test, getUrl
+
+
 
 ENDPOINT = 'local'
 
@@ -21,9 +24,11 @@ class TestLocal(TestCase):
         db.drop_all()
 
     def create_local(self):
-        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
+        self.assertEqual(response_post.status_code, 403)
+        response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_post.status_code, 201)
-        response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
+        response_post_repited = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_post_repited.status_code, 409)
         
         self.refresh_token = response_post.json['refresh_token']
@@ -121,6 +126,8 @@ class TestLocal(TestCase):
             "province": "Test Province",
             "location": "ES"
         }
+
+        self.admin_token = ADMIN_TOKEN
 
         #POST
         self.create_local()
