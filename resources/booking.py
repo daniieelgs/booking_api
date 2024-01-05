@@ -237,7 +237,7 @@ class Booking(MethodView):
             
             datetime_end = booking.datetime_end
             
-            timeout = start_waiter_booking_status(booking.id, 0.083)
+            timeout = start_waiter_booking_status(booking.id)
                 
             diff = datetime_end - datetime.now()
             
@@ -391,11 +391,11 @@ class BookingSession(MethodView):
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
     @blp.response(204, description='The booking was deleted.')
-    def delete(self):
+    def delete(self, params):
         """
         Deletes a booking session.
         """
-        booking = getBookingBySession(request.args.get(SESSION_GET, None))
+        booking = getBookingBySession(params[SESSION_GET])
         
         try:
             cancelBooking(booking)

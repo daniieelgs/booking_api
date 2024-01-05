@@ -1,6 +1,9 @@
 
+import os
 import threading
 import time
+
+from dotenv import load_dotenv
 from db import deleteAndCommit, rollback
 
 from globals import TIMEOUT_CONFIRM_BOOKING
@@ -29,8 +32,10 @@ def waiter_booking_status(booking_id, timeout):
     print('Booking status checked!')
     
 
-def start_waiter_booking_status(booking_id, timeout=TIMEOUT_CONFIRM_BOOKING):
-    
+def start_waiter_booking_status(booking_id, timeout=None):
+    load_dotenv()
+    if not timeout: timeout = float(os.environ['TIMEOUT_CONFIRM_BOOKING'])
+    if timeout == 0: return timeout
     thread = threading.Thread(target=waiter_booking_status, args=(booking_id,timeout,))
     thread.start()
     
