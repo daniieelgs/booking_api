@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_cors import CORS
 
 import nltk
-from config import Config, Settings
+from config import Config
 
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
@@ -40,6 +40,7 @@ def create_app(config: Config = DefaultConfig()):
 
     os.environ['PUBLIC_FOLDER'] = config.public_folder
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
+    os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else 0)
         
     load_dotenv()
             

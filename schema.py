@@ -5,8 +5,8 @@ from marshmallow import Schema, fields
 class PublicLocalSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
     name = fields.Str(required=True)
-    tlf = fields.Str(required=True)
-    email = fields.Str(required=True)
+    tlf = fields.Str(required=True) #TODO: update and validate tlf
+    email = fields.Str(required=True) #TODO: update and validate email
     description = fields.Str()
     address = fields.Str()
     postal_code = fields.Str()
@@ -102,7 +102,8 @@ class PublicBookingSchema(Schema):
 
 class BookingSchema(PublicBookingSchema):
     client_name = fields.Str(required=True)
-    client_tlf = fields.Str(required=True)
+    client_email = fields.Str(required=True) #TODO: update and validate email
+    client_tlf = fields.Str(required=True) #TODO: update and validate tlf 
     comment = fields.Str()
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)

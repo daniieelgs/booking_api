@@ -15,6 +15,7 @@ class TestLocal(TestCase):
 
         db.create_all()
         config_test.config(db = db)
+        self.admin_token = config_test.ADMIN_TOKEN
 
     def tearDown(self):
 
@@ -125,7 +126,6 @@ class TestLocal(TestCase):
             "location": "ES"
         }
 
-        self.admin_token = config_test.ADMIN_TOKEN
 
         #POST
         self.create_local()
