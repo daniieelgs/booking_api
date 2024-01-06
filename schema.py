@@ -125,6 +125,9 @@ class BookingAdminSchema(BookingSchema):
 class ImageSchema(Schema):
     url = fields.Str(required=True)
     
+class CommentSchema(Schema):
+    comment = fields.Str(required=False)    
+    
 class BookingParams(Schema):
     date = fields.Date(required=False, description='Specify a date to view reservations for the entire day')
     datetime_init = fields.DateTime(required=False, description='Specify an initial datetime')

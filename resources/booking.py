@@ -3,7 +3,7 @@ import random
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import cancelBooking, createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.TimetableController import getTimetable
@@ -20,7 +20,7 @@ from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvided
 from helpers.error.SecurityError.TokenNotFound import TokenNotFoundException
 from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundException
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
-from helpers.security import decodeToken, generateTokens
+from helpers.security import decodeJWT, decodeToken, generateTokens
 from models.booking import BookingModel
 from models.local import LocalModel
 from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
@@ -28,13 +28,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
 
-from globals import DEBUG, CONFIRMED_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET
 from models.service import ServiceModel
 from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingSchema, BookingSessionParams, BookingWeekParams, NewBookingSchema, PublicBookingSchema, StatusSchema
+from schema import BookingAdminParams, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
 
 blp = Blueprint('booking', __name__, description='Booking CRUD')
 
@@ -299,7 +299,10 @@ class BookingAdmin(MethodView):
         """
         
         booking = BookingModel.query.get(booking_id)    
-                
+
+        if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
+            abort(409, message = f"The booking is '{booking.status.name}'.")
+
         if not booking:
             abort(404, message = f'The booking [{booking_id}] was not found.')
                 
@@ -355,7 +358,20 @@ class BookingSession(MethodView):
         """
         Retrieves a booking session.
         """
-        return getBookingBySession(params[SESSION_GET])
+        booking = getBookingBySession(params[SESSION_GET])
+        
+        if booking.status.status == DONE_STATUS:
+            token = SessionTokenModel.query.get_or_404(decodeToken(params[SESSION_GET])['token'])
+            try:
+                deleteAndCommit(token)
+            except SQLAlchemyError as e:
+                traceback.print_exc()
+                rollback()
+            abort(409, message = f"The booking is '{booking.status.name}'.")       
+            
+        return booking 
+    
+    #TODO : poder insertar reservas en pasado con admin token
     
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
@@ -370,7 +386,10 @@ class BookingSession(MethodView):
         """
                 
         booking = getBookingBySession(params[SESSION_GET])        
-                
+
+        if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
+            abort(409, message = f"The booking is '{booking.status.name}'.")
+
         try:
             return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -387,15 +406,19 @@ class BookingSession(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
     
     @blp.arguments(BookingSessionParams, location='query')
+    @blp.arguments(CommentSchema)
     @blp.response(404, description='The booking was not found.')
     @blp.response(400, description='No session token provided.')
     @blp.response(401, description='The session token is invalid.')
     @blp.response(204, description='The booking was deleted.')
-    def delete(self, params):
+    def delete(self, params, data):
         """
         Deletes a booking session.
         """
         booking = getBookingBySession(params[SESSION_GET])
+        
+        if 'comment' in data:
+            booking.comment = data['comment']
         
         try:
             cancelBooking(booking)
@@ -418,6 +441,11 @@ class BookingConfirm(MethodView):
         Confirms a booking. Change the status to confirmed.
         """
         booking = getBookingBySession(params[SESSION_GET])
+        
+        if not booking.status.status == PENDING_STATUS:
+            status = StatusModel.query.get(booking.status_id)
+            if not status: abort(500, message='The status was not found.')
+            abort(409, message=f"The booking is '{status.name}'.")
         
         status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
         
@@ -444,3 +472,72 @@ class Status(MethodView):
         Retrieves all status
         """        
         return StatusModel.query.all()
+    
+    
+@blp.route('admin')
+class BookingAdmin(MethodView):
+    
+    @blp.arguments(BookingSchema)
+    @blp.response(404, description='The token does not exist.')
+    @blp.response(403, description='You are not allowed to use this endpoint.')
+    @blp.response(401, description='Missing Authorization Header.')
+    @blp.response(201, NewBookingSchema)
+    def post(self, booking_data):
+        """
+        Creates a new booking.
+        """
+        token_header = request.headers.get('Authorization')
+
+        if not token_header or not token_header.startswith('Bearer '):
+            return abort(401, message='Missing Authorization Header')
+        
+        token = token_header.split(' ', 1)[1]
+        
+        identity = decodeJWT(token)['sub']
+        id = decodeJWT(token)['token']
+                
+        token = SessionTokenModel.query.get_or_404(id)
+        
+        if identity != ADMIN_IDENTITY or token.user_session.user != ADMIN_ROLE:
+            abort(403, message = 'You are not allowed to use this endpoint.')
+            
+        services_ids = booking_data.pop('services_ids')
+        services = [ServiceModel.query.get_or_404(id) for id in services_ids]
+
+        if 'worker_id' not in booking_data:
+            abort(400, message = 'The worker_id is required.')
+            
+        worker = WorkerModel.query.get_or_404(booking_data.pop('worker_id'))
+
+        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
+        
+        booking = BookingModel(**booking_data)
+        
+        booking.services = services
+        booking.worker = worker
+        booking.status = status
+        booking = calculatEndTimeBooking(booking)
+        
+        try:
+            addAndFlush(booking)
+            timeout = 0
+            
+            exp = timedelta(minutes=0)
+            
+            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+            
+            commit()
+            
+            return {
+                "booking": booking,
+                "timeout": timeout,
+                "session_token": token
+            }
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+        
+        
+        
+        

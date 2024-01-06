@@ -96,7 +96,7 @@ def getBookingBySession(token):
         
     token_id = decoded['token']
     booking_id = decoded['sub']
-    exp = decoded['exp']
+    exp = decoded['exp'] if 'exp' in decoded else 0
     exp_date = datetime.fromtimestamp(exp)
     
     token = SessionTokenModel.query.get(token_id)
@@ -150,6 +150,12 @@ def deserializeBooking(booking):
 
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
     
+    new_booking['services_ids'] = list(set(new_booking['services_ids']))
+    
+    if bookingModel:
+        if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
+            new_booking['worker_id'] = bookingModel.worker_id
+    
     local = LocalModel.query.get(local_id)
     if not local:
         raise LocalNotFoundException(id = local_id)
@@ -167,7 +173,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     total_duration = 0
     services = []
             
-    for service_id in set(new_booking['services_ids']):
+    for service_id in new_booking['services_ids']:
         service = ServiceModel.query.get(service_id)
         if not service or service.work_group.local_id != local_id:
             raise ServiceNotFoundException(id = service_id)
@@ -209,6 +215,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
             raise WorkerUnavailableException()
              
     else: 
+                
         workers = list(services[0].work_group.workers.all())
         
         worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None) #TODO
