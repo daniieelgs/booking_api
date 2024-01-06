@@ -3,7 +3,7 @@ import json
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS
 from tests import config_test, getUrl, setParams
 
 ENDPOINT = 'booking'
@@ -184,7 +184,6 @@ class TestBooking(TestCase):
     def post_booking_admin(self, booking):
         return self.client.post(getUrl(ENDPOINT, 'admin'), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
    
-    
     def post_booking(self, booking):
         return self.client.post(getUrl(ENDPOINT, 'local', self.local['id']), data=json.dumps(booking), content_type='application/json')
     
@@ -202,6 +201,9 @@ class TestBooking(TestCase):
     
     def get_bookings(self, **params):
         return self.client.get(setParams(getUrl(ENDPOINT, 'local', self.local['id']), **params), content_type='application/json')
+    
+    def get_bookings_admin(self, **params):
+        return self.client.get(setParams(getUrl(ENDPOINT, 'all'), **params), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
     
     def missingData(self, _booking):
         booking = _booking.copy()
@@ -727,7 +729,55 @@ class TestBooking(TestCase):
             self.assertEqual(len(r.json), v)
         
     def checkListFilterDataClientBooking(self):
-        print(self.email_clients)
+        
+        for k, v in self.name_clients.items():
+            r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), name = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(len(r.json), v)
+        
+        for k, v in self.email_clients.items():
+            r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), email = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(len(r.json), v)
+        
+        for k, v in self.tlf_clients.items():
+            r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), tlf = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(len(r.json), v)
+        
+    def checkListFilterStatusBooking(self):
+        r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
+        self.assertEqual(r.status_code, 200)
+        
+        for booking in r.json:
+            self.assertIn(booking['status']['status'], [PENDING_STATUS, CONFIRMED_STATUS])
+            
+        r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = CANCELLED_STATUS)
+        self.assertEqual(r.status_code, 200)
+        
+        for booking in r.json:
+            self.assertEqual(booking['status']['status'], CANCELLED_STATUS)
+        
+    def checkDoneStatusBooking(self, _booking):
+        booking = _booking.copy()
+        
+        booking['datetime_init'] = "2020-01-01 13:00:00"
+        booking['worker_id'] = self.workers[0]['id']
+        
+        r = self.post_booking_admin(booking)
+        session = dict(r.json)['session_token']
+        id = dict(r.json)['booking']['id']
+        self.assertEqual(r.status_code, 201)
+        
+        r = self.get_bookings_admin(date = "2020-01-01")
+        self.assertEqual(r.status_code, 200)
+        
+        for booking in r.json:
+            if booking['id'] == id: self.assertEqual(booking['status']['status'], DONE_STATUS)
+        
+    def checkUpdateBookingAdmin(self, _booking):
+        booking = _booking.copy()
+        pass
         
     def test_integration_booking(self):
         
@@ -770,6 +820,14 @@ class TestBooking(TestCase):
         #Test 7: Testear filtros datos de cliente
         self.checkListFilterDataClientBooking()
         
-        #TODO : filtrar por nombre, correo, telefono...
-        #TODO : endpoint de administrador de local. Comprobar cambio de estados a DONE. testear filtrados por status
+        #Test 8: Testear filtros por estado
+        self.checkListFilterStatusBooking()
+        
+        #Test 9: Testar cambios de estado a DONE
+        self.checkDoneStatusBooking(booking)
+        
+        #Test 10: Testear actualizacion de reserva desde el local
+        self.checkUpdateBookingAdmin(booking)
+        
+        #TODO : testear endpoint para obtener un booking por id
         #TODO : modificar workers, services, work_groups, timetable con reservas hechas

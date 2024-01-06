@@ -141,9 +141,15 @@ class BookingWeekParams(BookingParams):
     
 class BookingAdminParams(BookingParams):
     status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
+    name = fields.Str(required=False, description='Specify the name to filter bookings.')
+    email = fields.Str(required=False, description='Specify the email to filter bookings.')
+    tlf = fields.Str(required=False, description='Specify the tlf to filter bookings.')
     
 class BookingAdminWeekParams(BookingWeekParams):
     status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
+    name = fields.Str(required=False, description='Specify the name to filter bookings.')
+    email = fields.Str(required=False, description='Specify the email to filter bookings.')
+    tlf = fields.Str(required=False, description='Specify the tlf to filter bookings.')
     
 class BookingSessionParams(Schema):
     session = fields.Str(required=True)

@@ -1,9 +1,10 @@
 
 
+from operator import or_
 import random
 import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -51,7 +52,7 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     
     return query
 
-def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None):
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None, client_filter = None):
 
     bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
@@ -66,12 +67,17 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     if service_id:
         bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
         
+    if client_filter:
+        if client_filter['name']: bookings_query = bookings_query.filter(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'))
+        if client_filter['email']: bookings_query = bookings_query.filter(BookingModel.client_email.ilike(f'%{client_filter["email"]}%'))
+        if client_filter['tlf']: bookings_query = bookings_query.filter(BookingModel.client_tlf.ilike(f'%{client_filter["tlf"]}%'))
+        
     if work_group_id:
         return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
     bookings = list(bookings_query.all())
     
-    done_status = StatusModel.query.filter_by(status=CANCELLED_STATUS).first()
+    done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
     for booking in bookings: #TODO : testar
         if booking.datetime_end < datetime.now() and booking.status != done_status:

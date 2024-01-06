@@ -156,7 +156,13 @@ class SeePublicBookingWeek(MethodView):
         if status:
             status = status.split(',')
         
-        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id)
+        client_filter = {
+            'name': request.args.get('name', None),
+            'email': request.args.get('email', None),
+            'tlf': request.args.get('tlf', None)
+        }
+        
+        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                 
         return bookings
     
@@ -186,8 +192,14 @@ class SeePublicBookingWeek(MethodView):
         status = request.args.get(STATUS_LIST_GET, None)
         if status:
             status = status.split(',')
+            
+        client_filter = {
+            'name': request.args.get('name', None),
+            'email': request.args.get('email', None),
+            'tlf': request.args.get('tlf', None)
+        }
                         
-        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id)
+        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
     
 @blp.route('/all/month')
 class SeePublicBookingMonth(MethodView):
@@ -215,8 +227,14 @@ class SeePublicBookingMonth(MethodView):
         status = request.args.get(STATUS_LIST_GET, None)
         if status:
             status = status.split(',')
+                 
+        client_filter = {
+            'name': request.args.get('name', None),
+            'email': request.args.get('email', None),
+            'tlf': request.args.get('tlf', None)
+        }
                         
-        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id)
+        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
      
 
 @blp.route('/local/<string:local_id>')
