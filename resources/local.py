@@ -4,7 +4,7 @@ from flask import request
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from helpers.path import createPathFromLocal, removePath
-from helpers.security import decodeJWT, decodeToken, generatePassword, generateTokens, generateUUID, logOutAll
+from helpers.security import decodeJWT, generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -20,8 +20,6 @@ from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocal
 from models import LocalModel
 
 blp = Blueprint('local', __name__, description='local CRUD')
-
-#TODO crear admin token para poder crear listar y eliminar locales
     
 @blp.route('<string:local_id>')
 class Local(MethodView):
@@ -226,7 +224,7 @@ class LocalRefresh(MethodView):
         
         token = SessionTokenModel.query.get_or_404(tokenId)
         
-        if token.user_session.user != LOCAL_ROLE: # TODO : testear
+        if token.user_session.user != LOCAL_ROLE:
             abort(403, message = 'You are not allowed to refresh this token.')
         
         refresh_token = generateTokens(get_jwt_identity(), get_jwt_identity(), refresh_token=True)

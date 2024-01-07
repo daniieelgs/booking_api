@@ -1,12 +1,10 @@
 from datetime import datetime, timedelta
-import random
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
-from helpers.TimetableController import getTimetable
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
 from helpers.error.DataError.PastDateException import PastDateException
@@ -22,8 +20,7 @@ from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundExce
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
 from helpers.security import decodeJWT, decodeToken, generateTokens
 from models.booking import BookingModel
-from models.local import LocalModel
-from db import addAndFlush, addAndCommit, commit, deleteAndFlush, deleteAndCommit, flush, rollback
+from db import addAndFlush, addAndCommit, commit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
@@ -311,7 +308,7 @@ class BookingAdmin(MethodView):
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def put(self, booking_data, booking_id): # TODO : test change status
+    def put(self, booking_data, booking_id):
         """
         Updates a booking.
         """

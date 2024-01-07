@@ -18,7 +18,6 @@ from schema import TimetableSchema, WeekDaySchema
 
 blp = Blueprint('timetable', __name__, description='Timetable CRUD')
 
-#TODO : cambiar trigger a logica en flask
 @blp.route('/local/<string:local_id>/week')
 class TimetableWeek(MethodView):
 

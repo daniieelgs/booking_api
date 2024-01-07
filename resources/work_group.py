@@ -14,8 +14,6 @@ from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
 
-#TODO : testar publics
-
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 
@@ -92,26 +90,6 @@ class WorkGroup(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the work group.')
         return work_group
-    
-    # @blp.response(404, description='The local was not found')
-    # @blp.response(204, description='The work groups were deleted')
-    # @jwt_required(fresh=True)
-    # def delete(self):
-    #     """
-    #     Deletes all work groups.
-    #     """
-    #     try:
-    #         work_groups = LocalModel.query.get_or_404(get_jwt_identity()).work_groups
-    #         if not work_groups:
-    #             return {}
-
-    #         deleteAndCommit(*work_groups)
-
-    #     except SQLAlchemyError as e:
-    #         traceback.print_exc()
-    #         rollback()
-    #         abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
-
 @blp.route('/<int:work_group_id>/workers')
 class PublicWorkGroupWorkerByID(MethodView):
 
@@ -123,7 +101,7 @@ class PublicWorkGroupWorkerByID(MethodView):
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
     
-@blp.route('/private/<int:work_group_id>/workers') #TODO : testar
+@blp.route('/private/<int:work_group_id>/workers')
 class WorkGroupWorkerByID(MethodView):
 
     @blp.response(404, description='The work group was not found')
@@ -207,14 +185,14 @@ class WorkGroupByID(MethodView):
         if work_group.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to delete this work group.')
         
-        if work_group.workers.all(): #TODO : testar            
+        if work_group.workers.all():            
             abort(409, message = 'The work group has workers.')
         
         force = params['force'] if 'force' in params else False
         
         bookings = getBookings(work_group.local_id, datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], work_group_id=work_group.id)
         
-        if not force and bookings: #TODO : testar
+        if not force and bookings:
             abort(409, message = 'The work group has bookings.')
         elif force and bookings:
             for booking in bookings:

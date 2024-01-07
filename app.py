@@ -15,8 +15,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import DEBUG, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS
-from helpers.path import checkAndCreatePath, removePath
+from globals import DEBUG, CERT_SSL, KEY_SSL
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -59,11 +58,6 @@ def create_app(config: Config = DefaultConfig()):
     app.config['OPENAPI_SWAGGER_UI_PATH'] = config.openapi_swagger_ui_path if DEBUG else None
     app.config['OPENAPI_SWAGGER_UI_URL'] = config.openapi_swagger_ui_url
 
-        
-    # @app.route('/openapi.json')
-    # def openapi():
-    #     return redirect('./public/resources/openapi.json')
-    
     ##BBDD
     app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri
     
@@ -175,7 +169,15 @@ def create_app(config: Config = DefaultConfig()):
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(threaded=True)
+    
+    cert_ssl = CERT_SSL
+    key_ssl = KEY_SSL
+    
+    if cert_ssl and key_ssl:
+        context = (cert_ssl, key_ssl)
+        app.run(threaded=True, ssl_context=context)
+    else:
+        app.run(threaded=True)
     
     
     
