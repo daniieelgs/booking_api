@@ -190,11 +190,17 @@ class TestBooking(TestCase):
     def cancel_booking(self, session, data = None):
         return self.client.delete(setParams(getUrl(ENDPOINT), session=session), content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(data), content_type='application/json')
     
+    def update_booking_admin(self, id, booking):
+        return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+    
     def update_booking(self, session, booking):
         return self.client.put(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(booking), content_type='application/json')
     
     def confirm_booking(self, session):
         return self.client.get(setParams(getUrl(ENDPOINT, 'confirm'), session=session), content_type='application/json')
+    
+    def get_booking_admin(self, id):
+        return self.client.get(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
     
     def get_booking(self, session):
         return self.client.get(setParams(getUrl(ENDPOINT), session=session), content_type='application/json')
@@ -775,9 +781,127 @@ class TestBooking(TestCase):
         for booking in r.json:
             if booking['id'] == id: self.assertEqual(booking['status']['status'], DONE_STATUS)
         
-    def checkUpdateBookingAdmin(self, _booking):
+    def checkUpdateBookingAdmin(self, _booking):        
+        #Cancelar todas las reservas
+        r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
+        self.assertEqual(r.status_code, 200)
+        
+        for booking in r.json:
+            id = booking['id']
+            booking['new_status'] = CANCELLED_STATUS
+            booking['worker_id'] = booking['worker']['id']
+            booking['services_ids'] = [self.services[0]['id']]
+            booking.pop('worker')
+            booking.pop('services')
+            booking.pop('status')
+            booking.pop('datetime_updated')
+            booking.pop('datetime_end')
+            booking.pop('datetime_created')
+            booking.pop('id')
+            booking.pop('comment')
+            booking.pop('total_price')
+            r = self.update_booking_admin(id, booking)
+            self.assertEqual(r.status_code, 200)
+            
+            r = self.get_booking_admin(id)
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
+        
         booking = _booking.copy()
-        pass
+        
+        r = self.post_booking(booking)
+        print(r.json)
+        self.assertEqual(r.status_code, 201)
+        session = dict(r.json)['session_token']
+        id = dict(r.json)['booking']['id']
+        
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        
+        self.assertEqual(dict(r.json)['client_name'], booking['client_name'])
+        self.assertEqual(dict(r.json)['client_tlf'], booking['client_tlf'])
+        
+        booking['client_name'] = "Client Test 2"
+        booking['new_status'] = CONFIRMED_STATUS
+        r = self.update_booking_admin(id, booking)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['client_name'], booking['client_name'])
+        
+        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.timetable[0]['closing_time']
+        r = self.update_booking_admin(id, booking)
+        self.assertEqual(r.status_code, 409)
+        
+        r = self.update_booking_admin(0, booking)
+        self.assertEqual(r.status_code, 404)
+        
+        r = self.cancel_booking(session)
+        self.assertEqual(r.status_code, 204)
+        
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
+        
+        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.timetable[0]['opening_time']
+        r = self.update_booking_admin(id, booking)
+        print(r.json)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['status']['status'], booking['new_status'])
+        
+        r = self.cancel_booking(session)
+        self.assertEqual(r.status_code, 204)
+        
+    def checkActionAdminsBooking(self, _booking):
+        
+        booking = _booking.copy()
+        
+        r = self.post_booking(booking)
+        self.assertEqual(r.status_code, 201)
+        id = dict(r.json)['booking']['id']
+        session = dict(r.json)['session_token']
+        worker_id = dict(r.json)['booking']['worker']['id']
+        datetime_end = dict(r.json)['booking']['datetime_end'].replace('T', ' ')
+        
+        #Aumentar el tiempo de un servicio
+        service_id = booking['services_ids'][0]
+        r = self.client.get(getUrl('service', service_id))
+        self.assertEqual(r.status_code, 200)
+        service = dict(r.json)
+        service.pop('id')
+        service.pop('datetime_updated')
+        service.pop('datetime_created')
+        service['work_group'] = service['work_group']['id']
+        service['duration'] += 20
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['datetime_end'].replace('T', ' '), (datetime.datetime.strptime(datetime_end, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(minutes=20)).strftime("%Y-%m-%d %H:%M:%S"))
+        
+        service['duration'] += 600
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        self.assertEqual(r.status_code, 409)
+
+        #Cambiar el servicio a un work group que no incluya al trabajdor que tienen sus reservas
+        service['work_group'] = self.work_groups[2]['id']
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        self.assertEqual(r.status_code, 409)
+        
+        #Borrar el trabajador
+        
+        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        self.assertEqual(r.status_code, 409)
+        
+        #Cancelar reserva
+        r = self.cancel_booking(session)
+        self.assertEqual(r.status_code, 204)
+        
+        service['work_group'] = self.work_groups[2]['id']
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        
+        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        self.assertEqual(r.status_code, 204)
         
     def test_integration_booking(self):
         
@@ -829,5 +953,5 @@ class TestBooking(TestCase):
         #Test 10: Testear actualizacion de reserva desde el local
         self.checkUpdateBookingAdmin(booking)
         
-        #TODO : testear endpoint para obtener un booking por id
-        #TODO : modificar workers, services, work_groups, timetable con reservas hechas
+        #Test 11: Testear modificaciones administrativas
+        self.checkActionAdminsBooking(booking)

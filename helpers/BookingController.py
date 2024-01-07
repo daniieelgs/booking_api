@@ -151,7 +151,9 @@ def deserializeBooking(booking):
         'status_id': booking.status_id,
         'client_name': booking.client_name,
         'client_tlf': booking.client_tlf,
-        'comment': booking.comment
+        'comment': booking.comment,
+        'client_email': booking.client_email,
+        'status': booking.status.status
     }
 
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
@@ -229,7 +231,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
         if not worker_id:
             raise AlredyBookingExceptionException()
     
-    new_status = new_booking.pop('status_id') if 'status_id' in new_booking else PENDING_STATUS
+    new_status = new_booking.pop('status') if 'status' in new_booking else (PENDING_STATUS if bookingModel is None else bookingModel.status.status)
     
     status = StatusModel.query.filter_by(status=new_status).first()
     

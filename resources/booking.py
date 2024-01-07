@@ -309,23 +309,22 @@ class BookingAdmin(MethodView):
     @blp.response(400, description='Invalid date format.')
     @blp.response(401, description='You are not allowed to update the booking.')
     @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
-    @blp.response(201, NewBookingSchema)
+    @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def put(self, booking_data, booking_id): # TODO : test change status
         """
         Updates a booking.
         """
         
-        booking = BookingModel.query.get(booking_id)    
-
-        if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
-            abort(409, message = f"The booking is '{booking.status.name}'.")
+        booking = BookingModel.query.get(booking_id)
 
         if not booking:
             abort(404, message = f'The booking [{booking_id}] was not found.')
                 
         if booking.local_id != get_jwt_identity():
             abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            
+        booking_data['status'] = booking_data.pop('new_status')
                 
         try:
             return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
