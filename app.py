@@ -1,4 +1,6 @@
+import os
 import traceback
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_smorest import abort, Api
 from flask_jwt_extended import JWTManager
@@ -13,8 +15,8 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import DEBUG
-from helpers.path import checkAndCreatePath
+from globals import DEBUG, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS
+from helpers.path import checkAndCreatePath, removePath
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -22,20 +24,29 @@ from resources.work_group import blp as WorkGroupBlueprint
 from resources.worker import blp as WorkerBlueprint
 from resources.service import blp as ServiceBlueprint
 from resources.timetable import blp as TimetableBlueprint
+from resources.booking import blp as BookingBlueprint
+from resources.images import blp as ImagesBlueprint
+from resources.public_images import blp as PublicImagesBlueprint
+from resources.admin import blp as AdminBlueprint
 
 #TODO desarrollas sistema de LOGs
 
 def create_app(config: Config = DefaultConfig()):
 
     TEMPLATE_FOLDER = config.template_folder
-    PUBLIC_FOLDER = config.public_folder
     PUBLIC_FOLDER_URL = config.public_folder_url
-    
-    checkAndCreatePath(PUBLIC_FOLDER, 'images', 'logos')
-    
+
+    load_dotenv()
+
+    os.environ['PUBLIC_FOLDER'] = config.public_folder
+    os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
+    os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else 0)
+        
+    load_dotenv()
+            
     nltk.download('punkt')
     
-    app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=PUBLIC_FOLDER)
+    app = Flask(__name__, template_folder=TEMPLATE_FOLDER)
     CORS(app)
         
     app.debug = DEBUG
@@ -148,13 +159,17 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(WorkerBlueprint, url_prefix=getApiPrefix('worker'))
     api.register_blueprint(ServiceBlueprint, url_prefix=getApiPrefix('service'))
     api.register_blueprint(TimetableBlueprint, url_prefix=getApiPrefix('timetable'))
+    api.register_blueprint(BookingBlueprint, url_prefix=getApiPrefix('booking'))
+    api.register_blueprint(ImagesBlueprint, url_prefix=getApiPrefix('images'))
+    api.register_blueprint(PublicImagesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}/images')
+    api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     
     ##Loal Routes
     
-    @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
-    def public(resource):
-        return app.send_static_file(resource)
-    
+    # @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
+    # def public(resource):
+    #     return app.send_static_file(resource)
+                
     return app
 
 app = create_app()

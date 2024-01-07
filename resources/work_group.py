@@ -1,16 +1,20 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
+from helpers.BookingController import cancelBooking, getBookings
 from models import WorkGroupModel
 from models.local import LocalModel
-from schema import WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
+from schema import DeleteParams, PublicWorkGroupWorkerSchema, WorkGroupSchema, WorkGroupServiceSchema, WorkGroupWorkerSchema
 from db import db, addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import traceback
+from datetime import datetime
 
-from globals import DEBUG
+from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
 blp = Blueprint('work_group', __name__, description='Work groups CRUD')
+
+#TODO : testar publics
 
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
@@ -27,12 +31,24 @@ class WorkGroupGetAll(MethodView):
 class WorkGroupWorkersGetAll(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, WorkGroupWorkerSchema(many=True))
+    @blp.response(200, PublicWorkGroupWorkerSchema(many=True))
     def get(self, local_id):
+        """
+        Retrieves all public data work groups with their workers.
+        """
+        return LocalModel.query.get_or_404(local_id).work_groups
+    
+@blp.route('/workers')
+class WorkGroupWorkersGetAll(MethodView):
+
+    @blp.response(404, description='The local was not found')
+    @blp.response(200, WorkGroupWorkerSchema(many=True))
+    @jwt_required(refresh=True)
+    def get(self):
         """
         Retrieves all work groups with their workers.
         """
-        return LocalModel.query.get_or_404(local_id).work_groups
+        return LocalModel.query.get_or_404(get_jwt_identity()).work_groups
     
 @blp.route('/local/<string:local_id>/services')
 class WorkGroupServicesGetAll(MethodView):
@@ -77,35 +93,52 @@ class WorkGroup(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the work group.')
         return work_group
     
-    @blp.response(404, description='The local was not found')
-    @blp.response(204, description='The work groups were deleted')
-    @jwt_required(fresh=True)
-    def delete(self):
-        """
-        Deletes all work groups.
-        """
-        try:
-            work_groups = LocalModel.query.get_or_404(get_jwt_identity()).work_groups
-            if not work_groups:
-                return {}
+    # @blp.response(404, description='The local was not found')
+    # @blp.response(204, description='The work groups were deleted')
+    # @jwt_required(fresh=True)
+    # def delete(self):
+    #     """
+    #     Deletes all work groups.
+    #     """
+    #     try:
+    #         work_groups = LocalModel.query.get_or_404(get_jwt_identity()).work_groups
+    #         if not work_groups:
+    #             return {}
 
-            deleteAndCommit(*work_groups)
+    #         deleteAndCommit(*work_groups)
 
-        except SQLAlchemyError as e:
-            traceback.print_exc()
-            rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
+    #     except SQLAlchemyError as e:
+    #         traceback.print_exc()
+    #         rollback()
+    #         abort(500, message = str(e) if DEBUG else 'Could not delete the work groups.')
 
 @blp.route('/<int:work_group_id>/workers')
+class PublicWorkGroupWorkerByID(MethodView):
+
+    @blp.response(404, description='The work group was not found')
+    @blp.response(200, PublicWorkGroupWorkerSchema)
+    def get(self, work_group_id):
+        """
+        Retrieves a public data work group by ID with their workers.
+        """
+        return WorkGroupModel.query.get_or_404(work_group_id)
+    
+@blp.route('/private/<int:work_group_id>/workers') #TODO : testar
 class WorkGroupWorkerByID(MethodView):
 
     @blp.response(404, description='The work group was not found')
     @blp.response(200, WorkGroupWorkerSchema)
+    @jwt_required(refresh=True)
     def get(self, work_group_id):
         """
         Retrieves a work group by ID with their workers.
         """
-        return WorkGroupModel.query.get_or_404(work_group_id)
+        work_group = WorkGroupModel.query.get_or_404(work_group_id)
+        
+        if work_group.local_id != get_jwt_identity():
+            abort(403, message = 'You are not allowed to see this work group.')
+        
+        return work_group
     
 @blp.route('/<int:work_group_id>/services')
 class WorkGroupServicesByID(MethodView):
@@ -159,11 +192,13 @@ class WorkGroupByID(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not update de work group.')
         return work_group
 
-    @blp.response(404, description='The work group was not found')
+    @blp.arguments(DeleteParams, location='query')
+    @blp.response(404, description='The work group was not found.')
     @blp.response(403, description='You are not allowed to delete this work group')
-    @blp.response(204, description='The work group was deleted')
+    @blp.response(409, description='The work group has workers. The work group has bookings.')
+    @blp.response(204, description='The work group was deleted.')
     @jwt_required(fresh=True)
-    def delete(self, work_group_id):
+    def delete(self, params, work_group_id):
         """
         Deletes a work group.
         """
@@ -171,6 +206,19 @@ class WorkGroupByID(MethodView):
         
         if work_group.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to delete this work group.')
+        
+        if work_group.workers.all(): #TODO : testar            
+            abort(409, message = 'The work group has workers.')
+        
+        force = params['force'] if 'force' in params else False
+        
+        bookings = getBookings(work_group.local_id, datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], work_group_id=work_group.id)
+        
+        if not force and bookings: #TODO : testar
+            abort(409, message = 'The work group has bookings.')
+        elif force and bookings:
+            for booking in bookings:
+                cancelBooking(booking, params['comment'] if 'comment' in params else None)
         
         try:
             deleteAndCommit(work_group)

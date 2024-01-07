@@ -1,8 +1,10 @@
 
 import traceback
+from flask import request
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
-from helpers.security import generatePassword, generateTokens, generateUUID, logOutAll
+from helpers.path import createPathFromLocal, removePath
+from helpers.security import decodeJWT, decodeToken, generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -11,7 +13,7 @@ from passlib.hash import pbkdf2_sha256
 
 from db import deleteAndCommit, addAndCommit, rollback
 
-from globals import DEBUG
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE
 from models.session_token import SessionTokenModel
 from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
 
@@ -46,13 +48,36 @@ class Local(MethodView):
     
     @blp.arguments(LocalSchema)
     @blp.response(409, description='The email is already in use')
-    @blp.response(404, description='The local does not exist')
+    @blp.response(404, description='The token does not exist.')
+    @blp.response(403, description='You are not allowed to create a local.')
+    @blp.response(401, description='Missing Authorization Header.')
     @blp.response(201, LocalTokensSchema)
     def post(self, local_data):
         """
         Creates a new local.
         If the password is not present, it will generate a new one and return it
         """
+        
+        token_header = request.headers.get('Authorization')
+
+        if not token_header or not token_header.startswith('Bearer '):
+            return abort(401, message='Missing Authorization Header')
+        
+        token = token_header.split(' ', 1)[1]
+        
+        identity = decodeJWT(token)['sub']
+        id = decodeJWT(token)['token']
+        
+        if identity != ADMIN_IDENTITY:
+            abort(403, message = 'You are not allowed to create a local.')
+        
+        token = SessionTokenModel.query.get(id)
+        
+        if not token:
+            abort(403, message = 'The token does not exist.')
+        
+        if token.user_session.user != ADMIN_ROLE:
+            abort(403, message = 'You are not allowed to create a local.')
         
         show_password = 'password' not in local_data
         
@@ -66,7 +91,8 @@ class Local(MethodView):
 
         try:
             addAndCommit(local)
-            access_token, refresh_token = generateTokens(local.id, access_token=True, refresh_token=True)
+            createPathFromLocal(local.id)
+            access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
         except IntegrityError as e:
             traceback.print_exc()
             rollback()
@@ -125,7 +151,8 @@ class Local(MethodView):
         
         try:
             deleteAndCommit(local)
-        except SQLAlchemyError as e:
+            removePath(get_jwt_identity())
+        except Exception as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the local.')
@@ -148,7 +175,7 @@ class AccessLocal(MethodView):
         if not local or not pbkdf2_sha256.verify(login_data['password'], local.password):
             abort(401, message = 'Invalid credentials.')
             
-        access_token, refresh_token = generateTokens(local.id, access_token=True, refresh_token=True)
+        access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
             
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
         
@@ -194,5 +221,13 @@ class LocalRefresh(MethodView):
         """
         Refresh the refresh-token
         """
-        refresh_token = generateTokens(get_jwt_identity(), refresh_token=True)
+        token = get_jwt()
+        tokenId = token.get('token')
+        
+        token = SessionTokenModel.query.get_or_404(tokenId)
+        
+        if token.user_session.user != LOCAL_ROLE: # TODO : testear
+            abort(403, message = 'You are not allowed to refresh this token.')
+        
+        refresh_token = generateTokens(get_jwt_identity(), get_jwt_identity(), refresh_token=True)
         return {'refresh_token': refresh_token}
