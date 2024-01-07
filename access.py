@@ -48,7 +48,10 @@ class Access:
         cursor.execute(f"INSERT INTO session_token (id, jti, user_session_id) VALUES ('{payload['token']}', '{jwt.decode(token, key=SECRET_JWT, algorithms=[JWT_ALGORITHM]).get('jti') }', '{user_session_id}')")
         db.commit()
 
-        if copy_on_clipboard: pyperclip.copy(token)
+        try:
+            if copy_on_clipboard: pyperclip.copy(token)
+        except:
+            pass
         
         return token
 
