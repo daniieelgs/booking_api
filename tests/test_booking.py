@@ -343,7 +343,7 @@ class TestBooking(TestCase):
         #Comprobar datos:
         booking_response = response['booking']
             #Datos de cliente
-        self.assertEqual(booking_response['client_name'], booking['client_name'])
+        self.assertEqual(booking_response['client_name'], booking['client_name'].strip().title())
         self.assertEqual(booking_response['client_email'], booking['client_email'])
         self.assertEqual(booking_response['datetime_init'].replace('T', ' '), booking['datetime_init'])
             #Obviar servicios repetidos
@@ -828,7 +828,7 @@ class TestBooking(TestCase):
         r = self.get_booking_admin(id)
         self.assertEqual(r.status_code, 200)
         
-        self.assertEqual(dict(r.json)['client_name'], booking['client_name'])
+        self.assertEqual(dict(r.json)['client_name'], booking['client_name'].strip().title())
         self.assertEqual(dict(r.json)['client_tlf'], booking['client_tlf'])
         
         booking['client_name'] = "Client Test 2"
@@ -959,7 +959,7 @@ class TestBooking(TestCase):
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         
         booking = {
-            "client_name": "Client Test",
+            "client_name": "  cliEnt teSt  ",
             "client_tlf": "123456789",
             "client_email": "client@example.com",
             "datetime_init": f"{data} {time}",
