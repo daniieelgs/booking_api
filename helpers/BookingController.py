@@ -9,6 +9,7 @@ from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
+from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.BookingsConflictException import BookingsConflictException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
 from helpers.error.DataError.PastDateException import PastDateException
@@ -122,7 +123,10 @@ def getBookingBySession(token):
         
         raise InvalidTokenException('The session token has expired.')    
     
-    booking = BookingModel.query.get_or_404(booking_id)
+    booking = BookingModel.query.get(booking_id)
+    
+    if not booking:
+        raise BookingNotFoundException(id=booking_id)
     
     if booking.local_id != token.local_id:
         raise InvalidTokenException()
