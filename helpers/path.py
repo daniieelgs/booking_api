@@ -1,5 +1,6 @@
 
 import os
+import shutil
 
 from dotenv import load_dotenv
 
@@ -60,3 +61,14 @@ def removeImage(local_id, filename, type):
     path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, IMAGES_FOLDER, type, filename)
     
     os.remove(path)
+    
+def removePath(local_id):
+    
+    load_dotenv()
+
+    PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
+    
+    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id)
+    
+    shutil.rmtree(path)
+    

@@ -21,7 +21,7 @@ class BookingModel(db.Model):
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable=False)
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
-    worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=False)
+    worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=True)
     
     status = db.relationship('StatusModel', back_populates='bookings')
     services = db.relationship(

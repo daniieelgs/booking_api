@@ -105,7 +105,7 @@ class ServiceById(MethodView):
                     try:
                         createOrUpdateBooking(deserializeBooking(booking), get_jwt_identity(), booking)
                     except (LocalUnavailableException, AlredyBookingExceptionException) as e:
-                        abort(409, message = str(e))
+                        abort(409, message = f"The service has bookings that can not be updated. Booking [{booking.id}]: '{str(e)}'")
             
             commit()
         except IntegrityError as e:

@@ -1,9 +1,10 @@
 
 
+from operator import or_
 import random
 import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -51,7 +52,7 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     
     return query
 
-def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None):
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None, client_filter = None):
 
     bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
@@ -66,12 +67,17 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     if service_id:
         bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
         
+    if client_filter:
+        if client_filter['name']: bookings_query = bookings_query.filter(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'))
+        if client_filter['email']: bookings_query = bookings_query.filter(BookingModel.client_email.ilike(f'%{client_filter["email"]}%'))
+        if client_filter['tlf']: bookings_query = bookings_query.filter(BookingModel.client_tlf.ilike(f'%{client_filter["tlf"]}%'))
+        
     if work_group_id:
         return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
     bookings = list(bookings_query.all())
     
-    done_status = StatusModel.query.filter_by(status=CANCELLED_STATUS).first()
+    done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
     for booking in bookings: #TODO : testar
         if booking.datetime_end < datetime.now() and booking.status != done_status:
@@ -96,7 +102,7 @@ def getBookingBySession(token):
         
     token_id = decoded['token']
     booking_id = decoded['sub']
-    exp = decoded['exp']
+    exp = decoded['exp'] if 'exp' in decoded else 0
     exp_date = datetime.fromtimestamp(exp)
     
     token = SessionTokenModel.query.get(token_id)
@@ -145,10 +151,18 @@ def deserializeBooking(booking):
         'status_id': booking.status_id,
         'client_name': booking.client_name,
         'client_tlf': booking.client_tlf,
-        'comment': booking.comment
+        'comment': booking.comment,
+        'client_email': booking.client_email,
+        'status': booking.status.status
     }
 
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
+    
+    new_booking['services_ids'] = list(set(new_booking['services_ids']))
+    
+    if bookingModel:
+        if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
+            new_booking['worker_id'] = bookingModel.worker_id
     
     local = LocalModel.query.get(local_id)
     if not local:
@@ -167,7 +181,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     total_duration = 0
     services = []
             
-    for service_id in set(new_booking['services_ids']):
+    for service_id in new_booking['services_ids']:
         service = ServiceModel.query.get(service_id)
         if not service or service.work_group.local_id != local_id:
             raise ServiceNotFoundException(id = service_id)
@@ -209,6 +223,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
             raise WorkerUnavailableException()
              
     else: 
+                
         workers = list(services[0].work_group.workers.all())
         
         worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None) #TODO
@@ -216,7 +231,7 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
         if not worker_id:
             raise AlredyBookingExceptionException()
     
-    new_status = new_booking.pop('status_id') if 'status_id' in new_booking else PENDING_STATUS
+    new_status = new_booking.pop('status') if 'status' in new_booking else (PENDING_STATUS if bookingModel is None else bookingModel.status.status)
     
     status = StatusModel.query.filter_by(status=new_status).first()
     
