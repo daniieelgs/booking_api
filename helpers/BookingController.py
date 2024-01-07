@@ -163,6 +163,7 @@ def deserializeBooking(booking):
 def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
     
     new_booking['services_ids'] = list(set(new_booking['services_ids']))
+    new_booking['client_name'] = new_booking['client_name'].strip().title()
     
     if bookingModel:
         if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
