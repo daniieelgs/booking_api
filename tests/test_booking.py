@@ -196,8 +196,16 @@ class TestBooking(TestCase):
     def update_booking_admin(self, id, booking):
         return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
     
+    def patch_booking_admin(self, id, booking):
+        return self.client.patch(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+    
+    
     def update_booking(self, session, booking):
         return self.client.put(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(booking), content_type='application/json')
+    
+    def patch_booking(self, session, booking):
+        return self.client.patch(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(booking), content_type='application/json')
+    
     
     def confirm_booking(self, session):
         return self.client.get(setParams(getUrl(ENDPOINT, 'confirm'), session=session), content_type='application/json')
@@ -413,16 +421,42 @@ class TestBooking(TestCase):
         
         response = dict(self.post_booking(booking).json)
         response_booking = response['booking']
-        session = response['session_token']
+        session = response['session_token']    
+        
     
         #Actualizar reserva sin cambiar datos
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 200)
         response = dict(r.json)
         self.assertNotEqual(response_booking['datetime_updated'], response['datetime_updated'])
-        response.pop('datetime_updated')
+        du = response.pop('datetime_updated')
         response_booking.pop('datetime_updated')
         self.assertEqual(response_booking, response)
+        
+        #Actualizar con datos justos
+        data = {
+            "client_name": "Client name test",
+        }
+        r = self.patch_booking(session, data)
+        self.assertEqual(r.status_code, 200)
+        response2 = dict(r.json)
+        self.assertNotEqual(response2['datetime_updated'], du)
+        self.assertEqual(response2['client_name'], data['client_name'].strip().title())
+        self.assertEqual(response2['worker']['id'], response['worker']['id'])
+        self.assertEqual(response2['datetime_init'], response['datetime_init'])
+        
+        #Actualizar con datos justos desde local
+        data = {
+            "new_status": CONFIRMED_STATUS,
+        }
+        r = self.patch_booking_admin(response['id'], data)
+        self.assertEqual(r.status_code, 200)
+        response2 = dict(r.json)
+        self.assertNotEqual(response2['status']['status'], response['status']['status'])
+        self.assertEqual(response2['status']['status'], data['new_status'])
+        self.assertEqual(response2['worker']['id'], response['worker']['id'])
+        self.assertEqual(response2['datetime_init'], response['datetime_init'])
+        
         
         #Tiempo en pasado
         booking['datetime_init'] = "2020-01-01 13:00:00"

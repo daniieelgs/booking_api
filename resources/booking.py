@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
@@ -34,7 +34,7 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
+from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
 
 blp = Blueprint('booking', __name__, description='Booking CRUD')
 
@@ -52,6 +52,26 @@ def getBookingBySession(token):
     except Exception as e:
         traceback.print_exc()
         abort(500, message=str(e) if DEBUG else 'Could not get the booking.')
+
+def patchBooking(booking, booking_data, admin = False):
+    
+    booking_deserialized = deserializeBooking(booking)
+        
+    for key, value in booking_data.items():
+        booking_deserialized[key] = value
+        
+    booking_deserialized.pop('status_id', None)
+        
+    if 'comment' not in booking_data:
+        booking_deserialized.pop('comment', None)
+        
+    if 'worker_id' not in booking_data:
+        booking_deserialized.pop('worker_id', None)
+        
+    if not admin:
+        booking_deserialized.pop('status', None)
+        
+    return booking_deserialized
 
 @blp.route('/local/<string:local_id>')
 class SeePublicBooking(MethodView):
@@ -341,7 +361,46 @@ class BookingAdmin(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+    
+    @blp.arguments(BookingAdminPatchSchema)
+    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
+    @blp.response(400, description='Invalid date format.')
+    @blp.response(401, description='You are not allowed to update the booking.')
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(200, BookingSchema)
+    @jwt_required(refresh=True)
+    def patch(self, booking_data, booking_id):
+        """
+        Updates a booking.
+        """
+        
+        booking = BookingModel.query.get(booking_id)
+
+        if not booking:
+            abort(404, message = f'The booking [{booking_id}] was not found.')
+                
+        if booking.local_id != get_jwt_identity():
+            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            
+        if 'new_status' in booking_data: booking_data['status'] = booking_data.pop('new_status')
+                
+        booking_data = patchBooking(booking, booking_data, admin = True)
+                
+        try:
+            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
+        except Exception as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')  
     
     @blp.response(404, description='The booking was not found.')
     @blp.response(401, description='You are not allowed to delete the booking.')
@@ -408,6 +467,40 @@ class BookingSession(MethodView):
 
         if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
+
+        try:
+            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
+        except Exception as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
+            
+    @blp.arguments(BookingSessionParams, location='query')
+    @blp.arguments(BookingPatchSchema)
+    @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
+    @blp.response(400, description='Invalid date format. No session token provided.')
+    @blp.response(401, description='The session token is invalid.')
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(200, BookingSchema)
+    def patch(self, params, booking_data):
+        """
+        Updates a booking session.
+        """
+                
+        booking = getBookingBySession(params[SESSION_GET])        
+
+        if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
+            abort(409, message = f"The booking is '{booking.status.name}'.")
+                
+        booking_data = patchBooking(booking, booking_data)
 
         try:
             return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
