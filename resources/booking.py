@@ -387,9 +387,7 @@ class BookingSession(MethodView):
             abort(409, message = f"The booking is '{booking.status.name}'.")       
             
         return booking 
-    
-    #TODO : poder insertar reservas en pasado con admin token
-    
+        
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
     @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
@@ -433,6 +431,9 @@ class BookingSession(MethodView):
         Deletes a booking session.
         """
         booking = getBookingBySession(params[SESSION_GET])
+        
+        if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
+            abort(409, message = f"The booking is '{booking.status.name}'.")
         
         if 'comment' in data:
             booking.comment = data['comment']

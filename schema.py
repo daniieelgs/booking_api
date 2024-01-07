@@ -1,12 +1,13 @@
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, ValidationError, fields, validate
 
 from marshmallow import Schema, fields
+from email_validator import validate_email, EmailNotValidError
 
 class PublicLocalSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
-    name = fields.Str(required=True)
-    tlf = fields.Str(required=True) #TODO: update and validate tlf
-    email = fields.Str(required=True) #TODO: update and validate email
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
+    email = fields.Str(required=True, validate=validate.Email())
     description = fields.Str()
     address = fields.Str()
     postal_code = fields.Str()
@@ -32,16 +33,16 @@ class LoginLocalSchema(Schema):
     
 class ServiceSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
-    name = fields.Str(required=True)
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     description = fields.Str()
-    duration = fields.Int(required=True)
-    price = fields.Float(required=True)
+    duration = fields.Int(required=True, validate=validate.Range(min=0))
+    price = fields.Float(required=True, validate=validate.Range(min=0))
     work_group = fields.Int(required=True, load_only=True)
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
 class WorkGroupSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
-    name = fields.Str(required=True)
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     description = fields.Str()
     local_id = fields.Str(required=True, dump_only=True)
     datetime_created = fields.DateTime(dump_only=True)
@@ -50,13 +51,13 @@ class WorkGroupSchema(Schema):
     
 class PublicWorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
-    name = fields.Str(required=True)
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     last_name = fields.Str()
     image = fields.Str()
     
 class WorkerSchema(PublicWorkerSchema):
-    email = fields.Str()
-    tlf = fields.Str()
+    email = fields.Str(validate=validate.Email())
+    tlf = fields.Str(validate=validate.Length(min=9, max=13))
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     work_groups = fields.List(fields.Int(), required=True, load_only=True)
@@ -101,9 +102,9 @@ class PublicBookingSchema(Schema):
     worker = fields.Nested(PublicWorkerSchema(), dump_only=True)    
 
 class BookingSchema(PublicBookingSchema):
-    client_name = fields.Str(required=True)
-    client_email = fields.Str(required=True) #TODO: update and validate email
-    client_tlf = fields.Str(required=True) #TODO: update and validate tlf 
+    client_name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    client_email = fields.Str(required=True, validate=validate.Email())
+    client_tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
     comment = fields.Str()
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
