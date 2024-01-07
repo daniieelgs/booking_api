@@ -6,6 +6,7 @@ from helpers.BookingController import calculatEndTimeBooking, cancelBooking, cre
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
+from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
 from helpers.error.DataError.PastDateException import PastDateException
 from helpers.error.BookingError.WorkerUnavailable import WorkerUnavailableException
@@ -20,13 +21,15 @@ from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundExce
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
 from helpers.security import decodeJWT, decodeToken, generateTokens
 from models.booking import BookingModel
-from db import addAndFlush, addAndCommit, commit, deleteAndCommit, rollback
+from db import addAndFlush, addAndCommit, commit, deleteAndCommit, deleteAndFlush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import traceback
 
 from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET
+from models.local import LocalModel
 from models.service import ServiceModel
+from models.service_booking import ServiceBookingModel
 from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
@@ -43,6 +46,8 @@ def getBookingBySession(token):
     except InvalidTokenException as e:
         abort(401, message=str(e))
     except TokenNotFoundException as e:
+        abort(404, message=str(e))
+    except BookingNotFoundException as e:
         abort(404, message=str(e))
     except Exception as e:
         traceback.print_exc()
@@ -352,10 +357,12 @@ class BookingAdmin(MethodView):
         if not booking.local_id == get_jwt_identity():
             abort(401, message = f'You are not allowed to delete the booking [{booking_id}].')
         
+        service_bookings = list(ServiceBookingModel.query.filter_by(booking_id=booking_id).all())
+        
         try:
-            deleteAndCommit()
+            deleteAndCommit(*service_bookings, booking)
             return {}
-        except SQLAlchemyError as e:
+        except Exception as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
@@ -378,7 +385,7 @@ class BookingSession(MethodView):
             token = SessionTokenModel.query.get_or_404(decodeToken(params[SESSION_GET])['token'])
             try:
                 deleteAndCommit(token)
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 traceback.print_exc()
                 rollback()
             abort(409, message = f"The booking is '{booking.status.name}'.")       
@@ -437,6 +444,7 @@ class BookingSession(MethodView):
         
         try:
             cancelBooking(booking)
+            return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
             abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
@@ -477,6 +485,81 @@ class BookingConfirm(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
         return booking
+    
+@blp.route('confirm/<int:booking_id>')
+class BookingConfirmId(MethodView):
+    
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='You are not allowed to confirm the booking.')
+    @blp.response(200, BookingSchema)
+    @jwt_required(refresh=True)
+    def get(self, booking_id):
+        """
+        Confirms a booking. Change the status to confirmed.
+        """
+        booking = BookingModel.query.get_or_404(booking_id)
+        
+        local = LocalModel.query.get(get_jwt_identity())
+        
+        if not booking.local_id == local.id:
+            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+        
+        if not booking.status.status == PENDING_STATUS:
+            status = StatusModel.query.get(booking.status_id)
+            if not status: abort(500, message='The status was not found.')
+            abort(409, message=f"The booking is '{status.name}'.")
+        
+        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
+        
+        if not status:
+            abort(500, message='The status was not found.')
+            
+        booking.status_id = status.id
+        
+        try:
+            addAndCommit(booking)
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
+            
+        return booking
+ 
+@blp.route('cancel/<int:booking_id>')
+class BookingConfirmId(MethodView):
+    
+    
+    @blp.arguments(CommentSchema)
+    @blp.response(404, description='The booking was not found.')
+    @blp.response(400, description='No session token provided.')
+    @blp.response(401, description='You are not allowed to confirm the booking.')
+    @blp.response(200, BookingSchema)
+    @jwt_required(refresh=True)
+    def get(self, data, booking_id):
+        """
+        Cancel a booking. Change the status to confirmed.
+        """
+        booking = BookingModel.query.get_or_404(booking_id)
+        
+        local = LocalModel.query.get(get_jwt_identity())
+        
+        if not booking.local_id == local.id:
+            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+        
+        if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
+            abort(409, message = f"The booking is '{booking.status.name}'.")
+        
+        if 'comment' in data:
+            booking.comment = data['comment']
+        
+        try:
+            cancelBooking(booking)
+            
+            return {}
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
     
 @blp.route('status')
 class Status(MethodView):

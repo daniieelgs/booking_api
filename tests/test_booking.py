@@ -190,6 +190,9 @@ class TestBooking(TestCase):
     def cancel_booking(self, session, data = None):
         return self.client.delete(setParams(getUrl(ENDPOINT), session=session), content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(data), content_type='application/json')
     
+    def cancel_booking_admin(self, id, data = None):
+        return self.client.get(setParams(getUrl(ENDPOINT, 'cancel', id)), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT, id)), data=json.dumps(data), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+  
     def update_booking_admin(self, id, booking):
         return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
     
@@ -198,6 +201,10 @@ class TestBooking(TestCase):
     
     def confirm_booking(self, session):
         return self.client.get(setParams(getUrl(ENDPOINT, 'confirm'), session=session), content_type='application/json')
+    
+    def confirm_booking_admin(self, id):
+        return self.client.get(setParams(getUrl(ENDPOINT, 'confirm', id)), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+    
     
     def get_booking_admin(self, id):
         return self.client.get(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
@@ -210,6 +217,9 @@ class TestBooking(TestCase):
     
     def get_bookings_admin(self, **params):
         return self.client.get(setParams(getUrl(ENDPOINT, 'all'), **params), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+    
+    def delete_booking_admin(self, id):
+        return self.client.delete(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
     
     def missingData(self, _booking):
         booking = _booking.copy()
@@ -902,6 +912,42 @@ class TestBooking(TestCase):
         
         r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
         self.assertEqual(r.status_code, 204)
+        
+        #Eliminar reserva
+        booking = _booking.copy()
+        booking['services_ids'] = [self.services[1]['id']]
+        r = self.post_booking(booking)
+        self.assertEqual(r.status_code, 201)
+        id = dict(r.json)['booking']['id']
+        session = dict(r.json)['session_token']
+        
+        r = self.delete_booking_admin(id)
+        self.assertEqual(r.status_code, 204)
+        
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 404)
+        
+        r = self.get_booking(session)
+        self.assertEqual(r.status_code, 404)
+        
+        #Confirmar reserva con admin
+        r = self.post_booking(booking)
+        self.assertEqual(r.status_code, 201)
+        
+        id = dict(r.json)['booking']['id']
+        
+        r = self.confirm_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['status']['status'], CONFIRMED_STATUS)
+        
+        #Cancelar reserva con admin
+        r = self.cancel_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        r = self.get_booking_admin(id)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
         
     def test_integration_booking(self):
         
