@@ -11,11 +11,9 @@ from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
-from models.booking import BookingModel
 from models.service import ServiceModel
 
 from models import LocalModel
-from models.status import StatusModel
 from models.work_group import WorkGroupModel
 from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, UpdateParams
 
@@ -80,7 +78,7 @@ class ServiceById(MethodView):
                     
         force = params['force'] if 'force' in params else False
                     
-        if not force and work_group_id != service.work_group_id: #TODO : testar
+        if not force and work_group_id != service.work_group_id:
             bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
             
             bookings = [booking for booking in bookings if work_group not in list(booking.worker.work_groups.all())]
@@ -101,7 +99,7 @@ class ServiceById(MethodView):
             bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
             
             if check_booking and not force:
-                for booking in bookings: #TODO : testar
+                for booking in bookings:
                     try:
                         createOrUpdateBooking(deserializeBooking(booking), get_jwt_identity(), booking)
                     except (LocalUnavailableException, AlredyBookingExceptionException) as e:
@@ -138,7 +136,7 @@ class ServiceById(MethodView):
         
         bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
         
-        if not force and bookings: #TODO : testar
+        if not force and bookings:
             abort(409, message = 'The service has bookings.')
         elif force and bookings:
             for booking in bookings:
@@ -155,7 +153,6 @@ class ServiceById(MethodView):
 @blp.route('')
 class Service(MethodView):
 
-    #TODO : restringir servicios con el mismo nombre en el mismo grupo de trabajo
     @blp.arguments(ServiceSchema)
     @blp.response(409, description='The service already exists')
     @blp.response(404, description='The local does not exist. The work group does not exist')

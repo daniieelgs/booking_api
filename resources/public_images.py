@@ -2,16 +2,10 @@
 import traceback
 from flask import make_response
 
-from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from passlib.hash import pbkdf2_sha256
-
-from db import deleteAndCommit, addAndCommit, rollback
-
-from globals import DEBUG, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS, LOCAL_ROLE
+from globals import IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS
 from helpers.path import getImage
 from models.image import ImageModel
 

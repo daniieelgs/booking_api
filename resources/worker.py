@@ -3,11 +3,10 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import cancelBooking, getBookings, searchWorkerBookings
 from helpers.DataController import getDataRequest
-from helpers.error.DataError.UnspecifedDateException import UnspecifedDateException
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import BookingSchema, DeleteParams, PublicWorkerSchema, PublicWorkerWorkGroupSchema, UpdateParams, WorkerSchema, WorkerWorkGroupSchema
+from schema import DeleteParams, PublicWorkerSchema, PublicWorkerWorkGroupSchema, UpdateParams, WorkerSchema, WorkerWorkGroupSchema
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,10 +16,6 @@ import traceback
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
 blp = Blueprint('worker', __name__, description='Workers CRUD')
-
-#TODO : testar publics
-
-# TODO : ver las reservas que tiene un trabajador
 
 def getAllWorkers(local_id):
     workers = set()
@@ -105,25 +100,6 @@ class Worker(MethodView):
             
         return worker
     
-    # @blp.response(404, description='The local was not found')
-    # @blp.response(204, description='The workers were deleted')
-    # @jwt_required(fresh=True)
-    # def delete(self):
-    #     """
-    #     Deletes all workers.
-    #     """
-    #     try:
-    #         workers = getAllWorkers(get_jwt_identity())
-    #         if not workers:
-    #             return {}
-
-    #         deleteAndCommit(*workers)
-
-    #     except SQLAlchemyError as e:
-    #         traceback.print_exc()
-    #         rollback()
-    #         abort(500, message = str(e) if DEBUG else 'Could not delete the workers.')
-
 @blp.route('/private/<int:worker_id>/work_group')
 class WorkerWorkGroupByID(MethodView):
 
@@ -213,7 +189,7 @@ class PublicWorkerByID(MethodView):
             
         force = params['force'] if 'force' in params else False
                     
-        if not force and work_groups != worker.work_groups: #TODO : testar
+        if not force and work_groups != worker.work_groups:
             bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
             
             if bookings:
@@ -250,7 +226,7 @@ class PublicWorkerByID(MethodView):
         
         bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
         
-        if not force and bookings: #TODO : testar
+        if not force and bookings:
             abort(409, message = 'The work group has bookings.')
         elif force and bookings:
             for booking in bookings:

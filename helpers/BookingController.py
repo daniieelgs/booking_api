@@ -79,7 +79,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     
     done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
-    for booking in bookings: #TODO : testar
+    for booking in bookings:
         if booking.datetime_end < datetime.now() and booking.status != done_status:
             booking.status = done_status
             try:
@@ -219,14 +219,14 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
             
         bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id)
             
-        if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id): #TODO
+        if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id):
             raise WorkerUnavailableException()
              
     else: 
                 
         workers = list(services[0].work_group.workers.all())
         
-        worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None) #TODO
+        worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None)
         
         if not worker_id:
             raise AlredyBookingExceptionException()
@@ -243,8 +243,6 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     
     booking = bookingModel or BookingModel(**new_booking)
     booking.services = services
-    
-    # booking = calculatEndTimeBooking(booking) #TODO : al actualizar el tiempo de un service actualizar el tiempo de todos sus bookings
     
     try:
         

@@ -4,14 +4,12 @@ import traceback
 from dotenv import load_dotenv
 from flask import request
 
-from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from passlib.hash import pbkdf2_sha256
-
-from db import commit, deleteAndCommit, addAndCommit, deleteAndFlush, rollback
+from db import commit, addAndCommit, deleteAndFlush, rollback
 
 from globals import DEBUG, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS, PARAM_FILE_NAME
 from helpers.ImageController import checkRequestFile

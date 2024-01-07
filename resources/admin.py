@@ -1,19 +1,11 @@
 
-import traceback
 from flask import request
 
-from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
-from helpers.path import createPathFromLocal
-from helpers.security import decodeJWT, decodeToken, generatePassword, generateTokens, generateUUID, logOutAll
+from helpers.security import decodeJWT, generateTokens
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from passlib.hash import pbkdf2_sha256
-
-from db import deleteAndCommit, addAndCommit, rollback
-
-from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG
+from globals import ADMIN_IDENTITY, ADMIN_ROLE
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
 from schema import LocalSchema, LocalTokensSchema
