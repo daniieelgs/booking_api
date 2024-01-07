@@ -3,7 +3,7 @@ import traceback
 from flask import request
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
-from helpers.path import createPathFromLocal
+from helpers.path import createPathFromLocal, removePath
 from helpers.security import decodeJWT, decodeToken, generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
@@ -151,7 +151,8 @@ class Local(MethodView):
         
         try:
             deleteAndCommit(local)
-        except SQLAlchemyError as e:
+            removePath(get_jwt_identity())
+        except Exception as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the local.')

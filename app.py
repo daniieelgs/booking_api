@@ -16,7 +16,7 @@ from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
 from globals import DEBUG, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS
-from helpers.path import checkAndCreatePath
+from helpers.path import checkAndCreatePath, removePath
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -169,7 +169,7 @@ def create_app(config: Config = DefaultConfig()):
     # @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
     # def public(resource):
     #     return app.send_static_file(resource)
-        
+                
     return app
 
 app = create_app()
