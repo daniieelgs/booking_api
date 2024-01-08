@@ -69,7 +69,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
         bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
         
     if client_filter:
-        if client_filter['name']: bookings_query = bookings_query.filter(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'))
+        if client_filter['name']: bookings_query = bookings_query.filter(or_(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'), BookingModel.client_name.ilike(f'%{client_filter["name"].strip().title()}%')))
         if client_filter['email']: bookings_query = bookings_query.filter(BookingModel.client_email.ilike(f'%{client_filter["email"]}%'))
         if client_filter['tlf']: bookings_query = bookings_query.filter(BookingModel.client_tlf.ilike(f'%{client_filter["tlf"]}%'))
         

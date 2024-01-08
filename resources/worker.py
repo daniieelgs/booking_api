@@ -2,11 +2,10 @@ from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import cancelBooking, getBookings, searchWorkerBookings
-from helpers.DataController import getDataRequest
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
-from schema import DeleteParams, PublicWorkerSchema, PublicWorkerWorkGroupSchema, UpdateParams, WorkerSchema, WorkerWorkGroupSchema
+from schema import DeleteParams, PublicWorkerListSchema, PublicWorkerSchema, PublicWorkerWorkGroupSchema, PublicWorkerWorkListGroupSchema, UpdateParams, WorkerListSchema, WorkerSchema, WorkerWorkGroupSchema
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,35 +31,38 @@ def getAllWorkers(local_id):
 class WorkersGetAll(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, PublicWorkerSchema(many=True))
+    @blp.response(200, PublicWorkerListSchema)
     def get(self, local_id):
         """
         Retrieves all public data workers.
         """      
-        return getAllWorkers(local_id)
+        workers = getAllWorkers(local_id)
+        return {"workers": workers, "total": len(workers)}
     
 @blp.route('/local/<string:local_id>/work_group')
 class WorkersGetAllWorkGroups(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, PublicWorkerWorkGroupSchema(many=True))
+    @blp.response(200, PublicWorkerWorkListGroupSchema)
     def get(self, local_id):
         """
         Recover all public data workers with the work groups to which they belong.
-        """                
-        return getAllWorkers(local_id)
+        """    
+        workers = getAllWorkers(local_id)            
+        return {"workers": workers, "total": len(workers)}
     
 @blp.route('')
 class Worker(MethodView):
 
     @blp.response(404, description='The local was not found')
-    @blp.response(200, WorkerSchema(many=True))
+    @blp.response(200, WorkerListSchema)
     @jwt_required(refresh=True)
     def get(self):
         """
         Retrieves all data workers.
         """
-        return getAllWorkers(get_jwt_identity())
+        workers = getAllWorkers(get_jwt_identity())
+        return {"workers": workers, "total": len(workers)}
 
     @blp.arguments(WorkerSchema)
     @blp.response(404, description='The local was not found. The work groups were not found or does not belong to the local session token.')

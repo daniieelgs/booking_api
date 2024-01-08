@@ -34,7 +34,7 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingSchema, StatusSchema
+from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema
 
 blp = Blueprint('booking', __name__, description='Booking CRUD')
 
@@ -80,7 +80,7 @@ class SeePublicBooking(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, PublicBookingSchema(many=True))
+    @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
         Retrieves public bookings from specific DateTime.
@@ -98,7 +98,7 @@ class SeePublicBooking(MethodView):
         
         bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
                 
-        return bookings
+        return {"bookings": bookings, "total": len(bookings)}
     
 @blp.route('/local/<string:local_id>/week')
 class SeePublicBookingWeek(MethodView):
@@ -107,7 +107,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, PublicBookingSchema(many=True))
+    @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
         Retrieves public bookings from a week
@@ -122,9 +122,11 @@ class SeePublicBookingWeek(MethodView):
             
         worker_id = request.args.get(WORKER_ID_GET, None)
         work_group_id = request.args.get('work_group_id', None)
-                        
-        return getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
-
+               
+        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
+                  
+        return {"bookings": bookings, "total": len(bookings)} 
+    
 @blp.route('/local/<string:local_id>/month')
 class SeePublicBookingMonth(MethodView):
     
@@ -132,7 +134,7 @@ class SeePublicBookingMonth(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, PublicBookingSchema(many=True))
+    @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
         Retrieves public bookings from a month
@@ -147,9 +149,10 @@ class SeePublicBookingMonth(MethodView):
             
         worker_id = request.args.get(WORKER_ID_GET, None)
         work_group_id = request.args.get('work_group_id', None)
+               
+        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
                 
-        return getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
-
+        return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all')
 class SeePublicBookingWeek(MethodView):
@@ -158,7 +161,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, BookingSchema(many=True))
+    @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -186,8 +189,8 @@ class SeePublicBookingWeek(MethodView):
         
         bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                 
-        return bookings
-    
+        return {"bookings": bookings, "total": len(bookings)}  
+       
 @blp.route('/all/week')
 class SeePublicBookingWeek(MethodView):
     
@@ -195,7 +198,7 @@ class SeePublicBookingWeek(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, BookingSchema(many=True))
+    @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -220,8 +223,10 @@ class SeePublicBookingWeek(MethodView):
             'email': request.args.get('email', None),
             'tlf': request.args.get('tlf', None)
         }
+               
+        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                         
-        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+        return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all/month')
 class SeePublicBookingMonth(MethodView):
@@ -230,7 +235,7 @@ class SeePublicBookingMonth(MethodView):
     @blp.response(404, description='The local was not found')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
-    @blp.response(200, BookingSchema(many=True))
+    @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -255,9 +260,10 @@ class SeePublicBookingMonth(MethodView):
             'email': request.args.get('email', None),
             'tlf': request.args.get('tlf', None)
         }
+               
+        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                         
-        return getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
-     
+        return {"bookings": bookings, "total": len(bookings)}  
 
 @blp.route('/local/<string:local_id>')
 class Booking(MethodView):

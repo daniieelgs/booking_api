@@ -8,14 +8,14 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from db import addAndFlush, commit, deleteAndCommit, addAndCommit, rollback
 
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
+from helpers.BookingController import cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
 from models.service import ServiceModel
 
 from models import LocalModel
 from models.work_group import WorkGroupModel
-from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, UpdateParams
+from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, ServiceWorkGroupListSchema, UpdateParams
 
 from datetime import datetime
 
@@ -36,12 +36,13 @@ def getAllServices(local_id):
 class AllServices(MethodView):
 
     @blp.response(404, description='The local does not exist')
-    @blp.response(200, ServiceWorkGroup(many=True))
+    @blp.response(200, ServiceWorkGroupListSchema)
     def get(self, local_id):
         """
         Returns all services of a local
         """
-        return getAllServices(local_id)
+        services = getAllServices(local_id)
+        return {'services': services, "total": len(services)}
     
 @blp.route('<int:service_id>')
 class ServiceById(MethodView):

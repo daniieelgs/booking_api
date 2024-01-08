@@ -1,5 +1,6 @@
 
 from flask import request
+from helpers.LocalController import getLocals
 
 from helpers.security import decodeJWT, generateTokens
 from flask_smorest import Blueprint, abort
@@ -8,7 +9,7 @@ from flask.views import MethodView
 from globals import ADMIN_IDENTITY, ADMIN_ROLE
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
-from schema import LocalSchema, LocalTokensSchema
+from schema import LocalAdminParams, LocalListSchema, LocalTokensSchema
 
 blp = Blueprint('admin', __name__)
 
@@ -48,14 +49,16 @@ class LocalTokens(MethodView):
         
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
     
+#TODO: add filters & total
 @blp.route('local/all')
 class LocalAll(MethodView):
 
+    @blp.arguments(LocalAdminParams, location='query')
     @blp.response(404, description='The token does not exist.')
     @blp.response(403, description='You are not allowed to use this endpoint.')
     @blp.response(401, description='Missing Authorization Header.')
-    @blp.response(200, LocalSchema(many=True))
-    def get(self):
+    @blp.response(200, LocalListSchema)
+    def get(self, params):
         """
         Returns all locals.
         """
@@ -77,6 +80,8 @@ class LocalAll(MethodView):
         
         if token.user_session.user != ADMIN_ROLE:
             abort(403, message = 'You are not allowed to use this endpoint.')
+        
+        locals = getLocals(params)
                 
-        return LocalModel.query.all()
+        return {'locals': locals, 'total': len(locals)}
         

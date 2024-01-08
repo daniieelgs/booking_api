@@ -83,6 +83,8 @@ class Local(MethodView):
         
         local_data['id'] = generateUUID()
         
+        local_data['location'] = local_data['location'].upper()
+        
         local = LocalModel(**local_data)
         
         local.password = pbkdf2_sha256.hash(local.password)

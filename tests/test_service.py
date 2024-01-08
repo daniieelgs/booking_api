@@ -99,7 +99,7 @@ class TestService(TestCase):
         #Work Groups Services
         response = self.client.get(getUrl('work_group', 'local', self.local_id, 'services'))
         self.assertEqual(response.status_code, 200)
-        data = response.json
+        data = response.json['work_groups']
         
         for wg in data:
             if wg['id'] == self.wg1['id']: self.assertEqual(len(wg['services']), 2)
@@ -147,7 +147,7 @@ class TestService(TestCase):
         self.assertEqual(response.status_code, 204)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id))
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json['services']), 1)
     
     def delete_all_services(self):
         response = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
@@ -157,7 +157,7 @@ class TestService(TestCase):
         self.assertEqual(response.status_code, 204)
 
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id))
-        self.assertEqual(len(response.json), 0)
+        self.assertEqual(len(response.json['services']), 0)
 
     def test_integration_work_group(self):
 

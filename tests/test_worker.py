@@ -108,7 +108,7 @@ class TestWorker(TestCase):
         #Workers Work Groups
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id, 'work_group'))
         self.assertEqual(response.status_code, 200)
-        data = response.json
+        data = response.json['workers']
         
         for worker in data:
             if worker['id'] == self.worker_post1['id']: self.assertEqual(len(worker['work_groups']), 1)
@@ -117,7 +117,7 @@ class TestWorker(TestCase):
         #Work Groups Workers
         response = self.client.get(getUrl('work_group', 'local', self.local_id, 'workers'))
         self.assertEqual(response.status_code, 200)
-        data = response.json
+        data = response.json['work_groups']
         
         for wg in data:
             if wg['id'] == self.wg1['id']: self.assertEqual(len(wg['workers']), 2)
@@ -158,7 +158,7 @@ class TestWorker(TestCase):
         self.assertEqual(response.status_code, 204)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id))
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json['workers']), 1)
 
     def test_integration_work_group(self):
 

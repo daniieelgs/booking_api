@@ -123,7 +123,7 @@ class TestWorkGroup(TestCase):
         self.assertEqual(response.status_code, 204)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json['work_groups']), 1)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 2)

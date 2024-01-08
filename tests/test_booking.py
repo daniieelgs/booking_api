@@ -758,17 +758,17 @@ class TestBooking(TestCase):
         #Listar reservas del mismo dia
         r = self.get_bookings(date = self.bookings[0]['datetime_init'].split(' ')[0])
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json), 6)
+        self.assertEqual(len(r.json['bookings']), 6)
                 
         #Lista reservas en horario especifico
         r = self.get_bookings(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[0]['datetime_end'].replace('T', ' '))
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json), self.bookings[0]['number'])
+        self.assertEqual(len(r.json['bookings']), self.bookings[0]['number'])
         
         #Listar reservas varios dias
         r = self.get_bookings(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '))
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json), 8)
+        self.assertEqual(len(r.json['bookings']), 8)
         
     def checkListFilterBooking(self):
         
@@ -776,36 +776,36 @@ class TestBooking(TestCase):
         for k, v in self.worker_bookings.items():
             r = self.get_bookings(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), worker_id = k)
             self.assertEqual(r.status_code, 200)
-            self.assertEqual(len(r.json), v)
+            self.assertEqual(len(r.json['bookings']), v)
         
     def checkListFilterDataClientBooking(self):
         
         for k, v in self.name_clients.items():
             r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), name = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
             self.assertEqual(r.status_code, 200)
-            self.assertEqual(len(r.json), v)
+            self.assertEqual(len(r.json['bookings']), v)
         
         for k, v in self.email_clients.items():
             r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), email = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
             self.assertEqual(r.status_code, 200)
-            self.assertEqual(len(r.json), v)
+            self.assertEqual(len(r.json['bookings']), v)
         
         for k, v in self.tlf_clients.items():
             r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), tlf = k, status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
             self.assertEqual(r.status_code, 200)
-            self.assertEqual(len(r.json), v)
+            self.assertEqual(len(r.json['bookings']), v)
         
     def checkListFilterStatusBooking(self):
         r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
         self.assertEqual(r.status_code, 200)
         
-        for booking in r.json:
+        for booking in r.json['bookings']:
             self.assertIn(booking['status']['status'], [PENDING_STATUS, CONFIRMED_STATUS])
             
         r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = CANCELLED_STATUS)
         self.assertEqual(r.status_code, 200)
         
-        for booking in r.json:
+        for booking in r.json['bookings']:
             self.assertEqual(booking['status']['status'], CANCELLED_STATUS)
         
     def checkDoneStatusBooking(self, _booking):
@@ -822,7 +822,7 @@ class TestBooking(TestCase):
         r = self.get_bookings_admin(date = "2020-01-01")
         self.assertEqual(r.status_code, 200)
         
-        for booking in r.json:
+        for booking in r.json['bookings']:
             if booking['id'] == id: self.assertEqual(booking['status']['status'], DONE_STATUS)
         
     def checkUpdateBookingAdmin(self, _booking):        
@@ -830,7 +830,7 @@ class TestBooking(TestCase):
         r = self.get_bookings_admin(datetime_init = self.bookings[0]['datetime_init'], datetime_end = self.bookings[-1]['datetime_end'].replace('T', ' '), status = f"{PENDING_STATUS},{CONFIRMED_STATUS}")
         self.assertEqual(r.status_code, 200)
         
-        for booking in r.json:
+        for booking in r.json['bookings']:
             id = booking['id']
             booking['new_status'] = CANCELLED_STATUS
             booking['worker_id'] = booking['worker']['id']
