@@ -187,6 +187,9 @@ class TestBooking(TestCase):
     def post_booking(self, booking):
         return self.client.post(getUrl(ENDPOINT, 'local', self.local['id']), data=json.dumps(booking), content_type='application/json')
     
+    def post_booking_local(self, booking, **params):
+        return self.client.post(setParams(getUrl(ENDPOINT), **params), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+    
     def cancel_booking(self, session, data = None):
         return self.client.delete(setParams(getUrl(ENDPOINT), session=session), content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(data), content_type='application/json')
     
@@ -982,6 +985,18 @@ class TestBooking(TestCase):
         r = self.get_booking_admin(id)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
+        
+        #Crear reserva "no disponible" con admin
+        booking['datetime_init'] = "2020-01-01 00:00:00"
+        r = self.post_booking(booking)
+        self.assertEqual(r.status_code, 409)
+        
+        r = self.post_booking_local(booking)
+        self.assertEqual(r.status_code, 409)
+                
+        booking['worker_id'] = self.workers[0]['id']
+        r = self.post_booking_local(booking, force=True)
+        self.assertEqual(r.status_code, 201)
         
     def test_integration_booking(self):
         

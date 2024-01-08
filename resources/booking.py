@@ -34,7 +34,7 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema
+from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
 
 blp = Blueprint('booking', __name__, description='Booking CRUD')
 
@@ -547,8 +547,102 @@ class BookingSession(MethodView):
         except SQLAlchemyError as e:
             traceback.print_exc()
             abort(500, message = str(e) if DEBUG else 'Could not delete the booking.')
+                
+    @blp.arguments(UpdateParams, location='query')
+    @blp.arguments(BookingSchema)
+    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
+    @blp.response(400, description='Invalid date format. No session token provided.')
+    @blp.response(401, description='You are not allowed to create this booking.')
+    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(201, NewBookingSchema)
+    @jwt_required(refresh=True)
+    def post(self, params, new_booking):
+        """
+        Creates a new booking by local admin.
+        """
+        
+        force = 'force' in params and params['force']
+        
+        if force:
+            services_ids = new_booking.pop('services_ids')
+            services = [ServiceModel.query.get_or_404(id) for id in services_ids]
+
+            for service in services:
+                if service.work_group.local_id != get_jwt_identity():
+                    abort(401, message = f'You are not allowed to create a booking with the service [{service.id}].')
+
+            if 'worker_id' not in new_booking:
+                abort(400, message = 'The worker_id is required.')
+                
+            worker = WorkerModel.query.get_or_404(new_booking.pop('worker_id'))
+
+            if worker.work_groups.first().local_id != get_jwt_identity():
+                abort(401, message = f'You are not allowed to create a booking with the worker [{worker.id}].')
+
+            status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
             
-        return {}
+            booking = BookingModel(**new_booking)
+            
+            booking.services = services
+            booking.worker = worker
+            booking.status = status
+            booking = calculatEndTimeBooking(booking)
+                        
+            try:
+                addAndFlush(booking)
+                timeout = 0
+                
+                exp = timedelta(minutes=0)
+                
+                token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+                
+                commit()
+                
+                return {
+                    "booking": booking,
+                    "timeout": timeout,
+                    "session_token": token
+                }
+            except SQLAlchemyError as e:
+                traceback.print_exc()
+                rollback()
+                abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+        
+        try:
+            
+            local_id = get_jwt_identity()
+            
+            booking = createOrUpdateBooking(new_booking, local_id, commit=False)
+            
+            datetime_end = booking.datetime_end
+            
+            timeout = start_waiter_booking_status(booking.id)
+                
+            diff = datetime_end - datetime.now()
+            
+            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+            
+            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+            
+            commit()
+            
+            return {
+                "booking": booking,
+                "timeout": timeout,
+                "session_token": token
+            }
+        except (StatusNotFoundException, WeekdayNotFoundException) as e:
+            abort(500, message = str(e))
+        except ModelNotFoundException as e:
+            abort(404, message = str(e))
+        except ValueError as e:
+            abort(400, message = str(e))
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+            abort(409, message = str(e))
+        except Exception as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
         
 @blp.route('confirm')
 class BookingConfirm(MethodView):
