@@ -5,6 +5,7 @@ from flask_smorest import Blueprint, abort
 from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
+from helpers.DatetimeHelper import now
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
@@ -13,6 +14,7 @@ from helpers.error.BookingError.WorkerUnavailable import WorkerUnavailableExcept
 from helpers.error.BookingError.WrongServiceWorkGroupException import WrongServiceWorkGroupException
 from helpers.error.BookingError.WrongWorkerWorkGroupException import WrongWorkerWorkGroupException
 from helpers.error.DataError.UnspecifedDateException import UnspecifedDateException
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from helpers.error.ModelNotFoundException import ModelNotFoundException
 from helpers.error.SecurityError.InvalidTokenException import InvalidTokenException
 from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvidedException
@@ -77,7 +79,7 @@ def patchBooking(booking, booking_data, admin = False):
 class SeePublicBooking(MethodView):
     
     @blp.arguments(BookingParams, location='query')
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='The local was not found.')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, PublicBookingListSchema)
@@ -88,15 +90,17 @@ class SeePublicBooking(MethodView):
         
         try:
             datetime_init, datetime_end = getDataRequest(request)
+            
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
+            
+            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)        
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-        
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
-        
-        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
                 
         return {"bookings": bookings, "total": len(bookings)}
     
@@ -104,7 +108,7 @@ class SeePublicBooking(MethodView):
 class SeePublicBookingWeek(MethodView):
     
     @blp.arguments(BookingWeekParams, location='query')
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='The local was not found.')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, PublicBookingListSchema)
@@ -115,15 +119,17 @@ class SeePublicBookingWeek(MethodView):
         
         try:
             datetime_init, datetime_end = getWeekDataRequest(request)
+                
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get('work_group_id', None)
+                
+            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-            
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get('work_group_id', None)
-               
-        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
                   
         return {"bookings": bookings, "total": len(bookings)} 
     
@@ -131,7 +137,7 @@ class SeePublicBookingWeek(MethodView):
 class SeePublicBookingMonth(MethodView):
     
     @blp.arguments(BookingWeekParams, location='query')
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='The local was not found.')
     @blp.response(422, description='Unspecified date.')
     @blp.response(204, description='The local does not have bookings.')
     @blp.response(200, PublicBookingListSchema)
@@ -142,15 +148,20 @@ class SeePublicBookingMonth(MethodView):
         
         try:
             datetime_init, datetime_end = getMonthDataRequest(request)
+            
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get('work_group_id', None)
+                
+            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
+            
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
             
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get('work_group_id', None)
-               
-        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id, work_group_id=work_group_id)
+        
                 
         return {"bookings": bookings, "total": len(bookings)}  
     
@@ -170,24 +181,27 @@ class SeePublicBookingWeek(MethodView):
         
         try:
             datetime_init, datetime_end = getDataRequest(request)
+            
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
+            status = request.args.get(STATUS_LIST_GET, None)
+            if status:
+                status = status.split(',')
+            
+            client_filter = {
+                'name': request.args.get('name', None),
+                'email': request.args.get('email', None),
+                'tlf': request.args.get('tlf', None)
+            }
+            
+            bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
-            abort(422, message=str(e))    
-        
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
-        status = request.args.get(STATUS_LIST_GET, None)
-        if status:
-            status = status.split(',')
-        
-        client_filter = {
-            'name': request.args.get('name', None),
-            'email': request.args.get('email', None),
-            'tlf': request.args.get('tlf', None)
-        }
-        
-        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            abort(422, message=str(e))     
                 
         return {"bookings": bookings, "total": len(bookings)}  
        
@@ -207,24 +221,27 @@ class SeePublicBookingWeek(MethodView):
         
         try:
             datetime_init, datetime_end = getWeekDataRequest(request)
+            
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
+            status = request.args.get(STATUS_LIST_GET, None)
+            if status:
+                status = status.split(',')
+                
+            client_filter = {
+                'name': request.args.get('name', None),
+                'email': request.args.get('email', None),
+                'tlf': request.args.get('tlf', None)
+            }
+                
+            bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-            
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
-        status = request.args.get(STATUS_LIST_GET, None)
-        if status:
-            status = status.split(',')
-            
-        client_filter = {
-            'name': request.args.get('name', None),
-            'email': request.args.get('email', None),
-            'tlf': request.args.get('tlf', None)
-        }
-               
-        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                         
         return {"bookings": bookings, "total": len(bookings)}  
     
@@ -244,24 +261,27 @@ class SeePublicBookingMonth(MethodView):
         
         try:
             datetime_init, datetime_end = getMonthDataRequest(request)
+            
+            worker_id = request.args.get(WORKER_ID_GET, None)
+            work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
+            status = request.args.get(STATUS_LIST_GET, None)
+            if status:
+                status = status.split(',')
+                    
+            client_filter = {
+                'name': request.args.get('name', None),
+                'email': request.args.get('email', None),
+                'tlf': request.args.get('tlf', None)
+            }
+                
+            bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            
         except ValueError as e:
             abort(400, message=str(e))
+        except LocalNotFoundException as e:
+            abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-            
-        worker_id = request.args.get(WORKER_ID_GET, None)
-        work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
-        status = request.args.get(STATUS_LIST_GET, None)
-        if status:
-            status = status.split(',')
-                 
-        client_filter = {
-            'name': request.args.get('name', None),
-            'email': request.args.get('email', None),
-            'tlf': request.args.get('tlf', None)
-        }
-               
-        bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
                         
         return {"bookings": bookings, "total": len(bookings)}  
 
@@ -285,7 +305,9 @@ class Booking(MethodView):
             
             timeout = start_waiter_booking_status(booking.id)
                 
-            diff = datetime_end - datetime.now()
+            local = LocalModel.query.get_or_404(local_id)
+                
+            diff = datetime_end - now(local.location)
             
             exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
             
@@ -618,7 +640,9 @@ class BookingSession(MethodView):
             
             timeout = start_waiter_booking_status(booking.id)
                 
-            diff = datetime_end - datetime.now()
+            local = LocalModel.query.get_or_404(local_id)
+                
+            diff = datetime_end - now(local.location)
             
             exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
             
@@ -633,7 +657,7 @@ class BookingSession(MethodView):
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
-        except ModelNotFoundException as e:
+        except (ModelNotFoundException, LocalNotFoundException) as e:
             abort(404, message = str(e))
         except ValueError as e:
             abort(400, message = str(e))

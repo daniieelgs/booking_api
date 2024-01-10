@@ -30,6 +30,7 @@ from resources.admin import blp as AdminBlueprint
 
 #TODO desarrollas sistema de LOGs
 
+#TODO cambiar datetime.now() por hora actual del location del local
 def create_app(config: Config = DefaultConfig()):
 
     TEMPLATE_FOLDER = config.template_folder

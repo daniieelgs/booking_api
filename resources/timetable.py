@@ -3,6 +3,7 @@ from flask_smorest import Blueprint, abort
 from helpers.BookingController import checkTimetableBookings
 from helpers.TimetableController import getTimetable, validateTimetable
 from helpers.error.BookingError.BookingsConflictException import BookingsConflictException
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from helpers.error.TimetableError.TimetableOverlapsException import TimetableOverlapsException
 from helpers.error.TimetableError.TimetableTimesException import TimetableTimesException
 from models.local import LocalModel
@@ -132,6 +133,9 @@ class Timetable(MethodView):
         except (TimetableOverlapsException, TimetableTimesException) as e:
             rollback()
             abort(409, message = str(e))
+        except LocalNotFoundException as e:
+            rollback()
+            abort(404, message = str(e))
         except BookingsConflictException as e:
             rollback()
             abort(409, message = str(e))

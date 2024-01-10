@@ -1,6 +1,8 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import cancelBooking, getBookings
+from helpers.DatetimeHelper import DATETIME_NOW
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from models import WorkGroupModel
 from models.local import LocalModel
 from schema import DeleteParams, PublicWorkGroupWorkerListSchema, PublicWorkGroupWorkerSchema, WorkGroupListSchema, WorkGroupSchema, WorkGroupServiceListSchema, WorkGroupServiceSchema, WorkGroupWorkerListSchema, WorkGroupWorkerSchema
@@ -201,19 +203,22 @@ class WorkGroupByID(MethodView):
         
         force = params['force'] if 'force' in params else False
         
-        bookings = getBookings(work_group.local_id, datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], work_group_id=work_group.id)
-        
-        if not force and bookings:
-            abort(409, message = 'The work group has bookings.')
-        elif force and bookings:
-            for booking in bookings:
-                cancelBooking(booking, params['comment'] if 'comment' in params else None)
-        
         try:
+            
+            bookings = getBookings(work_group.local_id, datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], work_group_id=work_group.id)
+        
+            if not force and bookings:
+                abort(409, message = 'The work group has bookings.')
+            elif force and bookings:
+                for booking in bookings:
+                    cancelBooking(booking, params['comment'] if 'comment' in params else None)
+            
             deleteAndCommit(work_group)
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the work group.')
+        except LocalNotFoundException as e:
+            abort(404, message = str(e))
         return {}
 

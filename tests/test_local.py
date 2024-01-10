@@ -123,7 +123,7 @@ class TestLocal(TestCase):
             "postal_code": "98765",
             "village": "Test Village",
             "province": "Test Province",
-            "location": "ES"
+            "location": "Europe/Madrid"
         }
 
 

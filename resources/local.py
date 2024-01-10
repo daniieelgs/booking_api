@@ -3,6 +3,8 @@ import traceback
 from flask import request
 
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from pytz import UnknownTimeZoneError
+from helpers.DatetimeHelper import now
 from helpers.path import createPathFromLocal, removePath
 from helpers.security import decodeJWT, generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
@@ -45,7 +47,8 @@ class Local(MethodView):
     
     
     @blp.arguments(LocalSchema)
-    @blp.response(409, description='The email is already in use')
+    @blp.response(400, description='The timezone is not valid.')
+    @blp.response(409, description='The email is already in use.')
     @blp.response(404, description='The token does not exist.')
     @blp.response(403, description='You are not allowed to create a local.')
     @blp.response(401, description='Missing Authorization Header.')
@@ -82,8 +85,12 @@ class Local(MethodView):
         if show_password: local_data['password'] = generatePassword()
         
         local_data['id'] = generateUUID()
-        
-        local_data['location'] = local_data['location'].upper()
+                
+        try:
+            now(local_data['location'])
+        except UnknownTimeZoneError as e:
+            traceback.print_exc()
+            abort(400, message = 'The timezone is not valid.')
         
         local = LocalModel(**local_data)
         

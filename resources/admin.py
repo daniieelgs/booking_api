@@ -49,7 +49,6 @@ class LocalTokens(MethodView):
         
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
     
-#TODO: add filters & total
 @blp.route('local/all')
 class LocalAll(MethodView):
 

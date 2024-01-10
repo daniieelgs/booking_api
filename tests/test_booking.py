@@ -33,7 +33,7 @@ class TestBooking(TestCase):
             "postal_code": "98765",
             "village": "Test Village",
             "province": "Test Province",
-            "location": "ES"
+            "location": "Europe/Madrid"
         }
         
         r = self.client.post(getUrl('local'), data=json.dumps(self.local),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')

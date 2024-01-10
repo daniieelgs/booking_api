@@ -29,7 +29,7 @@ class TestWorkGroup(TestCase):
             "name": "Local-Test",
             "tlf": "123456789",
             "email": "email@test.com",
-            "location": "ES"
+            "location": "Europe/Madrid"
         }
         responseLocal1 = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         localData['email'] = "email2@test.com"

@@ -2,6 +2,8 @@ from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import cancelBooking, getBookings, searchWorkerBookings
+from helpers.DatetimeHelper import DATETIME_NOW
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from models import WorkGroupModel
 from models.local import LocalModel
 from models.worker import WorkerModel
@@ -190,24 +192,27 @@ class PublicWorkerByID(MethodView):
             work_groups.append(work_group)
             
         force = params['force'] if 'force' in params else False
-                    
-        if not force and work_groups != worker.work_groups:
-            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
-            
-            if bookings:
-                abort(409, message = 'The worker has bookings with old work group.')
-            
-        worker.work_groups = work_groups
-            
-        for key, value in worker_data.items():
-            setattr(worker, key, value)
         
         try:
+                    
+            if not force and work_groups != worker.work_groups:
+                bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
+                
+                if bookings:
+                    abort(409, message = 'The worker has bookings with old work group.')
+                
+            worker.work_groups = work_groups
+                
+            for key, value in worker_data.items():
+                setattr(worker, key, value)
+        
             addAndCommit(worker)
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not update de work group.')
+        except LocalNotFoundException as e:
+            abort(404, message = str(e))
         return worker
 
     @blp.arguments(DeleteParams, location='query')
@@ -226,24 +231,27 @@ class PublicWorkerByID(MethodView):
         
         force = params['force'] if 'force' in params else False
         
-        bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
-        
-        if not force and bookings:
-            abort(409, message = 'The work group has bookings.')
-        elif force and bookings:
-            for booking in bookings:
-                workers = [worker for worker in list(booking.services[0].work_group.workers.all()) if worker.id != worker_id]
-                worker_id = searchWorkerBookings(get_jwt_identity(), booking.datetime_init, booking.datetime_end, workers, booking.id)
-                if worker_id:
-                    booking.worker_id = worker_id
-                else:
-                    cancelBooking(booking, params['comment'] if 'comment' in params else None)
-        
         try:
+        
+            bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
+            
+            if not force and bookings:
+                abort(409, message = 'The work group has bookings.')
+            elif force and bookings:
+                for booking in bookings:
+                    workers = [worker for worker in list(booking.services[0].work_group.workers.all()) if worker.id != worker_id]
+                    worker_id = searchWorkerBookings(get_jwt_identity(), booking.datetime_init, booking.datetime_end, workers, booking.id)
+                    if worker_id:
+                        booking.worker_id = worker_id
+                    else:
+                        cancelBooking(booking, params['comment'] if 'comment' in params else None)
+        
             if force: addAndCommit(*bookings)
             deleteAndCommit(worker)
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the worker.')
+        except LocalNotFoundException as e:
+            abort(404, message = str(e))
         return {}
