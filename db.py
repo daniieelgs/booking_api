@@ -42,8 +42,9 @@ def deleteAndCommit(*models):
     if len(models) == 0: return False
     try:
         for model in models:
-            db.session.refresh(model)
-            if model: db.session.delete(model)
+            if model:
+                db.session.refresh(model)
+                db.session.delete(model)
         db.session.commit()
     except Exception as e:
         rollback()
