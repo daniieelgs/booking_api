@@ -52,6 +52,8 @@ DEFAULT_IMAGES_FOLDER = 'images'
 
 DEFAULT_TIMEOUT_CONFIRM_BOOKING = 60
 
+DEFAULT_LOCATION_TIME = 'Europe/Madrid'
+
 DEBUG = os.getenv('FLASK_DEBUG', 'False') == '1' or os.getenv('FLASK_DEBUG', 'False') == 1 or os.getenv('FLASK_DEBUG', 'False') == 'True'
 
 DATABASE_NAME = os.getenv('DATABASE_NAME')

@@ -21,6 +21,12 @@ class LocalSchema(PublicLocalSchema):
     datetime_created = fields.DateTime(required=True, dump_only=True)
     datetime_updated = fields.DateTime(required=True, dump_only=True)
     
+class ListSchema(Schema):
+    total = fields.Int(required=True, dump_only=True)
+    
+class LocalListSchema(ListSchema):
+    locals = fields.Nested(LocalSchema, many=True, dump_only=True)
+    
 class LocalTokensSchema(Schema):
     access_token = fields.Str(required=False, dump_only=True)
     refresh_token = fields.Str(required=False, dump_only=True)
@@ -47,14 +53,18 @@ class WorkGroupSchema(Schema):
     local_id = fields.Str(required=True, dump_only=True)
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
-        
+   
+class WorkGroupListSchema(ListSchema):
+    work_groups = fields.Nested(WorkGroupSchema, many=True, dump_only=True)
     
 class PublicWorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     last_name = fields.Str()
     image = fields.Str()
-    
+
+class PublicWorkerListSchema(ListSchema):
+    workers = fields.Nested(PublicWorkerSchema, many=True, dump_only=True)   
 class WorkerSchema(PublicWorkerSchema):
     email = fields.Str(validate=validate.Email())
     tlf = fields.Str(validate=validate.Length(min=9, max=13))
@@ -62,21 +72,39 @@ class WorkerSchema(PublicWorkerSchema):
     datetime_updated = fields.DateTime(dump_only=True)
     work_groups = fields.List(fields.Int(), required=True, load_only=True)
 
+class WorkerListSchema(ListSchema):
+    workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
+
 class PublicWorkGroupWorkerSchema(WorkGroupSchema):
     workers = fields.Nested(PublicWorkerSchema, many=True, dump_only=True)
+
+class PublicWorkGroupWorkerListSchema(ListSchema):
+    work_groups = fields.Nested(PublicWorkGroupWorkerSchema, many=True, dump_only=True)
 
 class WorkGroupWorkerSchema(WorkGroupSchema):
     workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
     
+class WorkGroupWorkerListSchema(ListSchema):
+    work_groups = fields.Nested(WorkGroupWorkerSchema, many=True, dump_only=True)
+
 class WorkGroupServiceSchema(WorkGroupSchema):
     services = fields.Nested(ServiceSchema, many=True, dump_only=True)
+    
+class WorkGroupServiceListSchema(ListSchema):
+    work_groups = fields.Nested(WorkGroupServiceSchema, many=True, dump_only=True)
+    
 class WorkerWorkGroupSchema(WorkerSchema):
     work_groups = fields.Nested(WorkGroupServiceSchema(), many=True, dump_only=True)
 class PublicWorkerWorkGroupSchema(PublicWorkerSchema):
     work_groups = fields.Nested(WorkGroupServiceSchema(), many=True, dump_only=True)
-
+class PublicWorkerWorkListGroupSchema(ListSchema):
+    workers = fields.Nested(PublicWorkerWorkGroupSchema(), many=True, dump_only=True)
+    
 class ServiceWorkGroup(ServiceSchema):
     work_group = fields.Nested(PublicWorkGroupWorkerSchema(), dump_only=True)
+ 
+class ServiceWorkGroupListSchema(ListSchema):
+    services = fields.Nested(ServiceWorkGroup, many=True, dump_only=True)
     
 class WeekDaySchema(Schema):
     weekday = fields.Str(required=True, dump_only=True)
@@ -101,6 +129,9 @@ class PublicBookingSchema(Schema):
     datetime_end = fields.DateTime(required=True, dump_only=True)
     worker = fields.Nested(PublicWorkerSchema(), dump_only=True)    
     
+class PublicBookingListSchema(ListSchema):
+    bookings = fields.Nested(PublicBookingSchema, many=True, dump_only=True)
+    
 class PublicBookingPatchSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     datetime_init = fields.DateTime(required=False)
@@ -120,6 +151,9 @@ class BookingSchema(PublicBookingSchema):
     
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
+
+class BookingListSchema(ListSchema):
+    bookings = fields.Nested(BookingSchema, many=True, dump_only=True)
 
 class BookingPatchSchema(PublicBookingPatchSchema):
     client_name = fields.Str(required=False, validate=validate.Length(min=3, max=45))
@@ -184,3 +218,16 @@ class DeleteParams(Schema):
     
 class UpdateParams(Schema):
     force = fields.Bool(required=False, description='Force update item even if it has bookings.')
+    
+class LocalAdminParams(Schema):
+    name = fields.Str(required=False, description='Specify the name to filter locals.')
+    email = fields.Str(required=False, description='Specify the email to filter locals.')
+    tlf = fields.Str(required=False, description='Specify the tlf to filter locals.')
+    address = fields.Str(required=False, description='Specify the address to filter locals.')
+    postal_code = fields.Str(required=False, description='Specify the postal code to filter locals.')
+    village = fields.Str(required=False, description='Specify the village to filter locals.')
+    province = fields.Str(required=False, description='Specify the province to filter locals.')
+    location = fields.Str(required=False, description='Specify the location to filter locals.')
+    date_created = fields.DateTime(required=False, description='Specify the date created to filter locals.')
+    datetime_init = fields.DateTime(required=False, description='Specify an initial datetime')
+    datetime_end = fields.DateTime(required=False, description='Specify an end datetime')

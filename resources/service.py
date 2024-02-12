@@ -8,14 +8,16 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from db import addAndFlush, commit, deleteAndCommit, addAndCommit, rollback
 
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
+from helpers.BookingController import cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings
+from helpers.DatetimeHelper import DATETIME_NOW
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from models.service import ServiceModel
 
 from models import LocalModel
 from models.work_group import WorkGroupModel
-from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, UpdateParams
+from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, ServiceWorkGroupListSchema, UpdateParams
 
 from datetime import datetime
 
@@ -36,12 +38,13 @@ def getAllServices(local_id):
 class AllServices(MethodView):
 
     @blp.response(404, description='The local does not exist')
-    @blp.response(200, ServiceWorkGroup(many=True))
+    @blp.response(200, ServiceWorkGroupListSchema)
     def get(self, local_id):
         """
         Returns all services of a local
         """
-        return getAllServices(local_id)
+        services = getAllServices(local_id)
+        return {'services': services, "total": len(services)}
     
 @blp.route('<int:service_id>')
 class ServiceById(MethodView):
@@ -56,7 +59,7 @@ class ServiceById(MethodView):
     
     @blp.arguments(UpdateParams, location='query')
     @blp.arguments(ServiceSchema)
-    @blp.response(404, description='The service does not exist')
+    @blp.response(404, description='The service does not exist.')
     @blp.response(403, description='You are not allowed to update this service')
     @blp.response(409, description='The service already exists. The service has bookings with workers on differents work group. The new duration is not compatible with the bookings.')
     @blp.response(200, ServiceWorkGroup)
@@ -79,7 +82,7 @@ class ServiceById(MethodView):
         force = params['force'] if 'force' in params else False
                     
         if not force and work_group_id != service.work_group_id:
-            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+            bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
             
             bookings = [booking for booking in bookings if work_group not in list(booking.worker.work_groups.all())]
             
@@ -96,7 +99,7 @@ class ServiceById(MethodView):
         try:
             addAndFlush(service)
             
-            bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+            bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
             
             if check_booking and not force:
                 for booking in bookings:
@@ -114,6 +117,8 @@ class ServiceById(MethodView):
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not update the service.')
+        except LocalNotFoundException as e:
+            abort(404, message = str(e))
             
         return service
     
@@ -134,21 +139,24 @@ class ServiceById(MethodView):
         
         force = params['force'] if 'force' in params else False
         
-        bookings = getBookings(get_jwt_identity(), datetime_init=datetime.now(),datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
-        
-        if not force and bookings:
-            abort(409, message = 'The service has bookings.')
-        elif force and bookings:
-            for booking in bookings:
-                cancelBooking(booking, params['comment'] if 'comment' in params else None)
-        
         try:
+            
+            bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], service_id=service.id)
+            
+            if not force and bookings:
+                abort(409, message = 'The service has bookings.')
+            elif force and bookings:
+                for booking in bookings:
+                    cancelBooking(booking, params['comment'] if 'comment' in params else None)
+            
             deleteAndCommit(service)
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not delete the service.')
+        except LocalNotFoundException as e:
+            abort(404, message = str(e))
     
 @blp.route('')
 class Service(MethodView):

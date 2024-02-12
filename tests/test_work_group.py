@@ -29,7 +29,7 @@ class TestWorkGroup(TestCase):
             "name": "Local-Test",
             "tlf": "123456789",
             "email": "email@test.com",
-            "location": "ES"
+            "location": "Europe/Madrid"
         }
         responseLocal1 = self.client.post(getUrl('local'), data=json.dumps(localData), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         localData['email'] = "email2@test.com"
@@ -123,7 +123,7 @@ class TestWorkGroup(TestCase):
         self.assertEqual(response.status_code, 204)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id1))
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json['work_groups']), 1)
         
         response = self.client.get(getUrl(ENDPOINT, 'local', self.local_id2))
         self.assertEqual(len(response.json), 2)

@@ -30,6 +30,7 @@ from resources.admin import blp as AdminBlueprint
 
 #TODO desarrollas sistema de LOGs
 
+#TODO cambiar datetime.now() por hora actual del location del local
 def create_app(config: Config = DefaultConfig()):
 
     TEMPLATE_FOLDER = config.template_folder
@@ -121,7 +122,11 @@ def create_app(config: Config = DefaultConfig()):
     
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
-        deleteAndCommit(SessionTokenModel.query.get(jwt_payload['token']))    
+        try:
+            deleteAndCommit(SessionTokenModel.query.get(jwt_payload['token']))  
+        except Exception as e:
+            traceback.print_exc()
+            abort(500, message = str(e) if DEBUG else 'Could not delete the session token.')
         return jsonify({"message": "The token has expired.", "error": "token_expired"}), 401
     
     @jwt.unauthorized_loader

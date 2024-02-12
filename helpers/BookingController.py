@@ -4,7 +4,8 @@ from operator import or_
 import random
 import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DEFAULT_LOCATION_TIME, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -55,6 +56,14 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
 
 def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None, client_filter = None):
 
+    local = LocalModel.query.get(local_id)
+    
+    if not local:
+        raise LocalNotFoundException(id = local_id)
+    
+    if datetime_init == DATETIME_NOW:
+        datetime_init = now(local.location)
+    
     bookings_query = getBookingsQuery(local_id, datetime_init=datetime_init, datetime_end=datetime_end)
 
     status_ids = [StatusModel.query.filter(StatusModel.status == s).first().id for s in status] if status else None
@@ -69,7 +78,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
         bookings_query = bookings_query.filter(BookingModel.services.any(ServiceModel.id == service_id))
         
     if client_filter:
-        if client_filter['name']: bookings_query = bookings_query.filter(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'))
+        if client_filter['name']: bookings_query = bookings_query.filter(or_(BookingModel.client_name.ilike(f'%{client_filter["name"]}%'), BookingModel.client_name.ilike(f'%{client_filter["name"].strip().title()}%')))
         if client_filter['email']: bookings_query = bookings_query.filter(BookingModel.client_email.ilike(f'%{client_filter["email"]}%'))
         if client_filter['tlf']: bookings_query = bookings_query.filter(BookingModel.client_tlf.ilike(f'%{client_filter["tlf"]}%'))
         
@@ -81,7 +90,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
     for booking in bookings:
-        if booking.datetime_end < datetime.now() and booking.status != done_status:
+        if naiveToAware(booking.datetime_end) < now(local.location) and booking.status != done_status:
             booking.status = done_status
             try:
                 addAndCommit(booking)
@@ -114,7 +123,12 @@ def getBookingBySession(token):
     if token.jti != decoded['jti'] or token.user_session.user != USER_ROLE:
         raise InvalidTokenException()
     
-    if exp_date < datetime.now():
+    local = LocalModel.query.get(token.local_id)
+    
+    if not local:
+        raise InvalidTokenException()
+    
+    if naiveToAware(exp_date) < now(local.location):
         try:
             deleteAndCommit(token)
         except SQLAlchemyError as e:
@@ -176,11 +190,11 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
     worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
     
     try:
-        datetime_init = new_booking['datetime_init']
+        datetime_init = naiveToAware(new_booking['datetime_init'])
     except ValueError:
         raise ValueError('Invalid date format.')
     
-    if datetime_init < datetime.now():
+    if datetime_init < now(local.location):
         raise PastDateException()
     
     total_duration = 0
@@ -278,7 +292,12 @@ def calculatEndTimeBooking(booking):
 
 def checkTimetableBookings(local_id):
     
-    bookings = getBookings(local_id, datetime_init = datetime.now(), datetime_end = None, status = [CONFIRMED_STATUS, PENDING_STATUS])
+    local = LocalModel.query.get(local_id)
+    
+    if not local:
+        raise LocalNotFoundException(id = local_id)
+    
+    bookings = getBookings(local_id, datetime_init = DATETIME_NOW, datetime_end = None, status = [CONFIRMED_STATUS, PENDING_STATUS])
     
     for booking in bookings:
         week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[booking.datetime_init.weekday()]).first()
