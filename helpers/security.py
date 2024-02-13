@@ -54,6 +54,7 @@ def decodeToken(token):
 
 def decodeJWT(token):
     return jwt.decode(token, key=SECRET_JWT, algorithms=[JWT_ALGORITHM])
+
  
 def generateUUID():
     return uuid.uuid4().hex
