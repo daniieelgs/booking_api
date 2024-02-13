@@ -1,5 +1,6 @@
 
 from flask import request
+import jwt
 from helpers.LocalController import getLocals
 
 from helpers.security import decodeJWT, generateTokens
@@ -18,7 +19,7 @@ class LocalTokens(MethodView):
 
     @blp.response(404, description='The local does not exist. The token does not exist.')
     @blp.response(403, description='You are not allowed to use this endpoint.')
-    @blp.response(401, description='Missing Authorization Header.')
+    @blp.response(401, description='Missing Authorization Header. The token has expired.')
     @blp.response(200, LocalTokensSchema)
     def post(self, local_id):
         """
@@ -31,9 +32,14 @@ class LocalTokens(MethodView):
             return abort(401, message='Missing Authorization Header')
         
         token = token_header.split(' ', 1)[1]
+                
+        try:
+            token_decoded = decodeJWT(token)
+        except jwt.exceptions.ExpiredSignatureError:
+            abort(401, message = 'The token has expired.')
         
-        identity = decodeJWT(token)['sub']
-        id = decodeJWT(token)['token']
+        identity = token_decoded['sub']
+        id = token_decoded['token']
         
         if identity != ADMIN_IDENTITY:
             abort(403, message = 'You are not allowed to use this endpoint.')
@@ -69,8 +75,13 @@ class LocalAll(MethodView):
         
         token = token_header.split(' ', 1)[1]
         
-        identity = decodeJWT(token)['sub']
-        id = decodeJWT(token)['token']
+        try:
+            token_decoded = decodeJWT(token)
+        except jwt.exceptions.ExpiredSignatureError:
+            abort(401, message = 'The token has expired.')
+        
+        identity = token_decoded['sub']
+        id = token_decoded['token']
         
         if identity != ADMIN_IDENTITY:
             abort(403, message = 'You are not allowed use this endpoint.')
