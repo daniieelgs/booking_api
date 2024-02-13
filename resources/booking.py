@@ -753,7 +753,7 @@ class BookingConfirmId(MethodView):
     @blp.response(401, description='You are not allowed to confirm the booking.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def get(self, data, booking_id):
+    def delete(self, data, booking_id):
         """
         Cancel a booking. Change the status to confirmed.
         """
