@@ -54,7 +54,7 @@ class Access:
 
         return mysql.connector.connect(**config) if self.db_sqlite is None else sqlite3.connect(self.db_sqlite)
 
-    def makeToken(self, db, exp, copy_on_clipboard = True):
+    def makeToken(self, db, exp, name = None, copy_on_clipboard = True):
         
         payload = {
             'token': uuid.uuid4().hex,
@@ -69,7 +69,7 @@ class Access:
         user_session_id = cursor.fetchone()[0]
 
         cursor = db.cursor()
-        cursor.execute(f"INSERT INTO session_token (id, jti, user_session_id) VALUES ('{payload['token']}', '{jwt.decode(token, key=self.secret_jwt, algorithms=[self.jwt_algorithm]).get('jti') }', '{user_session_id}')")
+        cursor.execute(f"INSERT INTO session_token (id, jti, user_session_id, name) VALUES ('{payload['token']}', '{jwt.decode(token, key=self.secret_jwt, algorithms=[self.jwt_algorithm]).get('jti') }', '{user_session_id}', '{name}')")
         db.commit()
 
         try:
@@ -79,9 +79,13 @@ class Access:
         
         return token
 
-    def deleteToken(self, db, token):
+    def deleteToken(self, db, token = None, id = None):
         
-        id = jwt.decode(token, key=self.secret_jwt, algorithms=[self.jwt_algorithm]).get('token')
+        if not token and not id:
+            raise ValueError('Token or ID is required.')
+        
+        if not id:
+            id = jwt.decode(token, key=self.secret_jwt, algorithms=[self.jwt_algorithm]).get('token')
         
         cursor = db.cursor()
         cursor.execute(f"DELETE FROM session_token WHERE id = '{id}'")
@@ -91,6 +95,21 @@ class Access:
         cursor = db.cursor()
         cursor.execute(f"DELETE FROM session_token WHERE user_session_id = (SELECT id FROM user_session WHERE user = '{self.admin_role}')")
         db.commit()
+    
+    def list(self, db, name = None):
+        cursor = db.cursor()
+        query = f"SELECT name, id FROM session_token WHERE user_session_id = (SELECT id FROM user_session WHERE user = '{self.admin_role}')"
+        
+        if name:
+            query += f" AND name LIKE '%{name}%'"
+        
+        cursor.execute(query)
+        tokens = cursor.fetchall()
+        print(f'Name{" "*30}ID')
+        for token in tokens:
+            print(f'{" -" if token[0] is None else token[0]}{" "*(30 - (2 if token[0] is None else len(token[0])))}{token[1]}')
+        db.commit()
+        return len(tokens)
     
 def str_to_dict(str_arg):
     items = str_arg.split(',')
@@ -103,10 +122,13 @@ def str_to_dict(str_arg):
 def showHelp():
     print('Usage: access.py [OPTIONS]\n')
     print('Options:')
-    print('  --generate INTEGER              Generate admin access with X days to expire.')
-    print('  --remove TOKEN                  Remove admin access with token.')
+    print('  --generate <INTEGER>            Generate admin access with X days to expire.')
+    print('  --name <TEXT>                   Name of the admin token. Default: current date and time. List of tokens will be shown with this name.')
+    print('  --list                          List all tokens data.')
+    print('  --remove-id <ID>                Remove admin access with token.')
+    print('  --remove <TOKEN                 Remove admin access with token.')
     print('  --remove-all                    Remove all admin access.')
-    print('? --env <file_name|Default:.env>  Load environment data file. Optional: specify .env file name.')
+    print('  --env <file_name?|Default:.env> Load environment data file. Optional: specify .env file name.')
     print('  --help                          Show this message and exit.')
 
 def main():
@@ -115,6 +137,9 @@ def main():
     parser = argparse.ArgumentParser(description='Generate and remove admin access.')
 
     parser.add_argument('--generate', type=int, help='Generate admin access with X days to expire.')
+    parser.add_argument('--name', type=str, default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), help='Name of the admin token.')
+    parser.add_argument('--list', nargs='?', const=True, default=False, help='List all tokens data.')
+    parser.add_argument('--remove-id', type=str, help='Remove admin access with token.')
     parser.add_argument('--remove', type=str, help='Remove admin access with token.')
     parser.add_argument('--remove-all', action='store_true', help='Remove all admin access.')
     parser.add_argument('--env', nargs='?', const=True, default=False, help='Load environment data file. Optional: specify .env file name.')
@@ -178,13 +203,19 @@ def main():
         db = access.connectToDB()
             
         if args.generate:
-            print(access.makeToken(db, args.generate))
+            print(f"{args.name}:", access.makeToken(db, args.generate, args.name))
+        elif args.remove_id:
+            access.deleteToken(db, id = args.remove_id)
+            print('Token removed.')
         elif args.remove:
-            access.deleteToken(db, args.remove)
+            access.deleteToken(db, token = args.remove)
             print('Token removed.')
         elif args.remove_all:
             access.deleteAllTokens(db)
             print('All tokens removed.')
+        elif args.list:
+            total = access.list(db, None if args.list is True else args.list)
+            print('\nTokens listed. Total:', total)
         else:
             showHelp()
             print('No argument given.')
