@@ -17,28 +17,28 @@ from models.timetable import TimetableModel
 from models.weekday import WeekdayModel
 from schema import TimetableSchema, WeekDaySchema
 
-blp = Blueprint('timetable', __name__, description='Timetable CRUD')
+blp = Blueprint('timetable', __name__, description='CRUD de horarios.')
 
 @blp.route('/local/<string:local_id>/week')
 class TimetableWeek(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, TimetableSchema(many=True))
     def get(self, local_id):
         """
-        Retrieves timetable from the week.
+        Devuelve el horario de la semana del local.
         """      
         return getTimetable(LocalModel.query.get_or_404(local_id).id)
 
 @blp.route('/local/<string:local_id>/week/<string:week>')
 class TimetableDay(MethodView):
     
-    @blp.response(404, description='The local was not found. The day was not found.')
-    @blp.response(204, description='The day does not have timetable.')
+    @blp.response(404, description='El local no existe o el día no existe.')
+    @blp.response(204, description='No hay horario para el día indicado.')
     @blp.response(200, TimetableSchema(many=True))
     def get(self, local_id, week):
         """
-        Retrieves timetable from a day.
+        Devuelve el horario de un día de la semana del local.
         """      
         LocalModel.query.get_or_404(local_id)
         
@@ -60,17 +60,17 @@ class TimetableDayDelete(MethodView):
     @blp.response(200, WeekDaySchema(many=True))
     def get(self):
         """
-        Retrieves all weekdays.
+        Devuelve los identificadores de los días de la semana.
         """
         return WeekdayModel.query.all()
 @blp.route('/week/<string:week>')
 class TimetableDayDelete(MethodView):
-    @blp.response(404, description='The local was not found. The day was not found.')
-    @blp.response(204, description='The timetable day was deleted.')
+    @blp.response(404, description='El local no existe o el día no existe.')
+    @blp.response(204, description='El horario ha sido eliminado.')
     @jwt_required(refresh=True)
     def delete(self, week):
         """
-        Deletes a timetable day.
+        Elimina el horario de un día de la semana del local.
         """
         local = LocalModel.query.get(get_jwt_identity())
         
@@ -95,13 +95,13 @@ class TimetableDayDelete(MethodView):
 class Timetable(MethodView):
     
     @blp.arguments(TimetableSchema(many=True))
-    @blp.response(404, description='The local was not found. The day was not found.')
-    @blp.response(409, description='The timetable is overlapping. The opening time is greater than the closing time. There is a booking that overlaps with the timetable.')
+    @blp.response(404, description='El local no existe o el día no existe.')
+    @blp.response(409, description='El horario se superpone, la hora de apertura es mayor que la de cierre o hay una reserva que se superpone con el horario.')
     @blp.response(200, TimetableSchema(many=True))
     @jwt_required(refresh=True)
     def put(self, timetables_data):
         """
-        Updates the timetable from a local.
+        Actualiza el horario del local.
         """
         local = LocalModel.query.get(get_jwt_identity())
         

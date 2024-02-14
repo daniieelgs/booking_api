@@ -187,47 +187,47 @@ class CommentSchema(Schema):
     comment = fields.Str(required=False)    
     
 class BookingParams(Schema):
-    date = fields.Date(required=False, description='Specify a date to view reservations for the entire day')
-    datetime_init = fields.DateTime(required=False, description='Specify an initial datetime')
-    datetime_end = fields.DateTime(required=False, description='Specify an end datetime')
-    format = fields.Str(description='Specify the format of date parameters. Default: %Y-%m-%d %H:%M:%S')
-    worker_id = fields.Int(required=False, description='Worker ID to filter bookings')
-    work_group_id = fields.Int(required=False, description='Work group ID to filter bookings')
+    date = fields.Date(required=False, description='Espefica una fecha para ver las reservas de todo el día.')
+    datetime_init = fields.DateTime(required=False, description='Espefica una fecha y hora inicial para ver las reservas.')
+    datetime_end = fields.DateTime(required=False, description='Espefica una fecha y hora final para ver las reservas.')
+    format = fields.Str(required=False, description='Espefica el formato de la fecha y hora. Default: %Y-%m-%d %H:%M:%S')
+    worker_id = fields.Int(required=False, description='ID del trabajador para filtrar las reservas.')
+    work_group_id = fields.Int(required=False, description='ID del grupo de trabajo para filtrar las reservas.')
     
 class BookingWeekParams(BookingParams):
-    days = fields.Int(required=False, description='Specify the number of days to view reservations. Default: 7 days')
+    days = fields.Int(required=False, description='Espefica el número de días de la semana a visualizar. Default: 7.')
     
 class BookingAdminParams(BookingParams):
-    status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
-    name = fields.Str(required=False, description='Specify the name to filter bookings.')
-    email = fields.Str(required=False, description='Specify the email to filter bookings.')
-    tlf = fields.Str(required=False, description='Specify the tlf to filter bookings.')
+    status = fields.Str(required=False, description='Especifica el estado para filtrar las reservas (Ej: C,P).')
+    name = fields.Str(required=False, description='Espefica el nombre del cliente para filtrar las reservas.')
+    email = fields.Str(required=False, description='Espefica el email del cliente para filtrar las reservas.')
+    tlf = fields.Str(required=False, description='Espefica el teléfono del cliente para filtrar las reservas.')
     
 class BookingAdminWeekParams(BookingWeekParams):
-    status = fields.Str(required=False, description='Specify the status to filter bookings (ej: C,P).')
-    name = fields.Str(required=False, description='Specify the name to filter bookings.')
-    email = fields.Str(required=False, description='Specify the email to filter bookings.')
-    tlf = fields.Str(required=False, description='Specify the tlf to filter bookings.')
+    status = fields.Str(required=False, description='Espefica el estado para filtrar las reservas (Ej: C,P).')
+    name = fields.Str(required=False, description='Espefica el nombre del cliente para filtrar las reservas.')
+    email = fields.Str(required=False, description='Espefica el email del cliente para filtrar las reservas.')
+    tlf = fields.Str(required=False, description='Espefica el teléfono del cliente para filtrar las reservas.')
     
 class BookingSessionParams(Schema):
     session = fields.Str(required=True)
     
 class DeleteParams(Schema):
-    force = fields.Bool(required=False, description='Force delete item even if it has bookings.')
-    comment = fields.Str(required=False, description='Comment to add to the bookings if force is True.')
+    force = fields.Bool(required=False, description='Fuerza la eliminación del item incluso si tiene reservas.')
+    comment = fields.Str(required=False, description='Comentario para la eliminación.')
     
 class UpdateParams(Schema):
-    force = fields.Bool(required=False, description='Force update item even if it has bookings.')
+    force = fields.Bool(required=False, description='Fuerza la actualización del item incluso si tiene reservas.')
     
 class LocalAdminParams(Schema):
-    name = fields.Str(required=False, description='Specify the name to filter locals.')
-    email = fields.Str(required=False, description='Specify the email to filter locals.')
-    tlf = fields.Str(required=False, description='Specify the tlf to filter locals.')
-    address = fields.Str(required=False, description='Specify the address to filter locals.')
-    postal_code = fields.Str(required=False, description='Specify the postal code to filter locals.')
-    village = fields.Str(required=False, description='Specify the village to filter locals.')
-    province = fields.Str(required=False, description='Specify the province to filter locals.')
-    location = fields.Str(required=False, description='Specify the location to filter locals.')
-    date_created = fields.DateTime(required=False, description='Specify the date created to filter locals.')
-    datetime_init = fields.DateTime(required=False, description='Specify an initial datetime')
-    datetime_end = fields.DateTime(required=False, description='Specify an end datetime')
+    name = fields.Str(required=False, description='Espefica el nombre para filtrar locales.')
+    email = fields.Str(required=False, description='Espefica el email para filtrar locales.')
+    tlf = fields.Str(required=False, description='Espefica el teléfono para filtrar locales.')
+    address = fields.Str(required=False, description='Espefica la dirección para filtrar locales.')
+    postal_code = fields.Str(required=False, description='Espefica el código postal para filtrar locales.')
+    village = fields.Str(required=False, description='Espfica la población para filtrar locales.')
+    province = fields.Str(required=False, description='Espfica la provincia para filtrar locales.')
+    location = fields.Str(required=False, description='Espfica la zona horaria para filtrar locales.')
+    date_created = fields.DateTime(required=False, description='Espfica la fecha de creación para filtrar locales.')
+    datetime_init = fields.DateTime(required=False, description='Espfica una fecha y hora inicial de creación para filtrar locales.')
+    datetime_end = fields.DateTime(required=False, description='Espfica una fecha y hora final de creación para filtrar locales.')

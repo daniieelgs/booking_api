@@ -11,12 +11,11 @@ from schema import DeleteParams, PublicWorkerListSchema, PublicWorkerSchema, Pub
 from db import addAndCommit, deleteAndCommit, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
 import traceback
 
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
-blp = Blueprint('worker', __name__, description='Workers CRUD')
+blp = Blueprint('worker', __name__, description='CRUD de trabajadores.')
 
 def getAllWorkers(local_id):
     workers = set()
@@ -32,11 +31,11 @@ def getAllWorkers(local_id):
 @blp.route('/local/<string:local_id>')
 class WorkersGetAll(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, PublicWorkerListSchema)
     def get(self, local_id):
         """
-        Retrieves all public data workers.
+        Devuelve todos los datos públicos de los trabajadores de un local.
         """      
         workers = getAllWorkers(local_id)
         return {"workers": workers, "total": len(workers)}
@@ -44,11 +43,11 @@ class WorkersGetAll(MethodView):
 @blp.route('/local/<string:local_id>/work_group')
 class WorkersGetAllWorkGroups(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, PublicWorkerWorkListGroupSchema)
     def get(self, local_id):
         """
-        Recover all public data workers with the work groups to which they belong.
+        Devuelve todos los datos públicos de los trabajadores de un local con sus grupos de trabajo.
         """    
         workers = getAllWorkers(local_id)            
         return {"workers": workers, "total": len(workers)}
@@ -56,23 +55,23 @@ class WorkersGetAllWorkGroups(MethodView):
 @blp.route('')
 class Worker(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, WorkerListSchema)
     @jwt_required(refresh=True)
     def get(self):
         """
-        Retrieves all data workers.
+        Devuelve todos los datos de los trabajadores del local identificado con el token de refresco.
         """
         workers = getAllWorkers(get_jwt_identity())
         return {"workers": workers, "total": len(workers)}
 
     @blp.arguments(WorkerSchema)
-    @blp.response(404, description='The local was not found. The work groups were not found or does not belong to the local session token.')
+    @blp.response(404, description='El local no existe, os grupos de trabajo no fueron encontrados o no pertenecen al local de la sesión.')
     @blp.response(201, WorkerWorkGroupSchema)
     @jwt_required(refresh=True)
     def post(self, worker_data):
         """
-        Creates a new worker and add to work groups.
+        Crea un nuevo trabajador y lo asocia a los grupos de trabajo.
         """
         local = LocalModel.query.get(get_jwt_identity())
         
@@ -107,12 +106,12 @@ class Worker(MethodView):
 @blp.route('/private/<int:worker_id>/work_group')
 class WorkerWorkGroupByID(MethodView):
 
-    @blp.response(404, description='The worker was not found')
+    @blp.response(404, description='El trabajador no existe.')
     @blp.response(200, WorkerWorkGroupSchema)
     @jwt_required(refresh=True)
     def get(self, worker_id):
         """
-        Retrieves a public data worker by ID.
+        Devuelve todos los datos de un trabajador con sus grupos de trabajo.
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         
@@ -124,23 +123,23 @@ class WorkerWorkGroupByID(MethodView):
 @blp.route('/<int:worker_id>/work_group')
 class PublicWorkerWorkGroupByID(MethodView):
 
-    @blp.response(404, description='The worker was not found')
+    @blp.response(404, description='El trabajador no existe.')
     @blp.response(200, PublicWorkerWorkGroupSchema)
     def get(self, worker_id):
         """
-        Retrieves a public data worker by ID.
+        Devuelve todos los datos públicos de un trabajador con sus grupos de trabajo.
         """
         return WorkerModel.query.get_or_404(worker_id)
 
 @blp.route('/private/<int:worker_id>')
 class WorkerByID(MethodView):
 
-    @blp.response(404, description='The worker was not found')
+    @blp.response(404, description='El trabajador no existe.')
     @blp.response(200, WorkerSchema)
     @jwt_required(refresh=True)
     def get(self, worker_id):
         """
-        Retrieves a data worker by ID.
+        Devuelve todos los datos de un trabajador.
         """
         
         worker = WorkerModel.query.get_or_404(worker_id)
@@ -153,25 +152,25 @@ class WorkerByID(MethodView):
 @blp.route('/<int:worker_id>')
 class PublicWorkerByID(MethodView):
 
-    @blp.response(404, description='The worker was not found')
+    @blp.response(404, description='El trabajador no existe.')
     @blp.response(200, PublicWorkerSchema)
     def get(self, worker_id):
         """
-        Retrieves a public data worker by ID.
+        Devuelve todos los datos públicos de un trabajador.
         """
         return WorkerModel.query.get_or_404(worker_id)
 
 
     @blp.arguments(UpdateParams, location='query')
     @blp.arguments(WorkerSchema)
-    @blp.response(404, description='The worker was not found.')
-    @blp.response(409, description='The worker has bookings with old work group.')
-    @blp.response(403, description='You are not allowed to update this worker.')
+    @blp.response(404, description='El trabajador no existe.')
+    @blp.response(409, description='El trabajador ya tiene reservas con el grupo de trabajo antiguo.')
+    @blp.response(403, description='No tienes permiso para actualizar este trabajador.')
     @blp.response(200, WorkerWorkGroupSchema)
     @jwt_required(refresh=True)
     def put(self, params, worker_data, worker_id):
         """
-        Updates a worker.
+        Actualiza un trabajador y lo asocia a los grupos de trabajo.
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         
@@ -216,13 +215,13 @@ class PublicWorkerByID(MethodView):
         return worker
 
     @blp.arguments(DeleteParams, location='query')
-    @blp.response(404, description='The worker was not found')
-    @blp.response(403, description='You are not allowed to delete this worker')
-    @blp.response(204, description='The worker was deleted')
+    @blp.response(404, description='El trabajador no existe.')
+    @blp.response(403, description='No tienes permiso para eliminar este trabajador.')
+    @blp.response(204, description='El trabajador ha sido eliminado.')
     @jwt_required(fresh=True)
     def delete(self, params, worker_id):
         """
-        Deletes a worker.
+        Elimina un trabajador identificado por ID. Requiere token de acceso.
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         

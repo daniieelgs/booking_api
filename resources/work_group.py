@@ -14,16 +14,16 @@ from datetime import datetime
 
 from globals import CONFIRMED_STATUS, DEBUG, PENDING_STATUS
 
-blp = Blueprint('work_group', __name__, description='Work groups CRUD')
+blp = Blueprint('work_group', __name__, description='CRUD de grupos de trabajo.')
 
 @blp.route('/local/<string:local_id>')
 class WorkGroupGetAll(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, WorkGroupListSchema)
     def get(self, local_id):
         """
-        Retrieves all work groups.
+        Devuelve todos los datos públicos de los grupos de trabajo de un local.
         """
         
         wg = list(LocalModel.query.get_or_404(local_id).work_groups)
@@ -33,11 +33,11 @@ class WorkGroupGetAll(MethodView):
 @blp.route('/local/<string:local_id>/workers')
 class WorkGroupWorkersGetAll(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, PublicWorkGroupWorkerListSchema)
     def get(self, local_id):
         """
-        Retrieves all public data work groups with their workers.
+        Devuelve todos los datos públicos de los grupos de trabajo de un local con sus trabajadores.
         """
         wg = list(LocalModel.query.get_or_404(local_id).work_groups)
         
@@ -46,12 +46,12 @@ class WorkGroupWorkersGetAll(MethodView):
 @blp.route('/workers')
 class WorkGroupWorkersGetAll(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, WorkGroupWorkerListSchema)
     @jwt_required(refresh=True)
     def get(self):
         """
-        Retrieves all work groups with their workers.
+        Devuelve todos los datos de los grupos de trabajo del local identificado con el token de refresco con sus trabajadores.
         """
         
         wg = list(LocalModel.query.get_or_404(get_jwt_identity()).work_groups)
@@ -61,11 +61,11 @@ class WorkGroupWorkersGetAll(MethodView):
 @blp.route('/local/<string:local_id>/services')
 class WorkGroupServicesGetAll(MethodView):
 
-    @blp.response(404, description='The local was not found')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, WorkGroupServiceListSchema)
     def get(self, local_id):
         """
-        Retrieves all work groups with their services.
+        Devuelve todos los datos públicos de los grupos de trabajo de un local con sus servicios.
         """
         
         wg = list(LocalModel.query.get_or_404(local_id).work_groups)
@@ -76,13 +76,13 @@ class WorkGroupServicesGetAll(MethodView):
 class WorkGroup(MethodView):
 
     @blp.arguments(WorkGroupSchema)
-    @blp.response(404, description='The local was not found')
-    @blp.response(409, description='The name is already in use')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(409, description='El nombre ya está en uso.')
     @blp.response(201, WorkGroupSchema)
     @jwt_required(refresh=True)
     def post(self, work_group_data):
         """
-        Creates a new work group.
+        Crea un nuevo grupo de trabajo en el local identificado con el token de refresco.
         """
         
         work_group = WorkGroupModel(**work_group_data)
@@ -106,23 +106,23 @@ class WorkGroup(MethodView):
 @blp.route('/<int:work_group_id>/workers')
 class PublicWorkGroupWorkerByID(MethodView):
 
-    @blp.response(404, description='The work group was not found')
+    @blp.response(404, description='El grupo de trabajo no existe.')
     @blp.response(200, PublicWorkGroupWorkerSchema)
     def get(self, work_group_id):
         """
-        Retrieves a public data work group by ID with their workers.
+        Devuelve los datos públicos de un grupo de trabajo identificado por ID con sus trabajadores.
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
     
 @blp.route('/private/<int:work_group_id>/workers')
 class WorkGroupWorkerByID(MethodView):
 
-    @blp.response(404, description='The work group was not found')
+    @blp.response(404, description='El grupo de trabajo no existe.')
     @blp.response(200, WorkGroupWorkerSchema)
     @jwt_required(refresh=True)
     def get(self, work_group_id):
         """
-        Retrieves a work group by ID with their workers.
+        Devuelve los datos de un grupo de trabajo identificado por ID con sus trabajadores.
         """
         work_group = WorkGroupModel.query.get_or_404(work_group_id)
         
@@ -134,35 +134,35 @@ class WorkGroupWorkerByID(MethodView):
 @blp.route('/<int:work_group_id>/services')
 class WorkGroupServicesByID(MethodView):
 
-    @blp.response(404, description='The work group was not found')
+    @blp.response(404, description='El grupo de trabajo no existe.')
     @blp.response(200, WorkGroupServiceSchema)
     def get(self, work_group_id):
         """
-        Retrieves a work group by ID with their services.
+        Devuelve los datos públicos de un grupo de trabajo identificado por ID con sus servicios.
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
 
 @blp.route('/<int:work_group_id>')
 class WorkGroupByID(MethodView):
 
-    @blp.response(404, description='The work group was not found')
+    @blp.response(404, description='El grupo de trabajo no existe.')
     @blp.response(200, WorkGroupSchema)
     def get(self, work_group_id):
         """
-        Retrieves a work group by ID.
+        Devuelve los datos de un grupo de trabajo identificado por ID.
         """
         return WorkGroupModel.query.get_or_404(work_group_id)
 
 
     @blp.arguments(WorkGroupSchema)
-    @blp.response(404, description='The work group was not found')
-    @blp.response(403, description='You are not allowed to update this work group')
-    @blp.response(409, description='The name is already in use')
+    @blp.response(404, description='El grupo de trabajo no existe.')
+    @blp.response(403, description='No tienes permiso para actualizar este grupo de trabajo.')
+    @blp.response(409, description='El nombre ya está en uso.')
     @blp.response(200, WorkGroupSchema)
     @jwt_required(refresh=True)
     def put(self, work_group_data, work_group_id):
         """
-        Updates a work group.
+        Actualiza los datos de un grupo de trabajo identificado por ID.
         """
         work_group = WorkGroupModel.query.get_or_404(work_group_id)
         
@@ -184,14 +184,14 @@ class WorkGroupByID(MethodView):
         return work_group
 
     @blp.arguments(DeleteParams, location='query')
-    @blp.response(404, description='The work group was not found.')
-    @blp.response(403, description='You are not allowed to delete this work group')
-    @blp.response(409, description='The work group has workers. The work group has bookings.')
-    @blp.response(204, description='The work group was deleted.')
+    @blp.response(404, description='El grupo de trabajo no existe.')
+    @blp.response(403, description='No tienes permiso para eliminar este grupo de trabajo.')
+    @blp.response(409, description='El grupo de trabajo tiene trabajadores o reservas.')
+    @blp.response(204, description='El grupo de trabajo ha sido eliminado.')
     @jwt_required(fresh=True)
     def delete(self, params, work_group_id):
         """
-        Deletes a work group.
+        Elimina un grupo de trabajo identificado por ID. Requiere token de acceso.
         """
         work_group = WorkGroupModel.query.get_or_404(work_group_id)
         

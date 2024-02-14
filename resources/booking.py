@@ -38,7 +38,7 @@ from models.weekday import WeekdayModel
 from models.worker import WorkerModel
 from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
 
-blp = Blueprint('booking', __name__, description='Booking CRUD')
+blp = Blueprint('booking', __name__, description='Control de reservas.')
 
 def getBookingBySession(token):
     try:
@@ -79,13 +79,13 @@ def patchBooking(booking, booking_data, admin = False):
 class SeePublicBooking(MethodView):
     
     @blp.arguments(BookingParams, location='query')
-    @blp.response(404, description='The local was not found.')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
-        Retrieves public bookings from specific DateTime.
+        Devuelve las reservas públicas de una fecha específica.
         """      
         
         try:
@@ -108,13 +108,13 @@ class SeePublicBooking(MethodView):
 class SeePublicBookingWeek(MethodView):
     
     @blp.arguments(BookingWeekParams, location='query')
-    @blp.response(404, description='The local was not found.')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
-        Retrieves public bookings from a week
+        Devuelve las reservas públicas de una semana.
         """
         
         try:
@@ -137,13 +137,13 @@ class SeePublicBookingWeek(MethodView):
 class SeePublicBookingMonth(MethodView):
     
     @blp.arguments(BookingWeekParams, location='query')
-    @blp.response(404, description='The local was not found.')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, PublicBookingListSchema)
     def get(self, _, local_id):
         """
-        Retrieves public bookings from a month
+        Devuelve las reservas públicas de un mes.
         """
         
         try:
@@ -166,17 +166,17 @@ class SeePublicBookingMonth(MethodView):
         return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all')
-class SeePublicBookingWeek(MethodView):
+class SeeBookingWeek(MethodView):
     
     @blp.arguments(BookingAdminParams, location='query')
-    @blp.response(404, description='The local was not found')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
-        Retrieves private data bookings from specific DateTime.
+        Devuelve las reservas privadas de una fecha específica.
         """      
         
         try:
@@ -206,17 +206,17 @@ class SeePublicBookingWeek(MethodView):
         return {"bookings": bookings, "total": len(bookings)}  
        
 @blp.route('/all/week')
-class SeePublicBookingWeek(MethodView):
+class SeeBookingWeek(MethodView):
     
     @blp.arguments(BookingAdminWeekParams, location='query')
-    @blp.response(404, description='The local was not found')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
-        Retrieves private data bookings from a week
+        Devuelve las reservas privadas de una semana.
         """
         
         try:
@@ -246,17 +246,17 @@ class SeePublicBookingWeek(MethodView):
         return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all/month')
-class SeePublicBookingMonth(MethodView):
+class SeeBookingMonth(MethodView):
     
     @blp.arguments(BookingAdminWeekParams, location='query')
-    @blp.response(404, description='The local was not found')
-    @blp.response(422, description='Unspecified date.')
-    @blp.response(204, description='The local does not have bookings.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(422, description='Fecha no especificada.')
+    @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, BookingListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
-        Retrieves private data bookings from a month
+        Devuelve las reservas privadas de un mes.
         """
         
         try:
@@ -289,14 +289,14 @@ class SeePublicBookingMonth(MethodView):
 class Booking(MethodView):
     
     @blp.arguments(BookingSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
-    @blp.response(400, description='Invalid date format. No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe o el trabajador no existe.')
+    @blp.response(400, description='Formato de fecha no válido o no se ha proporcionado el token de sesión.')
+    @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(201, NewBookingSchema)
     def post(self, new_booking, local_id):
         """
-        Creates a new booking.
+        Crea una nueva reserva.
         """
         try:
             booking = createOrUpdateBooking(new_booking, local_id, commit=False)
@@ -337,13 +337,13 @@ class Booking(MethodView):
 @blp.route('/<int:booking_id>')
 class BookingAdmin(MethodView):
     
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(401, description='You are not allowed to get the booking.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(401, description='No tienes permisos para obtener la reserva.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def get(self, booking_id):
         """
-        Retrieves a booking.
+        Devuelve una reserva.
         """
         
         booking = BookingModel.query.get_or_404(booking_id)
@@ -355,15 +355,15 @@ class BookingAdmin(MethodView):
     
     
     @blp.arguments(BookingAdminSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
-    @blp.response(400, description='Invalid date format.')
-    @blp.response(401, description='You are not allowed to update the booking.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
+    @blp.response(400, description='Fecha no válida.')
+    @blp.response(401, description='No tienes permisos para actualizar la reserva.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def put(self, booking_data, booking_id):
         """
-        Updates a booking.
+        Actualiza una reserva.
         """
         
         booking = BookingModel.query.get(booking_id)
@@ -392,15 +392,15 @@ class BookingAdmin(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
     
     @blp.arguments(BookingAdminPatchSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
-    @blp.response(400, description='Invalid date format.')
-    @blp.response(401, description='You are not allowed to update the booking.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
+    @blp.response(400, description='Fecha no válida.')
+    @blp.response(401, description='No tienes permisos para actualizar la reserva.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def patch(self, booking_data, booking_id):
         """
-        Updates a booking.
+        Actualiza una reserva indicando los campos a modificar.
         """
         
         booking = BookingModel.query.get(booking_id)
@@ -430,13 +430,13 @@ class BookingAdmin(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')  
     
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(401, description='You are not allowed to delete the booking.')
-    @blp.response(204, description='The booking was deleted.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(401, description='No tienes permisos para eliminar la reserva.')
+    @blp.response(204, description='La reserva ha sido eliminada.')
     @jwt_required(refresh=True)
     def delete(self, booking_id):
         """
-        Delete a booking.
+        Elimina una reserva. WARNING: No se recomienda ya que, no se puede deshacer. Si se desea cancelar una reserva, se recomienda cambiar el estado de la reserva o bien utilizar el endpoint para cancelar una reserva [cancel/{booking_id}].
         """
         
         booking = BookingModel.query.get_or_404(booking_id)
@@ -458,13 +458,13 @@ class BookingAdmin(MethodView):
 class BookingSession(MethodView):
     
     @blp.arguments(BookingSessionParams, location='query')
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(400, description='No se ha proporcionado el token de sesión.')
+    @blp.response(401, description='El token de sesión es inválido.')
     @blp.response(200, BookingSchema)
     def get(self, params):
         """
-        Retrieves a booking session.
+        Devuelve una reserva identificada por el token de sesión del cliente.
         """
         booking = getBookingBySession(params[SESSION_GET])
         
@@ -481,14 +481,14 @@ class BookingSession(MethodView):
         
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
-    @blp.response(400, description='Invalid date format. No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
+    @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
+    @blp.response(401, description='Token de sesión inválido.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     def put(self, params, booking_data):
         """
-        Updates a booking session.
+        Actualiza una reserva identificada por el token de sesión del cliente.
         """
                 
         booking = getBookingBySession(params[SESSION_GET])        
@@ -513,14 +513,14 @@ class BookingSession(MethodView):
             
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(BookingPatchSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found. The booking was not found.')
-    @blp.response(400, description='Invalid date format. No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
+    @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
+    @blp.response(401, description='Token de sesión inválido.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     def patch(self, params, booking_data):
         """
-        Updates a booking session.
+        Actualiza una reserva identificada por el token de sesión del cliente indicando los campos a modificar.
         """
                 
         booking = getBookingBySession(params[SESSION_GET])        
@@ -547,13 +547,13 @@ class BookingSession(MethodView):
     
     @blp.arguments(BookingSessionParams, location='query')
     @blp.arguments(CommentSchema)
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
-    @blp.response(204, description='The booking was deleted.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(400, description='No se ha proporcionado el token de sesión.')
+    @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(204, description='La reserva ha sido cancelada.')
     def delete(self, params, data):
         """
-        Deletes a booking session.
+        Cancela una reserva identificada por el token de sesión del cliente.
         """
         booking = getBookingBySession(params[SESSION_GET])
         
@@ -572,15 +572,15 @@ class BookingSession(MethodView):
                 
     @blp.arguments(UpdateParams, location='query')
     @blp.arguments(BookingSchema)
-    @blp.response(404, description='The local was not found. The service was not found. The worker was not found.')
-    @blp.response(400, description='Invalid date format. No session token provided.')
-    @blp.response(401, description='You are not allowed to create this booking.')
-    @blp.response(409, description='There is already a booking in that time. The worker is not available. The services must be from the same work group. The worker must be from the same work group that the services. The local is not available. The date is in the past.')
+    @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
+    @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
+    @blp.response(401, description='No tienes permisos para crear la reserva.')
+    @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(201, NewBookingSchema)
     @jwt_required(refresh=True)
     def post(self, params, new_booking):
         """
-        Creates a new booking by local admin.
+        Crea una nueva reserva identificada por parte del local, identificado por el token de sesión refresco.
         """
         
         force = 'force' in params and params['force']
@@ -672,13 +672,13 @@ class BookingSession(MethodView):
 class BookingConfirm(MethodView):
     
     @blp.arguments(BookingSessionParams, location='query')
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
-    @blp.response(401, description='The session token is invalid.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(400, description='No se ha proporcionado el token de sesión.')
+    @blp.response(401, description='El token de sesión es inválido.')
     @blp.response(200, BookingSchema)
     def get(self, params):
         """
-        Confirms a booking. Change the status to confirmed.
+        Confirma una reserva identificado por el token de sesión del cliente. Cambia el estado a confirmado.
         """
         booking = getBookingBySession(params[SESSION_GET])
         
@@ -706,14 +706,13 @@ class BookingConfirm(MethodView):
 @blp.route('confirm/<int:booking_id>')
 class BookingConfirmId(MethodView):
     
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
-    @blp.response(401, description='You are not allowed to confirm the booking.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(401, description='No tienes permisos para confirmar la reserva.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def get(self, booking_id):
         """
-        Confirms a booking. Change the status to confirmed.
+        Confirma una reserva por parte del local identificado por el token de refresco. Cambia el estado a confirmado.
         """
         booking = BookingModel.query.get_or_404(booking_id)
         
@@ -748,14 +747,13 @@ class BookingConfirmId(MethodView):
     
     
     @blp.arguments(CommentSchema)
-    @blp.response(404, description='The booking was not found.')
-    @blp.response(400, description='No session token provided.')
-    @blp.response(401, description='You are not allowed to confirm the booking.')
+    @blp.response(404, description='La reserva no existe.')
+    @blp.response(401, description='No tienes permisos para cancelar la reserva.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def delete(self, data, booking_id):
         """
-        Cancel a booking. Change the status to confirmed.
+        Cancela una reserva por parte del local identificado por el token de refresco. Cambia el estado a cancelado.
         """
         booking = BookingModel.query.get_or_404(booking_id)
         
@@ -784,7 +782,7 @@ class Status(MethodView):
     @blp.response(200, StatusSchema(many=True))
     def get(self):
         """
-        Retrieves all status
+        Devuelve los estados posibles de las reservas.
         """        
         return StatusModel.query.all()
     
@@ -793,13 +791,13 @@ class Status(MethodView):
 class BookingAdmin(MethodView):
     
     @blp.arguments(BookingSchema)
-    @blp.response(404, description='The token does not exist.')
-    @blp.response(403, description='You are not allowed to use this endpoint.')
-    @blp.response(401, description='Missing Authorization Header.')
+    @blp.response(404, description='El token de administrador no existe.')
+    @blp.response(403, description='No tienes permisos para usar este endpoint.')
+    @blp.response(401, description='Falta la cabecera de autorización.')
     @blp.response(201, NewBookingSchema)
     def post(self, booking_data):
         """
-        Creates a new booking.
+        [ADMIN PRIVATE] Crear una nueva reserva por parte del administrador del sistema.
         """
         token_header = request.headers.get('Authorization')
 

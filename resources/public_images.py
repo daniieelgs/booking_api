@@ -10,7 +10,7 @@ from helpers.path import getImage
 from models.image import ImageModel
 
 
-blp = Blueprint('public_images', __name__, description='get public images')
+blp = Blueprint('public_images', __name__, description='Obtiene imágenes públicas.')
 
 def generateImageResponse(local_id, name, type):
     image = ImageModel.query.filter_by(local_id = local_id, name = name, type = type).first_or_404()
@@ -28,10 +28,10 @@ def generateImageResponse(local_id, name, type):
 @blp.route('/local/<string:local_id>/logos/<string:name>')
 class LogoImage(MethodView):
 
-    @blp.response(404, description='The image does not exists')
+    @blp.response(404, description='La imagen no existe.')
     def get(self, local_id, name):
         """
-        Returns the logo image
+        Devuelve el logo del local.
         """
         
         return generateImageResponse(local_id, name, IMAGE_TYPE_LOGOS)
@@ -39,9 +39,9 @@ class LogoImage(MethodView):
 @blp.route('/local/<string:local_id>/gallery/<string:name>')
 class GalleryImage(MethodView):
 
-    @blp.response(404, description='The image does not exists')
+    @blp.response(404, description='La imagen no existe.')
     def get(self, local_id, name):
         """
-        Returns the gallery image
+        Devuelve una imagen de la galería.
         """
         return generateImageResponse(local_id, name, IMAGE_TYPE_GALLERY)

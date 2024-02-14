@@ -21,42 +21,42 @@ from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocal
 
 from models import LocalModel
 
-blp = Blueprint('local', __name__, description='local CRUD')
+blp = Blueprint('local', __name__, description='CRUD de locales y accesos.')
     
 @blp.route('<string:local_id>')
 class Local(MethodView):
 
-    @blp.response(404, description='The local does not exist')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, PublicLocalSchema)
     def get(self, local_id):
         """
-        Returns the public local data
+        Devuelve los datos públicos del local.
         """
         return LocalModel.query.get_or_404(local_id)
 @blp.route('')
 class Local(MethodView):
 
-    @blp.response(404, description='The local does not exist')
+    @blp.response(404, description='El local no existe')
     @blp.response(200, LocalSchema)
     @jwt_required(refresh=True)
     def get(self):
         """
-        Returns the local data
+        Devuelve todos los datos del local identificado con el toquen de refresco.
         """
         return LocalModel.query.get_or_404(get_jwt_identity())
     
     
     @blp.arguments(LocalSchema)
-    @blp.response(400, description='The timezone is not valid.')
-    @blp.response(409, description='The email is already in use.')
-    @blp.response(404, description='The token does not exist.')
-    @blp.response(403, description='You are not allowed to create a local.')
-    @blp.response(401, description='Missing Authorization Header.')
+    @blp.response(400, description='La zona horaria no es valida [campo location]. [Ex: Europe/Madrid].')
+    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(404, description='El token no existe.')
+    @blp.response(403, description='No tienes permisos para crear un local.')
+    @blp.response(401, description='Falta cabecera de autorización.')
     @blp.response(201, LocalTokensSchema)
     def post(self, local_data):
         """
-        Creates a new local.
-        If the password is not present, it will generate a new one and return it
+        Crea un nuevo local.
+        Si no se encuentra la contraseña, generará una nueva y la devolverá.
         """
         
         token_header = request.headers.get('Authorization')
@@ -116,13 +116,13 @@ class Local(MethodView):
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
     
     @blp.arguments(LocalSchema)
-    @blp.response(409, description='The email is already in use')
-    @blp.response(404, description='The local does not exist')
+    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, LocalSchema)
     @jwt_required(fresh=True)
     def put(self, local_data):
         """
-        Updates the local data
+        Actualiza los datos del local. Requiere token de acceso.
         """
         
         local = LocalModel.query.get_or_404(get_jwt_identity())
@@ -145,13 +145,13 @@ class Local(MethodView):
         
         return local
     
-    @blp.response(409, description='The email is already in use')
-    @blp.response(404, description='The local does not exist')
-    @blp.response(204, description='The local was deleted')
+    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(204, description='Local eliminado.')
     @jwt_required(fresh=True)
     def delete(self):
         """
-        Deletes the local
+        Elimina completamente el local. Requiere token de acceso.
         """
         
         local = LocalModel.query.get_or_404(get_jwt_identity())
@@ -170,11 +170,11 @@ class Local(MethodView):
 class AccessLocal(MethodView):
     
     @blp.arguments(LoginLocalSchema)
-    @blp.response(401, description='Invalid credentials')
+    @blp.response(401, description='Credenciales inválidas.')
     @blp.response(200, LocalTokensSchema)
     def post(self, login_data):
         """
-        Login a local with email and password
+        Inicia sesión en el sistema (email/password) y devuelve el token de acceso y refresco.
         """
         
         local = LocalModel.query.filter_by(email=login_data['email']).first()
@@ -190,10 +190,10 @@ class AccessLocal(MethodView):
 class LocalLogout(MethodView):
     
     @jwt_required(refresh=True)
-    @blp.response(204, description='Logout user and expire the refresh-token')
+    @blp.response(204, description='Usuario deslogueado y token de refresco expirado.')
     def post(self):
         """
-        Logout user and expire the refresh-token
+        Desloguea al usuario y expira el token de refresco.
         """
         tokenId = get_jwt().get('token')
         
@@ -205,10 +205,10 @@ class LocalLogout(MethodView):
 class LocalLogoutAll(MethodView):
     
     @jwt_required(refresh=True)
-    @blp.response(204, description='Logout user and expire all the refresh-token')
+    @blp.response(204, description='Usuarios deslogueados y tokens de refresco expirados.')
     def post(self):
         """
-        Logout user and expire all refresh-tokens
+        Desloguea a todos los usuarios usuario y expira todos los tokens de refresco.
         """
         try:
             logOutAll(get_jwt_identity())
@@ -226,7 +226,7 @@ class LocalRefresh(MethodView):
     @blp.response(200, LocalTokensSchema)
     def post(self):
         """
-        Refresh the refresh-token
+        Actualiza el token de acceso. Expira el token de refresco y devuelve uno nuevo.
         """
         token = get_jwt()
         tokenId = token.get('token')
