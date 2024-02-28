@@ -12,18 +12,18 @@ from models.local import LocalModel
 from models.session_token import SessionTokenModel
 from schema import LocalAdminParams, LocalListSchema, LocalTokensSchema
 
-blp = Blueprint('admin', __name__)
+blp = Blueprint('admin', __name__, description='Endpoints de administrador.')
 
 @blp.route('tokens/local/<string:local_id>')
 class LocalTokens(MethodView):
 
-    @blp.response(404, description='The local does not exist. The token does not exist.')
-    @blp.response(403, description='You are not allowed to use this endpoint.')
-    @blp.response(401, description='Missing Authorization Header. The token has expired.')
+    @blp.response(404, description='El local no existe. El token administrativo no existe.')
+    @blp.response(403, description='No tienes permisos para usar este endpoint.')
+    @blp.response(401, description='Falta cabecera de autorización. El token ha expirado.')
     @blp.response(200, LocalTokensSchema)
     def post(self, local_id):
         """
-        Returns the local tokens
+        Devuelve tokens de sesión para el local.
         """
         
         token_header = request.headers.get('Authorization')
@@ -59,13 +59,13 @@ class LocalTokens(MethodView):
 class LocalAll(MethodView):
 
     @blp.arguments(LocalAdminParams, location='query')
-    @blp.response(404, description='The token does not exist.')
-    @blp.response(403, description='You are not allowed to use this endpoint.')
-    @blp.response(401, description='Missing Authorization Header.')
+    @blp.response(404, description='El local no existe. El token administrativo no existe.')
+    @blp.response(403, description='No tienes permisos para usar este endpoint.')
+    @blp.response(401, description='Falta cabecera de autorización. El token ha expirado.')
     @blp.response(200, LocalListSchema)
     def get(self, params):
         """
-        Returns all locals.
+        Devuelve todos los locales.
         """
         
         token_header = request.headers.get('Authorization')

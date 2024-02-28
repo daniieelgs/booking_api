@@ -20,7 +20,9 @@ from helpers.path import createPathFromLocal, removeImage, savePath
 from models.image import ImageModel
 from schema import ImageSchema
 
-blp = Blueprint('images', __name__, description='images CRUD')
+#TODO: Cambiar a almacenamiento online
+
+blp = Blueprint('images', __name__, description='Sistema de almacenamiento de imágenes.')
 
 def generateURL(local_id, image_type, filename):
             
@@ -72,7 +74,7 @@ class LogosImages(MethodView):
     @blp.response(201, ImageSchema(many=True)) 
     def get(self, local_id):
         """
-        Returns the logos images
+        Devuelve todas las imágenes de logos.
         """
         images = ImageModel.query.filter_by(local_id = local_id, type = IMAGE_TYPE_LOGOS).all()
         return [generateURL(local_id, image.type, image.filename) for image in images]
@@ -81,12 +83,12 @@ class LogosImages(MethodView):
 class LogosImagesUpload(MethodView):
 
     @jwt_required(refresh=True)   
-    @blp.response(409, description='The image already exists')
-    @blp.response(400, description='The file is not valid. The filename is not valid. The extension is not valid')
+    @blp.response(409, description='La imagen ya existe.')
+    @blp.response(400, description='La imagen no es válida, el nombre de la imagen no es válido o la extensión no es válida.')
     @blp.response(201, ImageSchema) 
     def post(self):
         f"""
-        Get all logos images. Parameter name: {PARAM_FILE_NAME}
+        Obtiene todas las imágenes de logos. Parameter name: {PARAM_FILE_NAME}
         """
         return saveImage(request, IMAGE_TYPE_LOGOS)
 
@@ -94,11 +96,11 @@ class LogosImagesUpload(MethodView):
 class LogosImagesUpload(MethodView):
 
     @jwt_required(refresh=True)   
-    @blp.response(404, description='The image does not exist.')
-    @blp.response(204, description='The image has been deleted.') 
+    @blp.response(404, description='La imagen no existe.')
+    @blp.response(204, description='La imagen ha sido eliminada.') 
     def delete(self, name):
         f"""
-        Deletes a logo image.
+        Elimina una imagen de logo.
         """
         deleteImage(name, IMAGE_TYPE_LOGOS)
         
@@ -108,7 +110,7 @@ class LogosImagesUpload(MethodView):
 class GalleryImages(MethodView):
     def get(self, local_id):
         f"""
-        Get all gallery images.
+        Devuelve todas las imágenes de la galería.
         """
         images = ImageModel.query.filter_by(local_id = local_id, type = IMAGE_TYPE_GALLERY).all()
         return [generateURL(local_id, image.type, image.filename) for image in images]
@@ -117,12 +119,12 @@ class GalleryImages(MethodView):
 class GalleryImagesUpload(MethodView):
 
     @jwt_required(refresh=True)   
-    @blp.response(409, description='The image already exists')
-    @blp.response(400, description='The file is not valid. The filename is not valid. The extension is not valid')
+    @blp.response(409, description='La imagen ya existe.')
+    @blp.response(400, description='El archivo no es válido, el nombre de la imagen no es válido o la extensión no es válida.')
     @blp.response(201, ImageSchema) 
     def post(self):
         f"""
-        Uploads a new gallery image. Parameter name: {PARAM_FILE_NAME}
+        Sube una nueva imagen de galería. Parameter name: {PARAM_FILE_NAME}
         """
         return saveImage(request, IMAGE_TYPE_GALLERY)
     
@@ -130,11 +132,11 @@ class GalleryImagesUpload(MethodView):
 class LogosImagesUpload(MethodView):
 
     @jwt_required(refresh=True)   
-    @blp.response(404, description='The image does not exist.')
-    @blp.response(204, description='The image has been deleted.') 
+    @blp.response(404, description='La imagen no existe.')
+    @blp.response(204, description='La imagen ha sido eliminada.') 
     def delete(self, name):
         f"""
-        Deletes a gallery image.
+        Elimina una imagen de la galería.
         """
         deleteImage(name, IMAGE_TYPE_LOGOS)
         

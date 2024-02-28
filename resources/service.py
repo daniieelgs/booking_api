@@ -21,7 +21,7 @@ from schema import DeleteParams, ServiceSchema, ServiceWorkGroup, ServiceWorkGro
 
 from datetime import datetime
 
-blp = Blueprint('service', __name__, description='service CRUD')
+blp = Blueprint('service', __name__, description='CRUD de servicios.')
 
 def getAllServices(local_id):
     work_groups = LocalModel.query.get_or_404(local_id).work_groups.all()
@@ -37,11 +37,11 @@ def getAllServices(local_id):
 @blp.route('local/<string:local_id>')
 class AllServices(MethodView):
 
-    @blp.response(404, description='The local does not exist')
+    @blp.response(404, description='El local no existe.')
     @blp.response(200, ServiceWorkGroupListSchema)
     def get(self, local_id):
         """
-        Returns all services of a local
+        Devuelve todos los datos públicos de servicios de un local.
         """
         services = getAllServices(local_id)
         return {'services': services, "total": len(services)}
@@ -49,24 +49,24 @@ class AllServices(MethodView):
 @blp.route('<int:service_id>')
 class ServiceById(MethodView):
 
-    @blp.response(404, description='The service does not exist')
+    @blp.response(404, description='El servicio no existe.')
     @blp.response(200, ServiceWorkGroup)
     def get(self, service_id):
         """
-        Returns the service
+        Devuelve todos los datos del servicio.
         """
         return ServiceModel.query.get_or_404(service_id)
     
     @blp.arguments(UpdateParams, location='query')
     @blp.arguments(ServiceSchema)
-    @blp.response(404, description='The service does not exist.')
-    @blp.response(403, description='You are not allowed to update this service')
-    @blp.response(409, description='The service already exists. The service has bookings with workers on differents work group. The new duration is not compatible with the bookings.')
+    @blp.response(404, description='El servicio no existe, el grupo de trabajo no existe o el grupo de trabajo no pertenece al local.')
+    @blp.response(403, description='No tienes permisos para actualizar este servicio.')
+    @blp.response(409, description='El servicio ya existe, el servicio tiene reservas con trabajadores en diferentes grupos de trabajo, lLa nueva duración no es compatible con las reservas o el servicio tiene reservas.')
     @blp.response(200, ServiceWorkGroup)
     @jwt_required(refresh=True)
     def put(self, params, service_data, service_id):
         """
-        Updates the service
+        Actualiza los datos del servicio.
         """
         service = ServiceModel.query.get_or_404(service_id)
         
@@ -123,13 +123,13 @@ class ServiceById(MethodView):
         return service
     
     @blp.arguments(DeleteParams, location='query')
-    @blp.response(404, description='The service does not exist')
-    @blp.response(403, description='You are not allowed to delete this service')
-    @blp.response(204, description='The service was deleted')
+    @blp.response(404, description='El servicio no existe.')
+    @blp.response(403, description='No tienes permisos para eliminar este servicio.')
+    @blp.response(204, description='El servicio ha sido eliminado.')
     @jwt_required(fresh=True)
     def delete(self, params, service_id):
         """
-        Deletes the service
+        Elimina un servicio identificado por ID. Requiere token de acceso.
         """
         
         service = ServiceModel.query.get_or_404(service_id)
@@ -162,13 +162,13 @@ class ServiceById(MethodView):
 class Service(MethodView):
 
     @blp.arguments(ServiceSchema)
-    @blp.response(409, description='The service already exists')
-    @blp.response(404, description='The local does not exist. The work group does not exist')
+    @blp.response(409, description='El servicio ya existe.')
+    @blp.response(404, description='El grupo de trabajo no existe o el grupo de trabajo no pertenece al local.')
     @blp.response(201, ServiceWorkGroup)
     @jwt_required(refresh=True)
     def post(self, service_data):
         """
-        Creates a new service.
+        Crea un nuevo servicio.
         """
         
         local = LocalModel.query.get(get_jwt_identity())
@@ -198,12 +198,12 @@ class Service(MethodView):
         
         return service
     
-    @blp.response(404, description='The local does not exist')
-    @blp.response(204, description='The services were deleted')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(204, description='Servicios eliminados.')
     @jwt_required(fresh=True)
     def delete(self):
         """
-        Deletes all services from a local
+        Elimina todos los servicios de un local. Requiere token de acceso.
         """
         try:
             deleteAndCommit(*getAllServices(get_jwt_identity()))

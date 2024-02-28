@@ -1,7 +1,7 @@
 import traceback
 from access import Access
 from default_config import DefaultConfig
-from globals import ADMIN_ROLE, CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, LOCAL_ROLE, PENDING_STATUS, TEST_DATABASE_URI, USER_ROLE, WEEK_DAYS
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, JWT_ALGORITHM, LOCAL_ROLE, PENDING_STATUS, SECRET_JWT, TEST_DATABASE_URI, USER_ROLE, WEEK_DAYS
 from models.status import StatusModel
 from models.user_session import UserSessionModel
 from app import db as default_db
@@ -106,7 +106,7 @@ class ConfigTest(DefaultConfig):
             raise
 
     def createAdminToken(self, db):
-        access = Access(db_sqlite='instance/' + config_test.database_uri.split('///')[-1])
+        access = Access(db_sqlite='instance/' + config_test.database_uri.split('///')[-1], ADMIN_IDENTITY = ADMIN_IDENTITY, ADMIN_ROLE = ADMIN_ROLE, SECRET_JWT = SECRET_JWT, JWT_ALGORITHM = JWT_ALGORITHM)
         
         db = access.connectToDB()
 
