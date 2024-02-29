@@ -16,7 +16,7 @@ def generateFileResponse(local_id, path):
     try:
         r = getFile(local_id, image.path)
     except FileNotFoundError:
-        abort(404, message='The image does not exist.')
+        abort(404, message='The file does not exist.')
 
     response = make_response(r)
     response.headers['Content-Type'] = image.mimetype

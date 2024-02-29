@@ -3,6 +3,30 @@ from marshmallow import Schema, ValidationError, fields, validate
 from marshmallow import Schema, fields
 from email_validator import validate_email, EmailNotValidError
 
+from globals import MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING
+
+class SmtpSettingsSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    host = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    port = fields.Int(required=True, validate=validate.Range(min=0, max=65535))
+    user = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    password = fields.Str(required=True)
+    priority = fields.Int(required=False, validate=validate.Range(min=0))
+    send_per_day = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    send_per_month = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    max_send_per_day = fields.Int(required=False)
+    max_send_per_month = fields.Int(required=False)
+    reset_send_per_day = fields.DateTime(required=False)
+    reset_send_per_month = fields.DateTime(required=False)
+    
+class LocalSettingsSchema(Schema):
+    domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
+    website = fields.Str(required=False, validate=validate.URL())
+    confirmation_link = fields.Str(required=False, validate=validate.URL())
+    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING))
+    
+    smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
+
 class PublicLocalSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
@@ -18,6 +42,7 @@ class PublicLocalSchema(Schema):
 class LocalSchema(PublicLocalSchema):
     password = fields.Str(required=False, load_only=True)
     password_generated = fields.Str(required=False, dump_only=True)
+    settings = fields.Nested(LocalSettingsSchema, required=False)
     datetime_created = fields.DateTime(required=True, dump_only=True)
     datetime_updated = fields.DateTime(required=True, dump_only=True)
     
@@ -31,6 +56,7 @@ class LocalTokensSchema(Schema):
     access_token = fields.Str(required=False, dump_only=True)
     refresh_token = fields.Str(required=False, dump_only=True)
     local = fields.Nested(LocalSchema(), dump_only=True)
+    warnings = fields.List(fields.Str(), required=False, dump_only=True)
     
 class LoginLocalSchema(Schema):
     email = fields.Str(required=True)

@@ -13,10 +13,12 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from passlib.hash import pbkdf2_sha256
 
-from db import deleteAndCommit, addAndCommit, rollback
+from db import addAndFlush, commit, deleteAndCommit, addAndCommit, rollback
 
-from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE, MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING
+from models.local_settings import LocalSettingsModel
 from models.session_token import SessionTokenModel
+from models.smtp_settings import SmtpSettingsModel
 from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
 
 from models import LocalModel
@@ -96,8 +98,39 @@ class Local(MethodView):
         
         local.password = pbkdf2_sha256.hash(local.password)
 
+        warnings = []
+
         try:
-            addAndCommit(local)
+            addAndFlush(local)
+            
+            if 'settings' in local_data:
+                settings_data = local_data['settings']               
+                smtp_settings = settings_data.pop('smtp_settings') if 'smtp_settings' in settings_data else None
+                
+                if settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
+                    settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
+                    warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
+                    
+                local_settings = LocalSettingsModel(local_id = local.id, **settings_data)                
+                                
+                addAndFlush(local_settings)
+                
+                if smtp_settings:
+                    for smtp_setting in smtp_settings:
+                        
+                        user = smtp_setting['user'].split('@')[1]
+
+                        if not (user == settings_data['domain']):
+                            warnings.append(f'The domain of the email {smtp_setting["user"]} does not match the domain of the local {settings_data["domain"]}.')
+                        
+                        smtp_model = SmtpSettingsModel(local_settings_id = local_settings.id, **smtp_setting)
+                        
+                        addAndFlush(smtp_model)
+                else: warnings.append(f'The local has no smtp settings.')
+                        
+            else: warnings.append(f'The local has no settings.')
+            
+            commit()
             createPathFromLocal(local.id)
             access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
         except IntegrityError as e:
@@ -113,7 +146,7 @@ class Local(MethodView):
         
         print(local)
         
-        return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
+        return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local, 'warnings': warnings}
     
     @blp.arguments(LocalSchema)
     @blp.response(409, description='El email ya está en uso.')
