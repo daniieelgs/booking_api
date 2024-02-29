@@ -1,3 +1,5 @@
+import os
+import shutil
 import traceback
 from access import Access
 from default_config import DefaultConfig
@@ -126,6 +128,17 @@ class ConfigTest(DefaultConfig):
         self.insertWeekdays(db)
         
         self.createAdminToken(db)
+        
+        os.environ['PUBLIC_FOLDER'] = 'tests/public'
+    
+    def drop(self, locals):
+        folder = os.getenv('PUBLIC_FOLDER', None)
+        
+        for id in locals:
+            path = os.path.join(os.getcwd(), folder, id)
+            if os.path.exists(path):
+                print("Removing folder", path)
+                shutil.rmtree(path)
 
         
         

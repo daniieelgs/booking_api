@@ -11,6 +11,7 @@ ENDPOINT = 'booking'
 class TestBooking(TestCase):
     def create_app(self):
         app = create_app(config_test)
+        self.locals = []
         return app
 
     def setUp(self):
@@ -23,6 +24,7 @@ class TestBooking(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.locals)
         
     def create_local(self):
         self.local = {
@@ -44,6 +46,8 @@ class TestBooking(TestCase):
         self.refresh_token = r['refresh_token']
         self.access_token = r['access_token']
         self.local['id'] = r['local']['id']
+        
+        self.locals.append(r['local']['id'])
         
     def create_timetable(self):
         
@@ -818,7 +822,6 @@ class TestBooking(TestCase):
         booking['worker_id'] = self.workers[0]['id']
         
         r = self.post_booking_admin(booking)
-        session = dict(r.json)['session_token']
         id = dict(r.json)['booking']['id']
         self.assertEqual(r.status_code, 201)
         
@@ -996,6 +999,7 @@ class TestBooking(TestCase):
                 
         booking['worker_id'] = self.workers[0]['id']
         r = self.post_booking_local(booking, force=True)
+        print(r.json)
         self.assertEqual(r.status_code, 201)
         
     def test_integration_booking(self):

@@ -180,7 +180,7 @@ class BookingAdminSchema(BookingSchema):
 class BookingAdminPatchSchema(BookingPatchSchema):
     new_status = fields.Str(required=False, load_only=True)
     
-class ImageSchema(Schema):
+class FileSchema(Schema):
     url = fields.Str(required=True)
     
 class CommentSchema(Schema):

@@ -20,7 +20,7 @@ class LocalModel(db.Model):
     tokens = db.relationship('SessionTokenModel', back_populates='local', lazy='dynamic', cascade="all, delete")
     work_groups = db.relationship('WorkGroupModel', back_populates='local', lazy='dynamic', cascade="all, delete")
     timetables = db.relationship('TimetableModel', back_populates='local', lazy='dynamic', cascade="all, delete")
-    images = db.relationship('ImageModel', back_populates='local', lazy='dynamic', cascade="all, delete")
+    images = db.relationship('FileModel', back_populates='local', lazy='dynamic', cascade="all, delete")
     
     def __str__(self):
         return (f"LocalModel(id='{self.id}', name='{self.name}', tlf='{self.tlf}', "

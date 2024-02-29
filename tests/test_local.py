@@ -9,6 +9,7 @@ ENDPOINT = 'local'
 class TestLocal(TestCase):
     def create_app(self):
         app = create_app(config_test)
+        self.locals = []
         return app
 
     def setUp(self):
@@ -21,6 +22,7 @@ class TestLocal(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.locals)
 
     def create_local(self):
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
@@ -34,6 +36,8 @@ class TestLocal(TestCase):
         self.access_token = response_post.json['access_token']
         self.local_post = dict(response_post.json['local'])
         self.password_generated = self.local_post.pop('password_generated', None)
+        
+        self.locals.append(dict(response_post.json['local'])['id'])
 
     def get_local(self):
         response_get = self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"})
