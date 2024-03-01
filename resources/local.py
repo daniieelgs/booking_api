@@ -13,17 +13,167 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from passlib.hash import pbkdf2_sha256
 
-from db import addAndFlush, commit, deleteAndCommit, addAndCommit, rollback
+from db import addAndFlush, commit, deleteAndCommit, addAndCommit, deleteAndFlush, rollback
 
 from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE, MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING
 from models.local_settings import LocalSettingsModel
 from models.session_token import SessionTokenModel
 from models.smtp_settings import SmtpSettingsModel
-from schema import LocalSchema, LocalTokensSchema, LoginLocalSchema, PublicLocalSchema
+from schema import LocalPatchSchema, LocalSchema, LocalTokensSchema, LocalWarningSchema, LoginLocalSchema, PublicLocalSchema, SmtpSettingsSchema
 
 from models import LocalModel
 
 blp = Blueprint('local', __name__, description='CRUD de locales y accesos.')
+    
+def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSettingsModel = None):
+    
+    warnings = []
+    
+    def check_domain_smtp(smtp_user):
+        user = smtp_user.split('@')[1]
+        
+        if not (user == settings_data['domain']):
+            warnings.append(f"The domain of the email '{smtp_user}' does not match the domain of the local '{settings_data['domain']}'.")
+    
+    if settings_data:
+    
+        if settings_data['booking_timeout'] != -1 and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
+            settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
+            warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
+        
+        smtp_settings = settings_data.pop('smtp_settings') if 'smtp_settings' in settings_data else None
+    
+        patch_smtp = False
+        smtp_settings_models = []
+                
+        if local_settings:
+            
+            patch_smtp = True
+            smtp_settings_models = list(local_settings.smtp_settings)
+            
+            for key, value in settings_data.items():
+                setattr(local_settings, key, value)
+            
+        else:        
+            local_settings = LocalSettingsModel(local_id = local.id, **settings_data)                
+                        
+        addAndFlush(local_settings)
+                
+        if smtp_settings is not None:
+            
+            priorities = []
+            
+            if len(smtp_settings) == 0:
+                deleteAndFlush(*smtp_settings_models)
+                smtp_settings_models = []
+            
+            for smtp_setting in smtp_settings:
+                
+                if patch_smtp:
+                    name = smtp_setting['name']
+                    
+                    smtp_setting_model = None
+                    
+                    for smtp_model in smtp_settings_models:
+                        if smtp_model.name == name:
+                            smtp_setting_model = smtp_model
+                            break
+                        
+                    if smtp_setting_model:
+                        
+                        for key, value in smtp_setting.items():
+                            setattr(smtp_setting_model, key, value)
+                        
+                        for smtp_model in smtp_settings_models:
+                            print("log")
+                            print(smtp_model.id, smtp_setting_model.id, smtp_model.priority, smtp_setting_model.priority)
+                            if smtp_model.id != smtp_setting_model.id and smtp_model.priority == smtp_setting_model.priority:
+                                abort(409, message = f'The priority {smtp_setting_model.priority} is already in use.')
+                        
+                        addAndFlush(smtp_setting_model)
+                        
+                        continue
+                    else:
+                        schema = SmtpSettingsSchema()
+                        keys = [ field_name for field_name, field_obj in schema.fields.items() if getattr(field_obj, 'required', False) ]
+                        for k in keys:
+                            if k not in smtp_setting:
+                                abort(404, message = f"The smtp setting '{name}' does not exist. The field '{k}' is required.")
+                    
+                
+                if 'max_send_per_month' in smtp_setting and 'reset_send_per_month' not in smtp_setting:
+                    abort(400, message = f"The smtp setting '{smtp_setting['name']}' does not have a reset_send_per_month date.")
+                    
+                if 'max_send_per_day' in smtp_setting and 'reset_send_per_day' not in smtp_setting:
+                    abort(400, message = f"The smtp setting '{smtp_setting['name']}' does not have a reset_send_per_month date.")
+                
+                if smtp_setting['priority'] in priorities:
+                    abort(409, message = f'The priority {smtp_setting["priority"]} is already in use.')
+                    
+                priorities.append(smtp_setting['priority'])
+                
+                check_domain_smtp(smtp_setting['user'])
+                                        
+                smtp_model = SmtpSettingsModel(local_settings_id = local_settings.id, **smtp_setting)
+                
+                try:
+                    addAndFlush(smtp_model)
+                    smtp_settings_models.append(smtp_model)
+                except IntegrityError as e:
+                    traceback.print_exc()
+                    rollback()
+                    abort(409, message = f"The smtp name '{smtp_model.name}' is already in use.")
+                
+        if len(smtp_settings_models) == 0: warnings.append(f'The local has no smtp settings.')
+        
+        if patch_smtp:
+            for smtp_model in smtp_settings_models:
+                check_domain_smtp(smtp_model.user)    
+                
+        
+        local_settings.smtp_settings = smtp_settings_models
+                
+    else: warnings.append(f'The local has no settings.')
+    
+    local.local_settings = local_settings if settings_data else None
+    
+    return warnings
+
+def update_local(local_data, local_id, patch = False):
+    local = LocalModel.query.get_or_404(local_id)
+    
+    try:
+        
+        settings_data = local_data.pop('local_settings') if 'local_settings' in local_data else None
+        
+        for key, value in local_data.items():
+            setattr(local, key, value)
+        
+        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
+        
+        addAndFlush(local)
+        
+        settings_model = local.local_settings
+        
+        if settings_model and not patch:
+            deleteAndFlush(settings_model)
+            settings_model = None
+        
+        warnings = set_local_settings(settings_data, local, local_settings=settings_model)
+        
+        commit()
+        
+    except IntegrityError as e:
+        traceback.print_exc()
+        rollback()
+        abort(409, message = 'The email is already in use.')
+    except SQLAlchemyError as e:
+        traceback.print_exc()
+        rollback()
+        abort(500, message = str(e) if DEBUG else 'Could not update the local.')
+    
+    return {"local": local, "warnings": warnings}
+    
     
 @blp.route('<string:local_id>')
 class Local(MethodView):
@@ -50,15 +200,16 @@ class Local(MethodView):
     
     @blp.arguments(LocalSchema)
     @blp.response(400, description='La zona horaria no es valida [campo location]. [Ex: Europe/Madrid].')
-    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(409, description='El email ya está en uso o se repite el nivel de prioridad de los servidores smtp.')
     @blp.response(404, description='El token no existe.')
     @blp.response(403, description='No tienes permisos para crear un local.')
     @blp.response(401, description='Falta cabecera de autorización.')
     @blp.response(201, LocalTokensSchema)
     def post(self, local_data):
-        """
+        F"""
         Crea un nuevo local.
         Si no se encuentra la contraseña, generará una nueva y la devolverá.
+        Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
         """
         
         token_header = request.headers.get('Authorization')
@@ -93,44 +244,21 @@ class Local(MethodView):
         except UnknownTimeZoneError as e:
             traceback.print_exc()
             abort(400, message = 'The timezone is not valid.')
-        
-        local = LocalModel(**local_data)
-        
-        local.password = pbkdf2_sha256.hash(local.password)
-
-        warnings = []
 
         try:
+            
+            settings_data = local_data.pop('local_settings') if 'local_settings' in local_data else None
+            
+            local = LocalModel(**local_data)
+        
+            local.password = pbkdf2_sha256.hash(local.password)
+            
             addAndFlush(local)
             
-            if 'settings' in local_data:
-                settings_data = local_data['settings']               
-                smtp_settings = settings_data.pop('smtp_settings') if 'smtp_settings' in settings_data else None
-                
-                if settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
-                    settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
-                    warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
-                    
-                local_settings = LocalSettingsModel(local_id = local.id, **settings_data)                
-                                
-                addAndFlush(local_settings)
-                
-                if smtp_settings:
-                    for smtp_setting in smtp_settings:
-                        
-                        user = smtp_setting['user'].split('@')[1]
-
-                        if not (user == settings_data['domain']):
-                            warnings.append(f'The domain of the email {smtp_setting["user"]} does not match the domain of the local {settings_data["domain"]}.')
-                        
-                        smtp_model = SmtpSettingsModel(local_settings_id = local_settings.id, **smtp_setting)
-                        
-                        addAndFlush(smtp_model)
-                else: warnings.append(f'The local has no smtp settings.')
-                        
-            else: warnings.append(f'The local has no settings.')
+            warnings = set_local_settings(settings_data, local)
             
             commit()
+            
             createPathFromLocal(local.id)
             access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
         except IntegrityError as e:
@@ -149,35 +277,30 @@ class Local(MethodView):
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local, 'warnings': warnings}
     
     @blp.arguments(LocalSchema)
-    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(409, description='El email ya está en uso o se repite el nivel de prioridad de los servidores smtp.')
     @blp.response(404, description='El local no existe.')
-    @blp.response(200, LocalSchema)
+    @blp.response(200, LocalWarningSchema)
     @jwt_required(fresh=True)
     def put(self, local_data):
-        """
+        f"""
         Actualiza los datos del local. Requiere token de acceso.
+        Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
+        """
+        return update_local(local_data, get_jwt_identity())
+        
+    @blp.arguments(LocalPatchSchema)
+    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(404, description='El local no existe.')
+    @blp.response(200, LocalWarningSchema)
+    @jwt_required(fresh=True)
+    def patch(self, local_data):
+        f"""
+        Actualiza los datos indicados del local. Requiere token de acceso.
+        Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
         """
         
-        local = LocalModel.query.get_or_404(get_jwt_identity())
+        return update_local(local_data, get_jwt_identity(), patch=True)
         
-        for key, value in local_data.items():
-            setattr(local, key, value)
-        
-        if 'password' in local_data: local.password = pbkdf2_sha256.hash(local_data['password'])
-        
-        try:
-            addAndCommit(local)
-        except IntegrityError as e:
-            traceback.print_exc()
-            rollback()
-            abort(409, message = 'The email is already in use.')
-        except SQLAlchemyError as e:
-            traceback.print_exc()
-            rollback()
-            abort(500, message = str(e) if DEBUG else 'Could not update the local.')
-        
-        return local
-    
     @blp.response(409, description='El email ya está en uso.')
     @blp.response(404, description='El local no existe.')
     @blp.response(204, description='Local eliminado.')

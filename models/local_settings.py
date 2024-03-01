@@ -12,6 +12,8 @@ class LocalSettingsModel(db.Model):
     datetime_created = db.Column(db.DateTime, unique=False, nullable=False)
     datetime_updated = db.Column(db.DateTime, unique=False, nullable=False)
     
+    local = db.relationship('LocalModel', back_populates='local_settings')
+    
     smtp_settings = db.relationship(
         'SmtpSettingsModel', 
         back_populates='local_settings',

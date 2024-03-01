@@ -11,3 +11,5 @@ from models.work_group import WorkGroupModel
 from models.worker import WorkerModel
 from models.weekday import WeekdayModel
 from models.timetable import TimetableModel
+from models.local_settings import LocalSettingsModel
+from models.smtp_settings import SmtpSettingsModel
