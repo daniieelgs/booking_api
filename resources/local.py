@@ -29,15 +29,15 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
     
     warnings = []
     
-    def check_domain_smtp(smtp_user):
-        user = smtp_user.split('@')[1]
+    def check_domain_smtp(smtp_mail, domain = settings_data['domain'] if settings_data and 'domain' in settings_data else local_settings.domain):
+        user = smtp_mail.split('@')[1]
         
-        if not (user == settings_data['domain']):
-            warnings.append(f"The domain of the email '{smtp_user}' does not match the domain of the local '{settings_data['domain']}'.")
+        if not (user == domain):
+            warnings.append(f"The domain of the email '{smtp_mail}' does not match the domain of the local '{domain}'.")
     
     if settings_data:
     
-        if settings_data['booking_timeout'] != -1 and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
+        if settings_data['booking_timeout'] != None and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
             settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
             warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
         
@@ -81,12 +81,19 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                         
                     if smtp_setting_model:
                         
+                        if 'remove' in smtp_setting and smtp_setting['remove']:
+                            deleteAndFlush(smtp_setting_model)
+                            smtp_settings_models.remove(smtp_setting_model)
+                            continue
+                        
+                        if 'new_name' in smtp_setting:
+                            smtp_setting['name'] = smtp_setting['new_name']
+                            smtp_setting.pop('new_name')
+                        
                         for key, value in smtp_setting.items():
                             setattr(smtp_setting_model, key, value)
                         
                         for smtp_model in smtp_settings_models:
-                            print("log")
-                            print(smtp_model.id, smtp_setting_model.id, smtp_model.priority, smtp_setting_model.priority)
                             if smtp_model.id != smtp_setting_model.id and smtp_model.priority == smtp_setting_model.priority:
                                 abort(409, message = f'The priority {smtp_setting_model.priority} is already in use.')
                         
@@ -112,7 +119,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                     
                 priorities.append(smtp_setting['priority'])
                 
-                check_domain_smtp(smtp_setting['user'])
+                check_domain_smtp(smtp_setting['mail'])
                                         
                 smtp_model = SmtpSettingsModel(local_settings_id = local_settings.id, **smtp_setting)
                 
@@ -128,7 +135,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
         
         if patch_smtp:
             for smtp_model in smtp_settings_models:
-                check_domain_smtp(smtp_model.user)    
+                check_domain_smtp(smtp_model.mail)    
                 
         
         local_settings.smtp_settings = smtp_settings_models

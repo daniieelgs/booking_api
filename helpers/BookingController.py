@@ -174,7 +174,7 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = None, commit = True):
+def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None):
     
     new_booking['services_ids'] = list(set(new_booking['services_ids']))
     new_booking['client_name'] = new_booking['client_name'].strip().title()
@@ -183,9 +183,14 @@ def createOrUpdateBooking(new_booking, local_id, bookingModel: BookingModel = No
         if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
             new_booking['worker_id'] = bookingModel.worker_id
     
-    local = LocalModel.query.get(local_id)
-    if not local:
-        raise LocalNotFoundException(id = local_id)
+    if not local_id:
+        if not local:
+            raise LocalNotFoundException()
+        local_id = local.id
+    else:
+        local = LocalModel.query.get(local_id)
+        if not local:
+            raise LocalNotFoundException(id = local_id)
     
     worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
     

@@ -9,6 +9,7 @@ class SmtpSettingsModel(db.Model):
     host = db.Column(db.String(100), unique=False, nullable=False)
     port = db.Column(db.Integer, unique=False, nullable=False)
     user = db.Column(db.String(100), unique=False, nullable=False)
+    mail = db.Column(db.String(100), unique=False, nullable=False)
     password = db.Column(db.String(500), unique=False, nullable=False)
     priority = db.Column(db.Integer, unique=False, nullable=False)
     send_per_day = db.Column(db.Integer, unique=False, nullable=False)

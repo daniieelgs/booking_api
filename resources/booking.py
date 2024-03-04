@@ -6,6 +6,7 @@ from helpers.BookingController import calculatEndTimeBooking, cancelBooking, cre
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
+from helpers.EmailController import send_confirm_booking_mail
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
@@ -298,26 +299,34 @@ class Booking(MethodView):
         """
         Crea una nueva reserva.
         """
+        
+        local = LocalModel.query.get_or_404(local_id)
+        
         try:
-            booking = createOrUpdateBooking(new_booking, local_id, commit=False)
+            
+            booking = createOrUpdateBooking(new_booking, local=local, commit=False)
             
             datetime_end = booking.datetime_end
-            
-            timeout = start_waiter_booking_status(booking.id)
-                
-            local = LocalModel.query.get_or_404(local_id)
-                
+               
             diff = datetime_end - now(local.location)
             
             exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
             
+            email_sended = send_confirm_booking_mail(local, booking, token)
+            
+            timeout = None
+            
+            if email_sended:
+                timeout = start_waiter_booking_status(booking.id, timeout=local.local_settings.booking_timeout)
+            
             commit()
             
             return {
                 "booking": booking,
                 "timeout": timeout,
+                "email_sended": email_sended,
                 "session_token": token
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:

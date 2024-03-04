@@ -12,15 +12,15 @@ from models.file import FileModel
 blp = Blueprint('public_files', __name__, description='Obtiene archivos públicos.')
 
 def generateFileResponse(local_id, path):
-    image = FileModel.query.filter_by(local_id = local_id, path = path).first_or_404()
+    file = FileModel.query.filter_by(local_id = local_id, path = path).first_or_404()
     try:
-        r = getFile(local_id, image.path)
+        r = getFile(local_id, file.path)
     except FileNotFoundError:
         abort(404, message='The file does not exist.')
 
     response = make_response(r)
-    response.headers['Content-Type'] = image.mimetype
-    response.headers['Content-Disposition'] = f'inline; filename="{image.name}"'
+    response.headers['Content-Type'] = file.mimetype
+    response.headers['Content-Disposition'] = f'inline; filename="{file.name}"'
     
     return response
        

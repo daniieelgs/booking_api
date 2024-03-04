@@ -3,7 +3,7 @@ from marshmallow import Schema, ValidationError, fields, validate, pre_load, pos
 from marshmallow import Schema, fields
 from email_validator import validate_email, EmailNotValidError
 
-from globals import TIMEOUT_CONFIRM_BOOKING
+from globals import MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING
 from helpers.security import decrypt_str, encrypt_str
 
 class SmtpSettingsSchema(Schema):
@@ -11,6 +11,7 @@ class SmtpSettingsSchema(Schema):
     host = fields.Str(required=True, validate=validate.Length(min=3, max=100))
     port = fields.Int(required=True, validate=validate.Range(min=0, max=65535))
     user = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    mail = fields.Str(required=True, validate=validate.Email())
     password = fields.Str(required=True)
     priority = fields.Int(required=True, validate=validate.Range(min=0))
     send_per_day = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
@@ -34,17 +35,20 @@ class SmtpSettingsSchema(Schema):
     
 class SmtpSettingsPatchSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    new_name = fields.Str(required=False, validate=validate.Length(min=3, max=45))
+    remove = fields.Bool(required=False)
     host = fields.Str(required=False, validate=validate.Length(min=3, max=100))
     port = fields.Int(required=False, validate=validate.Range(min=0, max=65535))
     user = fields.Str(required=False, validate=validate.Length(min=3, max=100))
+    mail = fields.Str(required=False, validate=validate.Email())
     password = fields.Str(required=False)
     priority = fields.Int(required=False, validate=validate.Range(min=0))
     send_per_day = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
     send_per_month = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
-    max_send_per_day = fields.Int(required=False)
-    max_send_per_month = fields.Int(required=False)
-    reset_send_per_day = fields.DateTime(required=False)
-    reset_send_per_month = fields.DateTime(required=False)
+    max_send_per_day = fields.Int(required=False, allow_none=True)
+    max_send_per_month = fields.Int(required=False, allow_none=True)
+    reset_send_per_day = fields.DateTime(required=False, allow_none=True)
+    reset_send_per_month = fields.DateTime(required=False, allow_none=True)
     
     @pre_load
     def encrypt_password_load(self, in_data, **kwargs):
@@ -59,20 +63,20 @@ class SmtpSettingsPatchSchema(Schema):
         return data
 
     
-class LocalSettingsSchema(Schema):
+class _LocalSettingsSchema(Schema):
     domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
     website = fields.Str(required=False, validate=validate.URL())
     confirmation_link = fields.Str(required=False, validate=validate.URL())
-    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=-1))
-    
+    instagram = fields.Str(required=False, validate=validate.URL())
+    facebook = fields.Str(required=False, validate=validate.URL())
+    twitter = fields.Str(required=False, validate=validate.URL())
+    whatsapp = fields.Str(required=False, validate=validate.URL())
+    linkedin = fields.Str(required=False, validate=validate.URL())
+    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
+class LocalSettingsSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
 
-class LocalSettingsPatchSchema(Schema):
-    domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
-    website = fields.Str(required=False, validate=validate.URL())
-    confirmation_link = fields.Str(required=False, validate=validate.URL())
-    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=-1))
-    
+class LocalSettingsPatchSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsPatchSchema, many=True, required=False)
 
 class PublicLocalSchema(Schema):
@@ -266,6 +270,7 @@ class NewBookingSchema(Schema):
     booking = fields.Nested(BookingSchema(), required=True)
     session_token = fields.Str(required=True)
     timeout = fields.Float(required=True)
+    email_sended = fields.Bool(required=True, dump_only=True)
     
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)

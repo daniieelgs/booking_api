@@ -1,3 +1,4 @@
+import os
 import secrets
 import string
 import datetime
@@ -9,7 +10,7 @@ import jwt
 from cryptography.fernet import Fernet
 
 
-from globals import CRYPTO_KEY, JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
+from globals import CRYPTO_KEY, DEFAULT_CRYPTO_JWT, JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
 
 from sqlalchemy.exc import SQLAlchemyError
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
