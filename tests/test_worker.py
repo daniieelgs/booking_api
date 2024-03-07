@@ -9,6 +9,7 @@ ENDPOINT = 'worker'
 class TestWorker(TestCase):
     def create_app(self):
         app = create_app(config_test)
+        self.locals = []
         return app
 
     def setUp(self):
@@ -21,6 +22,7 @@ class TestWorker(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.locals)
 
     def create_worker(self):
         
@@ -38,6 +40,8 @@ class TestWorker(TestCase):
         self.access_token = responseLocal.json['access_token']
                 
         self.local_id = responseLocal.json['local']['id']
+                
+        self.locals.append(self.local_id)
                 
         #Create work groups
          

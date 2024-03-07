@@ -4,7 +4,7 @@ import shutil
 
 from dotenv import load_dotenv
 
-from globals import ALLOWED_EXTENSIONS, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS, IMAGES_FOLDER
+from globals import ALLOWED_EXTENSIONS, IMAGE_TYPE_GALLERY, IMAGE_TYPE_LOGOS, IMAGES_FOLDER, PAGES_FOLDER
 
 
 def checkAndCreatePath(*path):
@@ -25,11 +25,18 @@ def createPathFromLocal(local_id):
     PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
     checkAndCreatePath(PUBLIC_FOLDER, local_id, IMAGES_FOLDER, IMAGE_TYPE_LOGOS)
     checkAndCreatePath(PUBLIC_FOLDER, local_id, IMAGES_FOLDER, IMAGE_TYPE_GALLERY)
+    checkAndCreatePath(PUBLIC_FOLDER, local_id, PAGES_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def savePath(file, filename, type, local_id):
+def generateImagePath(filename, type):
+    return os.path.join(IMAGES_FOLDER, type, filename).replace('\\', '/')
+
+def generatePagePath(filename):
+    return os.path.join(PAGES_FOLDER, filename).replace('\\', '/')
+
+def saveFile(file, path, local_id, update_if_conflict = False):
     
     load_dotenv()
 
@@ -37,31 +44,38 @@ def savePath(file, filename, type, local_id):
     
     absolute_path = os.getcwd()
     
-    file.save(os.path.join(absolute_path, PUBLIC_FOLDER, local_id, IMAGES_FOLDER, type, filename))
+    checkAndCreatePath(PUBLIC_FOLDER, local_id)
     
-def getImage(local_id, filename, type):
+    path = os.path.join(absolute_path, PUBLIC_FOLDER, local_id, path)
     
-    load_dotenv()
-
-    PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
+    if os.path.exists(path) and not update_if_conflict:
+        raise FileExistsError()
     
-    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, IMAGES_FOLDER, type, filename)
+    file.save(os.path.join(absolute_path, PUBLIC_FOLDER, local_id, path))
     
-    with open(path, 'rb') as f:
-        image = f.read()
-        
-        return image
-
-def removeImage(local_id, filename, type):
+def removeFile(local_id, path):
     
     load_dotenv()
 
     PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
     
-    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, IMAGES_FOLDER, type, filename)
+    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, path)
     
     os.remove(path)
     
+def getFile(local_id, path):
+    
+    load_dotenv()
+
+    PUBLIC_FOLDER = os.getenv('PUBLIC_FOLDER', None)
+    
+    path = os.path.join(os.getcwd(), PUBLIC_FOLDER, local_id, path)
+    
+    with open(path, 'rb') as f:
+        file = f.read()
+        
+        return file
+       
 def removePath(local_id):
     
     load_dotenv()

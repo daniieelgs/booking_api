@@ -1,25 +1,129 @@
-from marshmallow import Schema, ValidationError, fields, validate
+from marshmallow import Schema, ValidationError, fields, validate, pre_load, post_dump
 
 from marshmallow import Schema, fields
 from email_validator import validate_email, EmailNotValidError
 
+from globals import MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING
+from helpers.security import decrypt_str, encrypt_str
+
+class SmtpSettingsSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    host = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    port = fields.Int(required=True, validate=validate.Range(min=0, max=65535))
+    user = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    mail = fields.Str(required=True, validate=validate.Email())
+    password = fields.Str(required=True)
+    priority = fields.Int(required=True, validate=validate.Range(min=0))
+    send_per_day = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    send_per_month = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    max_send_per_day = fields.Int(required=False)
+    max_send_per_month = fields.Int(required=False)
+    reset_send_per_day = fields.DateTime(required=False)
+    reset_send_per_month = fields.DateTime(required=False)
+    
+    @pre_load
+    def encrypt_password_load(self, in_data, **kwargs):
+        if 'password' in in_data:
+            in_data['password'] = encrypt_str(in_data['password'])
+        return in_data
+
+    @post_dump
+    def decrypt_password_dump(self, data, **kwargs):
+        if 'password' in data:
+            data['password'] = decrypt_str(data['password'])
+        return data
+    
+class SmtpSettingsPatchSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    new_name = fields.Str(required=False, validate=validate.Length(min=3, max=45))
+    remove = fields.Bool(required=False)
+    host = fields.Str(required=False, validate=validate.Length(min=3, max=100))
+    port = fields.Int(required=False, validate=validate.Range(min=0, max=65535))
+    user = fields.Str(required=False, validate=validate.Length(min=3, max=100))
+    mail = fields.Str(required=False, validate=validate.Email())
+    password = fields.Str(required=False)
+    priority = fields.Int(required=False, validate=validate.Range(min=0))
+    send_per_day = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    send_per_month = fields.Int(required=False, load_default=0, validate=validate.Range(min=0))
+    max_send_per_day = fields.Int(required=False, allow_none=True)
+    max_send_per_month = fields.Int(required=False, allow_none=True)
+    reset_send_per_day = fields.DateTime(required=False, allow_none=True)
+    reset_send_per_month = fields.DateTime(required=False, allow_none=True)
+    
+    @pre_load
+    def encrypt_password_load(self, in_data, **kwargs):
+        if 'password' in in_data:
+            in_data['password'] = encrypt_str(in_data['password'])
+        return in_data
+
+    @post_dump
+    def decrypt_password_dump(self, data, **kwargs):
+        if 'password' in data:
+            data['password'] = decrypt_str(data['password'])
+        return data
+
+    
+class PublicSettingsSchema(Schema):
+    website = fields.Str(required=False, validate=validate.URL())
+    instagram = fields.Str(required=False, validate=validate.URL())
+    facebook = fields.Str(required=False, validate=validate.URL())
+    twitter = fields.Str(required=False, validate=validate.URL())
+    whatsapp = fields.Str(required=False, validate=validate.URL())
+    linkedin = fields.Str(required=False, validate=validate.URL())
+    tiktok = fields.Str(required=False, validate=validate.URL())
+    maps = fields.Str(required=False, validate=validate.URL())
+    email_contact = fields.Str(required=False, validate=validate.Email())
+    phone_contact = fields.Str(required=False, validate=validate.Length(min=9, max=13))
+    email_support = fields.Str(required=False, validate=validate.Email())
+class _LocalSettingsSchema(PublicSettingsSchema):
+    domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
+    confirmation_link = fields.Str(required=False, validate=validate.URL())
+    cancel_link = fields.Str(required=False, validate=validate.URL())
+    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
+class LocalSettingsSchema(_LocalSettingsSchema):
+    smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
+
+class LocalSettingsPatchSchema(_LocalSettingsSchema):
+    smtp_settings = fields.Nested(SmtpSettingsPatchSchema, many=True, required=False)
+
 class PublicLocalSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
-    tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
-    email = fields.Str(required=True, validate=validate.Email())
     description = fields.Str()
     address = fields.Str()
     postal_code = fields.Str()
     village = fields.Str()
     province = fields.Str()
+    local_settings = fields.Nested(PublicSettingsSchema, required=False)
     location = fields.Str(required=True)
 
 class LocalSchema(PublicLocalSchema):
+    tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
+    email = fields.Str(required=True, validate=validate.Email())
     password = fields.Str(required=False, load_only=True)
     password_generated = fields.Str(required=False, dump_only=True)
+    local_settings = fields.Nested(LocalSettingsSchema, required=False)
     datetime_created = fields.DateTime(required=True, dump_only=True)
     datetime_updated = fields.DateTime(required=True, dump_only=True)
+    
+class LocalPatchSchema(Schema):
+    name = fields.Str(required=False, validate=validate.Length(min=3, max=45))
+    tlf = fields.Str(required=False, validate=validate.Length(min=9, max=13))
+    email = fields.Str(required=False, validate=validate.Email())
+    description = fields.Str()
+    address = fields.Str()
+    postal_code = fields.Str()
+    village = fields.Str()
+    province = fields.Str()
+    location = fields.Str(required=False)
+    password = fields.Str(required=False, load_only=True)
+    local_settings = fields.Nested(LocalSettingsPatchSchema, required=False)
+    datetime_created = fields.DateTime(required=False, dump_only=True)
+    datetime_updated = fields.DateTime(required=False, dump_only=True)
+  
+class LocalWarningSchema(Schema):
+    local = fields.Nested(LocalSchema, required=False, dump_only=True)
+    warnings = fields.List(fields.Str(), required=False, dump_only=True)
     
 class ListSchema(Schema):
     total = fields.Int(required=True, dump_only=True)
@@ -31,6 +135,7 @@ class LocalTokensSchema(Schema):
     access_token = fields.Str(required=False, dump_only=True)
     refresh_token = fields.Str(required=False, dump_only=True)
     local = fields.Nested(LocalSchema(), dump_only=True)
+    warnings = fields.List(fields.Str(), required=False, dump_only=True)
     
 class LoginLocalSchema(Schema):
     email = fields.Str(required=True)
@@ -173,6 +278,7 @@ class NewBookingSchema(Schema):
     booking = fields.Nested(BookingSchema(), required=True)
     session_token = fields.Str(required=True)
     timeout = fields.Float(required=True)
+    email_sended = fields.Bool(required=True, dump_only=True)
     
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)
@@ -180,7 +286,7 @@ class BookingAdminSchema(BookingSchema):
 class BookingAdminPatchSchema(BookingPatchSchema):
     new_status = fields.Str(required=False, load_only=True)
     
-class ImageSchema(Schema):
+class FileSchema(Schema):
     url = fields.Str(required=True)
     
 class CommentSchema(Schema):
@@ -218,6 +324,7 @@ class DeleteParams(Schema):
     
 class UpdateParams(Schema):
     force = fields.Bool(required=False, description='Fuerza la actualización del item incluso si tiene reservas.')
+    notify = fields.Bool(required=False, description='Notifica a los clientes de la actualización.') #TODO: check
     
 class LocalAdminParams(Schema):
     name = fields.Str(required=False, description='Espefica el nombre para filtrar locales.')

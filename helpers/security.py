@@ -1,3 +1,4 @@
+import os
 import secrets
 import string
 import datetime
@@ -6,7 +7,10 @@ import uuid
 
 import jwt
 
-from globals import JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
+from cryptography.fernet import Fernet
+
+
+from globals import CRYPTO_KEY, DEFAULT_CRYPTO_JWT, JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
 
 from sqlalchemy.exc import SQLAlchemyError
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
@@ -55,7 +59,6 @@ def decodeToken(token):
 def decodeJWT(token):
     return jwt.decode(token, key=SECRET_JWT, algorithms=[JWT_ALGORITHM])
 
- 
 def generateUUID():
     return uuid.uuid4().hex
 
@@ -63,3 +66,11 @@ def logOutAll(local_id):
     
     SessionTokenModel.query.filter(SessionTokenModel.local_id == local_id).delete()
     db.session.commit()
+    
+def encrypt_str(txt, key = CRYPTO_KEY):
+    cipher_suite = Fernet(key)
+    return cipher_suite.encrypt(txt.encode())
+
+def decrypt_str(txt, key = CRYPTO_KEY):
+    cipher_suite = Fernet(key)
+    return cipher_suite.decrypt(txt).decode()
