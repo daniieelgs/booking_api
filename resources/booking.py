@@ -363,6 +363,7 @@ class BookingAdmin(MethodView):
         return booking
     
     
+    @blp.arguments(UpdateParams, location='query') #TODO implementar force
     @blp.arguments(BookingAdminSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
@@ -370,10 +371,12 @@ class BookingAdmin(MethodView):
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def put(self, booking_data, booking_id):
+    def put(self, params, booking_data, booking_id):
         """
         Actualiza una reserva.
         """
+        
+        notify = 'notify' in params and params['notify']
         
         booking = BookingModel.query.get(booking_id)
 
@@ -386,7 +389,9 @@ class BookingAdmin(MethodView):
         booking_data['status'] = booking_data.pop('new_status')
                 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking =  createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            #TODO send email updated if notify
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -400,6 +405,7 @@ class BookingAdmin(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
     
+    @blp.arguments(UpdateParams, location='query') #TODO implementar force
     @blp.arguments(BookingAdminPatchSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
@@ -407,10 +413,12 @@ class BookingAdmin(MethodView):
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def patch(self, booking_data, booking_id):
+    def patch(self, params, booking_data, booking_id):
         """
         Actualiza una reserva indicando los campos a modificar.
         """
+        
+        notify = 'notify' in params and params['notify']
         
         booking = BookingModel.query.get(booking_id)
 
@@ -425,7 +433,9 @@ class BookingAdmin(MethodView):
         booking_data = patchBooking(booking, booking_data, admin = True)
                 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            #TODO send email updated if notify
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -506,7 +516,10 @@ class BookingSession(MethodView):
             abort(409, message = f"The booking is '{booking.status.name}'.")
 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            #TODO generate new token and expire the old
+            #TODO send email updated
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -574,6 +587,7 @@ class BookingSession(MethodView):
         
         try:
             cancelBooking(booking)
+            #TODO send email cancelled
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
@@ -593,6 +607,7 @@ class BookingSession(MethodView):
         """
         
         force = 'force' in params and params['force']
+        notify = 'notify' in params and params['notify']
         
         if force:
             services_ids = new_booking.pop('services_ids')
@@ -628,6 +643,8 @@ class BookingSession(MethodView):
                 token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                 
                 commit()
+                
+                #TODO send email confirmed if notify
                 
                 return {
                     "booking": booking,
@@ -684,6 +701,7 @@ class BookingConfirm(MethodView):
     @blp.response(404, description='La reserva no existe.')
     @blp.response(400, description='No se ha proporcionado el token de sesión.')
     @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(409, description='La reserva no está pendiente.')
     @blp.response(200, BookingSchema)
     def get(self, params):
         """
@@ -709,6 +727,8 @@ class BookingConfirm(MethodView):
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
+            
+        #TODO send email confirmed
             
         return booking
     
@@ -749,6 +769,8 @@ class BookingConfirmId(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
+        #TODO send email confirmed
+            
         return booking
  
 @blp.route('cancel/<int:booking_id>')
@@ -779,7 +801,7 @@ class BookingConfirmId(MethodView):
         
         try:
             cancelBooking(booking)
-            
+            #TODO send email cancelled
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()

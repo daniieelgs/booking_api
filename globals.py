@@ -58,7 +58,21 @@ DEFAULT_EMAIL_CONFIRMED_PAGE = "email_confirmed.html"
 
 DEFAULT_KEYWORDS_PAGES = {
     "CONFIRMATION_LINK": "{confirmation_link}",
-    "BOOKING_TOKEN": "{booking_token}"
+    "BOOKING_TOKEN": "{booking_token}",
+    "CLIENT_NAME": "{client_name}",
+    "LOCAL_NAME": "{local_name}",
+    "DATE": "{date}",
+    "TIME": "{time}",
+    "SERVICE": "{service}",
+    "COST": "{cost}",
+    "ADDRESS-MAPS": "{address_maps}",
+    "ADDRESS": "{address}",
+    "PHONE_CONTACT": "{phone_contact}",
+    "TIMEOUT_CONFIRM_BOOKING": "{timeout_confirm_booking}",
+    "CANCEL_LINK": "{cancel_link}",
+    "EMAIL_CONTACT": "{email_contact}",
+    "WHATSAPP_LINK": "{whatsapp_link}",
+    "WEBSITE": "{website}",
 }
 
 DEFAULT_TIMEOUT_CONFIRM_BOOKING = 60
@@ -123,7 +137,10 @@ PAGES_FOLDER = os.getenv('PAGES_FOLDER', DEFAULT_PAGES_FOLDER)
 
 EMAIL_CONFIRMATION_PAGE = os.getenv('EMAIL_CONFIRMATION_PAGE', DEFAULT_EMAIL_CONFIRMATION_PAGE)
 EMAIL_CONFIRMED_PAGE = os.getenv('EMAIL_CONFIRMED_PAGE', DEFAULT_EMAIL_CONFIRMED_PAGE)
-KEYWORDS_PAGES = os.getenv('KEYWORDS_PAGES', DEFAULT_KEYWORDS_PAGES)
+KEYWORDS_PAGES = os.getenv('KEYWORDS_PAGES', None)
+if KEYWORDS_PAGES:
+    KEYWORDS_PAGES = {key.split('"')[1].strip(): value.split('"')[1].strip() for key, value in [keyword.split('":') for keyword in KEYWORDS_PAGES.split(',')]}
+else: KEYWORDS_PAGES = DEFAULT_KEYWORDS_PAGES
 
 ADMIN_IDENTITY = os.getenv('ADMIN_IDENTITY', DEFAULT_ADMIN_IDENTITY)
 JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', DEFAULT_JWT_ALGORITHM)

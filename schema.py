@@ -63,15 +63,22 @@ class SmtpSettingsPatchSchema(Schema):
         return data
 
     
-class _LocalSettingsSchema(Schema):
-    domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
+class PublicSettingsSchema(Schema):
     website = fields.Str(required=False, validate=validate.URL())
-    confirmation_link = fields.Str(required=False, validate=validate.URL())
     instagram = fields.Str(required=False, validate=validate.URL())
     facebook = fields.Str(required=False, validate=validate.URL())
     twitter = fields.Str(required=False, validate=validate.URL())
     whatsapp = fields.Str(required=False, validate=validate.URL())
     linkedin = fields.Str(required=False, validate=validate.URL())
+    tiktok = fields.Str(required=False, validate=validate.URL())
+    maps = fields.Str(required=False, validate=validate.URL())
+    email_contact = fields.Str(required=False, validate=validate.Email())
+    phone_contact = fields.Str(required=False, validate=validate.Length(min=9, max=13))
+    email_support = fields.Str(required=False, validate=validate.Email())
+class _LocalSettingsSchema(PublicSettingsSchema):
+    domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
+    confirmation_link = fields.Str(required=False, validate=validate.URL())
+    cancel_link = fields.Str(required=False, validate=validate.URL())
     booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
 class LocalSettingsSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
@@ -82,16 +89,17 @@ class LocalSettingsPatchSchema(_LocalSettingsSchema):
 class PublicLocalSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
-    tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
-    email = fields.Str(required=True, validate=validate.Email())
     description = fields.Str()
     address = fields.Str()
     postal_code = fields.Str()
     village = fields.Str()
     province = fields.Str()
+    local_settings = fields.Nested(PublicSettingsSchema, required=False)
     location = fields.Str(required=True)
 
 class LocalSchema(PublicLocalSchema):
+    tlf = fields.Str(required=True, validate=validate.Length(min=9, max=13))
+    email = fields.Str(required=True, validate=validate.Email())
     password = fields.Str(required=False, load_only=True)
     password_generated = fields.Str(required=False, dump_only=True)
     local_settings = fields.Nested(LocalSettingsSchema, required=False)
@@ -316,6 +324,7 @@ class DeleteParams(Schema):
     
 class UpdateParams(Schema):
     force = fields.Bool(required=False, description='Fuerza la actualización del item incluso si tiene reservas.')
+    notify = fields.Bool(required=False, description='Notifica a los clientes de la actualización.') #TODO: check
     
 class LocalAdminParams(Schema):
     name = fields.Str(required=False, description='Espefica el nombre para filtrar locales.')

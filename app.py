@@ -15,7 +15,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import CRYPTO_KEY, DEBUG, CERT_SSL, KEY_SSL
+from globals import DEBUG, CERT_SSL, KEY_SSL
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -172,7 +172,7 @@ def create_app(config: Config = DefaultConfig()):
     # @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
     # def public(resource):
     #     return app.send_static_file(resource)
-                    
+                                        
     return app
 
 app = create_app()

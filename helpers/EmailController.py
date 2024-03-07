@@ -117,14 +117,32 @@ def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_toke
     local_settings = local.local_settings
     if not local_settings: return False
     
-    confirmation_link = local_settings.confirmation_link
+    confirmation_link:str = local_settings.confirmation_link
     if not confirmation_link: return False
     confirmation_link = confirmation_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
+
+    cancel_link:str = local_settings.cancel_link
+    if not cancel_link: return False
+    cancel_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
+    
+    client_name = book.client_name
+    local_name = local.name
+    date = book.datetime_init.strftime("%d/%m/%Y")
+    time = book.datetime_init.strftime("%H:%M")
+    service = ", ".join([service.name for service in book.services])
+    cost = str(book.total_price)
+    address_maps = local_settings.maps
+    address = local.address
+    phone_contact = local_settings.phone_contact
+    email_contact = local_settings.email_contact
+    timeout_confirm_booking = str(int(local_settings.booking_timeout / 60))
+    website = local_settings.website
+    whatsapp_link = local_settings.whatsapp
 
     try:    
         response = generateFileResponse(local.id, generatePagePath(EMAIL_CONFIRMATION_PAGE))
             
-        mail_body = response.get_data().decode('utf-8').replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], confirmation_link)
+        mail_body = response.get_data().decode('utf-8').replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], confirmation_link).replace(KEYWORDS_PAGES['CANCEL_LINK'], cancel_link).replace(KEYWORDS_PAGES['CLIENT_NAME'], client_name).replace(KEYWORDS_PAGES['LOCAL_NAME'], local_name).replace(KEYWORDS_PAGES['DATE'], date).replace(KEYWORDS_PAGES['TIME'], time).replace(KEYWORDS_PAGES['SERVICE'], service).replace(KEYWORDS_PAGES['COST'], cost).replace(KEYWORDS_PAGES['ADDRESS-MAPS'], address_maps).replace(KEYWORDS_PAGES['ADDRESS'], address).replace(KEYWORDS_PAGES['PHONE_CONTACT'], phone_contact).replace(KEYWORDS_PAGES['EMAIL_CONTACT'], email_contact).replace(KEYWORDS_PAGES['TIMEOUT_CONFIRM_BOOKING'], str(timeout_confirm_booking)).replace(KEYWORDS_PAGES['WEBSITE'], website).replace(KEYWORDS_PAGES['WHATSAPP_LINK'], whatsapp_link)
         subject = mail_body.split("<title>")[1].split("</title>")[0]
         
         return mail_local_sender(local_settings, to, subject, mail_body, 'html', location_local = local.location)
