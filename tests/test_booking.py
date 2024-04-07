@@ -66,7 +66,6 @@ class TestBooking(TestCase):
             })
         
         r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.timetable), content_type='application/json')
-        print(r.json)
         self.assertEqual(r.status_code, 200)
         
     def create_work_group(self):
@@ -369,8 +368,8 @@ class TestBooking(TestCase):
         self.assertEqual(booking_response['total_price'], totalPrice)
             #Estado
         self.assertEqual(booking_response['status']['status'], PENDING_STATUS)
-        
-        self.assertEqual(response['timeout'], config_test.waiter_booking_status if config_test.waiter_booking_status else 0)
+                
+        self.assertEqual(response['timeout'], config_test.waiter_booking_status if config_test.waiter_booking_status else None)
     
         #Obtener reserva
         session = response['session_token']
@@ -664,7 +663,6 @@ class TestBooking(TestCase):
         booking['client_tlf'] = "123456789"
         
         r = self.post_booking(booking)
-        print(r.json)
         self.assertEqual(r.status_code, 201)
         register_booking(r)
         
@@ -850,6 +848,7 @@ class TestBooking(TestCase):
             booking.pop('id')
             booking.pop('comment')
             booking.pop('total_price')
+            booking.pop('email_sent')
             r = self.update_booking_admin(id, booking)
             self.assertEqual(r.status_code, 200)
             
@@ -860,7 +859,6 @@ class TestBooking(TestCase):
         booking = _booking.copy()
         
         r = self.post_booking(booking)
-        print(r.json)
         self.assertEqual(r.status_code, 201)
         session = dict(r.json)['session_token']
         id = dict(r.json)['booking']['id']
@@ -893,7 +891,6 @@ class TestBooking(TestCase):
         
         booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.timetable[0]['opening_time']
         r = self.update_booking_admin(id, booking)
-        print(r.json)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], booking['new_status'])
         
@@ -975,6 +972,7 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 201)
         
         id = dict(r.json)['booking']['id']
+        worker_id = dict(r.json)['booking']['worker']['id']
         
         r = self.confirm_booking_admin(id)
         self.assertEqual(r.status_code, 200)
@@ -997,9 +995,8 @@ class TestBooking(TestCase):
         r = self.post_booking_local(booking)
         self.assertEqual(r.status_code, 409)
                 
-        booking['worker_id'] = self.workers[0]['id']
+        booking['worker_id'] = worker_id
         r = self.post_booking_local(booking, force=True)
-        print(r.json)
         self.assertEqual(r.status_code, 201)
         
     def test_integration_booking(self):

@@ -32,7 +32,7 @@ def start_waiter_booking_status(booking_id, timeout=None):
     load_dotenv()
     if not timeout: timeout = TIMEOUT_CONFIRM_BOOKING
     if timeout is None or timeout <= 0: return timeout
-    thread = threading.Thread(target=waiter_booking_status, args=(booking_id,timeout,))
+    thread = threading.Thread(target=waiter_booking_status, args=(booking_id,timeout,)) # Mirar eficiencia
     thread.start()
     
     return timeout

@@ -1,3 +1,5 @@
+# python -m unittest .\tests\test_local.py
+
 import json
 import unittest
 from flask_testing import TestCase
@@ -66,10 +68,10 @@ class TestLocal(TestCase):
         self.local_get['location'] = self.data['location']
         
         local_put = dict(response_put.json)
-        self.assertNotEqual(local_put['datetime_updated'], self.local_get['datetime_updated'])
-        local_put.pop('datetime_updated', None)
+        self.assertNotEqual(local_put['local']['datetime_updated'], self.local_get['datetime_updated'])
+        local_put['local'].pop('datetime_updated', None)
         self.local_get.pop('datetime_updated', None)
-        self.assertEqual(local_put, self.local_get)
+        self.assertEqual(local_put['local'], self.local_get)
 
     def delete_local(self):
         response = self.client.post(getUrl(ENDPOINT, 'login'), data=json.dumps({'email': self.data['email'], 'password': self.password_generated}), content_type='application/json')

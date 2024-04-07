@@ -22,6 +22,7 @@ class BookingModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
     worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'), nullable=True)
+    email_sent = db.Column(db.Boolean, nullable=False, default=False)
     
     status = db.relationship('StatusModel', back_populates='bookings')
     services = db.relationship(

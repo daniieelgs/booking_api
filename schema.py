@@ -79,11 +79,12 @@ class _LocalSettingsSchema(PublicSettingsSchema):
     domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
     confirmation_link = fields.Str(required=False, validate=validate.URL())
     cancel_link = fields.Str(required=False, validate=validate.URL())
-    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
+    booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=-1), allow_none=True)
 class LocalSettingsSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
 
 class LocalSettingsPatchSchema(_LocalSettingsSchema):
+    booking_timeout = fields.Int(required=False, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
     smtp_settings = fields.Nested(SmtpSettingsPatchSchema, many=True, required=False)
 
 class PublicLocalSchema(Schema):
@@ -256,9 +257,7 @@ class BookingSchema(PublicBookingSchema):
     
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
-
-class BookingListSchema(ListSchema):
-    bookings = fields.Nested(BookingSchema, many=True, dump_only=True)
+        
 
 class BookingPatchSchema(PublicBookingPatchSchema):
     client_name = fields.Str(required=False, validate=validate.Length(min=3, max=45))
@@ -278,13 +277,20 @@ class NewBookingSchema(Schema):
     booking = fields.Nested(BookingSchema(), required=True)
     session_token = fields.Str(required=True)
     timeout = fields.Float(required=True)
-    email_sended = fields.Bool(required=True, dump_only=True)
+    email_sent = fields.Bool(required=True, dump_only=True)
     
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)
+    email_sent = fields.Bool(required=True, dump_only=True)
     
 class BookingAdminPatchSchema(BookingPatchSchema):
     new_status = fields.Str(required=False, load_only=True)
+   
+class BookingListSchema(ListSchema):
+    bookings = fields.Nested(BookingSchema, many=True, dump_only=True)
+
+class BookingAdminListSchema(ListSchema):
+    bookings = fields.Nested(BookingAdminSchema, many=True, dump_only=True)
     
 class FileSchema(Schema):
     url = fields.Str(required=True)

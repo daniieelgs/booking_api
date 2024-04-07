@@ -37,7 +37,7 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
+from schema import BookingAdminListSchema, BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
 
 blp = Blueprint('booking', __name__, description='Control de reservas.')
 
@@ -173,7 +173,7 @@ class SeeBookingWeek(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -203,7 +203,7 @@ class SeeBookingWeek(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))     
-                
+                                
         return {"bookings": bookings, "total": len(bookings)}  
        
 @blp.route('/all/week')
@@ -213,7 +213,7 @@ class SeeBookingWeek(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -243,7 +243,7 @@ class SeeBookingWeek(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-                        
+                                                
         return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all/month')
@@ -253,7 +253,7 @@ class SeeBookingMonth(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -283,7 +283,7 @@ class SeeBookingMonth(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-                        
+        
         return {"bookings": bookings, "total": len(bookings)}  
 
 @blp.route('/local/<string:local_id>')
@@ -313,20 +313,25 @@ class Booking(MethodView):
             exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+                        
+            booking.email_sent = True
+                        
+            commit()
             
-            email_sended = send_confirm_booking_mail(local, booking, token)
+            email_sent = send_confirm_booking_mail(local, booking, token)
             
             timeout = None
             
-            if email_sended:
+            if email_sent:
                 timeout = start_waiter_booking_status(booking.id, timeout=local.local_settings.booking_timeout)
-            
-            commit()
+            else:
+                booking.email_sent = False
+                addAndCommit(booking)
             
             return {
                 "booking": booking,
                 "timeout": timeout,
-                "email_sended": email_sended,
+                "email_sent": email_sent,
                 "session_token": token
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -348,7 +353,7 @@ class BookingAdmin(MethodView):
     
     @blp.response(404, description='La reserva no existe.')
     @blp.response(401, description='No tienes permisos para obtener la reserva.')
-    @blp.response(200, BookingSchema)
+    @blp.response(200, BookingAdminSchema)
     @jwt_required(refresh=True)
     def get(self, booking_id):
         """
@@ -359,7 +364,7 @@ class BookingAdmin(MethodView):
         
         if not booking.local_id == get_jwt_identity():
             abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
-        
+                
         return booking
     
     
@@ -770,6 +775,7 @@ class BookingConfirmId(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
         #TODO send email confirmed
+        # TODO send email confirmed
             
         return booking
  

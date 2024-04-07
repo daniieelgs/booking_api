@@ -29,7 +29,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
     
     warnings = []
     
-    def check_domain_smtp(smtp_mail, domain = settings_data['domain'] if settings_data and 'domain' in settings_data else local_settings.domain):
+    def check_domain_smtp(smtp_mail, domain = settings_data['domain'] if settings_data and 'domain' in settings_data else (local_settings.domain if local_settings else "")):
         user = smtp_mail.split('@')[1]
         
         if not (user == domain):
@@ -37,9 +37,13 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
     
     if settings_data:
     
-        if settings_data['booking_timeout'] != None and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
-            settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
-            warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
+        if 'booking_timeout' in settings_data and settings_data['booking_timeout'] != None and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
+            if settings_data['booking_timeout'] == -1:
+                 settings_data['booking_timeout'] = None
+                 warnings.append(f'The booking timeout is disabled.')
+            else:
+                settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
+                warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
         
         smtp_settings = settings_data.pop('smtp_settings') if 'smtp_settings' in settings_data else None
     
@@ -165,6 +169,8 @@ def update_local(local_data, local_id, patch = False):
         if settings_model and not patch:
             deleteAndFlush(settings_model)
             settings_model = None
+        elif settings_model and patch and settings_data and 'booking_timeout' not in settings_data:
+            settings_data['booking_timeout'] = local.local_settings.booking_timeout
         
         warnings = set_local_settings(settings_data, local, local_settings=settings_model)
         
