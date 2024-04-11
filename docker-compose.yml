@@ -1,0 +1,78 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URI: mysql+pymysql://booking:MnPcVAKJ7882yMV8@database:3306/booking
+      SECRET_KEY: 303333537232571254035672536717968198213
+      API_VERSION: preview 1.0
+      CRYPTO_KEY: F2_0RVteaNlxraTvKxFidoWbjjZZ1yS2eyuDWrt0UeE
+      CRYPTO_KEY_ENDS_EQUAL: 1
+    depends_on:
+      - database
+
+  database:
+    image: mysql:5.7
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: MnPcVAKJ7882yMV8
+      MYSQL_DATABASE: booking
+      MYSQL_USER: booking
+      MYSQL_PASSWORD: MnPcVAKJ7882yMV8
+    volumes:
+      - db-data:/var/lib/mysql
+
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "4403:80"
+    depends_on:
+      - database
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+
+
+  worker:
+    build: .
+    command: celery -A make_celery.celery worker --loglevel=info -Q priority,default
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+  beat:
+    build: .
+    command: celery -A make_celery.celery beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    depends_on:
+      - web
+
+  flower:
+    build: .
+    image: mher/flower
+    ports:
+      - "5555:5555"
+    command: celery -A make_celery.celery flower --port=5555 --broker=redis://redis:6379/0
+    depends_on:
+      - redis
+    working_dir: /app
+
+volumes:
+  db-data:

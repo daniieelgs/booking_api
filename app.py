@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import traceback
 from dotenv import load_dotenv
@@ -29,6 +30,8 @@ from resources.public_files import blp as PublicFilesBlueprint
 from resources.admin import blp as AdminBlueprint
 
 from resources.test import blp as TestBlueprint
+
+from celery_app import celery_config
 
 #TODO desarrollas sistema de LOGs
 
@@ -71,7 +74,25 @@ def create_app(config: Config = DefaultConfig()):
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
+    ##Celery
     
+    app.config.from_mapping(
+        CELERY=dict(
+            broker_url=config.celery_broker_url,
+            result_backend=config.celery_result_backend,
+            imports="celery_app.tasks",
+            task_ignore_result=True,
+            beat_schedule={
+                'notify-every-5-seconds': {
+                    'task': 'celery_app.tasks.notify_hello',
+                    'schedule': timedelta(seconds=5),
+                    "options": {"queue": "priority"}
+                }
+            }    
+        ),
+    )
+        
+    celery_config.make_celery(app)
         
     db.init_app(app)
     
