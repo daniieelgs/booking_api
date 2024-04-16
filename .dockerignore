@@ -4,3 +4,6 @@ instance
 *.db
 private
 test/public
+.env.docker
+docker-compose-dev.yml
+dockerfile-dev

@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from flask_cors import CORS
 
-import nltk
 from config import Config
 
 from db import db, deleteAndCommit
@@ -33,6 +32,8 @@ from resources.test import blp as TestBlueprint
 
 from celery_app import celery_config
 
+from celery.schedules import crontab
+
 #TODO desarrollas sistema de LOGs
 
 #TODO cambiar datetime.now() por hora actual del location del local
@@ -48,8 +49,6 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else 0)
         
     load_dotenv()
-            
-    nltk.download('punkt')
     
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER)
     CORS(app)
@@ -83,14 +82,20 @@ def create_app(config: Config = DefaultConfig()):
             imports="celery_app.tasks",
             task_ignore_result=True,
             beat_schedule={
-                'notify-every-5-seconds': {
-                    'task': 'celery_app.tasks.notify_hello',
-                    'schedule': timedelta(seconds=5),
-                    "options": {"queue": "priority"}
-                }
+                # 'notify-every-5-seconds': {
+                #     'task': 'celery_app.tasks.notify_hello',
+                #     'schedule': timedelta(seconds=5),
+                #     "options": {"queue": "priority"}
+                # },
+                # 'execute-daily-at-specific-time': {
+                #     'task': 'nombre_del_modulo.execute_daily_at_specific_time',
+                #     'schedule': crontab(hour=H, minute=M),  # Reemplaza H con la hora y M con los minutos
+                # },
             }    
         ),
     )
+    
+    # execute_after_x_hours.apply_async(countdown=3600 * X)
         
     celery_config.make_celery(app)
         

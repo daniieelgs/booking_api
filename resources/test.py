@@ -7,7 +7,8 @@ from helpers.path import generatePagePath
 from resources.public_files import generateFileResponse
 
 from celery.result import AsyncResult
-from celery_app.tasks import check_booking
+from celery_app.tasks import check_booking, send_email
+from helpers.ConfirmBookingController import start_waiter_booking_status
 
 
 blp = Blueprint('test', __name__)
@@ -26,6 +27,7 @@ class Test(MethodView):
         
         return body
     
+    
 @blp.route('celery')
 class CeleryTest(MethodView):
     def get(self):
@@ -34,6 +36,24 @@ class CeleryTest(MethodView):
         
         return {"message": f"Task {response.id} started!"}
     
+        
+@blp.route('celery/email')
+class CeleryTest(MethodView):
+    def get(self):
+        
+        send_email.delay("daniieelgs@gmail.com")
+        
+        return {"message": f"Email sending!"}
+    
+@blp.route('celery/booking/<int:booking_id>')
+class CeleryTest(MethodView):
+    def get(self, booking_id):
+        
+        start_waiter_booking_status(booking_id)
+        
+        return {"message": f"Check booking"}
+    
+
 @blp.route('celery/<string:task_id>')
 class CeleryTest(MethodView):
     def get(self, task_id):

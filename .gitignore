@@ -1,4 +1,5 @@
 .env
+.env.docker
 public
 migrations
 __pycache__
@@ -7,3 +8,9 @@ instance
 *.db
 private
 test/public
+dockerfile-dev
+docker-compose-dev.yml
+celerybeat-schedule
+docker-compose.override.yml
+logs
+celerybeat-schedule

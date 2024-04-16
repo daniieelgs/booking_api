@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv(verbose=True, override=True)
 
 DEFAULT_SECRET_JWT = '303333537232571254035672536717968198213'
 DEFAULT_CRYPTO_JWT = 'RkElcKTNxr_IfO-puTA7ZjiD9EisBbi0Zeo_Z00NrPA='

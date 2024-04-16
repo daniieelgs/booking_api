@@ -129,6 +129,7 @@ def showHelp():
     print('  --remove <TOKEN                 Remove admin access with token.')
     print('  --remove-all                    Remove all admin access.')
     print('  --env <file_name?|Default:.env> Load environment data file. Optional: specify .env file name.')
+    print('  --data <TEXT>                   Load inline data. Format: key1=value1,key2=value2')
     print('  --help                          Show this message and exit.')
 
 def main():
@@ -163,9 +164,24 @@ def main():
         
         if args.env is not False:
             
+            if args.env == "?":
+                
+                print('Required environment data:')
+                print(f'\t{DATABASE_NAME_ENV}')
+                print(f'\t{DATABASE_USER_ENV}')
+                print(f'\t{DATABASE_PASS_ENV}')
+                print(f'\t{DATABASE_HOST_ENV}')
+                print(f'\t{DATABASE_PORT_ENV}')
+                print(f'\t{ADMIN_IDENTITY_ENV}')
+                print(f'\t{ADMIN_ROLE_ENV}')
+                print(f'\t{SECRET_JWT_ENV}')
+                print(f'\t{JWT_ALGORITHM_ENV}')
+
+                exit(0)
+            
             from dotenv import load_dotenv
             env_path = '.env' if args.env is True else args.env
-            load_dotenv(env_path)
+            load_dotenv(dotenv_path=env_path, verbose=True, override=True)
             DATABASE_NAME = os.getenv(DATABASE_NAME_ENV)
             DATABASE_USER = os.getenv(DATABASE_USER_ENV)
             DATABASE_PASS = os.getenv(DATABASE_PASS_ENV)
@@ -174,7 +190,7 @@ def main():
             ADMIN_IDENTITY = os.getenv(ADMIN_IDENTITY_ENV)
             ADMIN_ROLE = os.getenv(ADMIN_ROLE_ENV)
             SECRET_JWT = os.getenv(SECRET_JWT_ENV)
-            JWT_ALGORITHM = os.getenv(JWT_ALGORITHM_ENV)  
+            JWT_ALGORITHM = os.getenv(JWT_ALGORITHM_ENV)
                 
         else:
             try:
