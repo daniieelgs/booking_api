@@ -19,11 +19,11 @@ from celery_app.tasks import check_booking_status
     
 
 def start_waiter_booking_status(booking_id, timeout=None):
-    load_dotenv()
-    if not timeout: timeout = TIMEOUT_CONFIRM_BOOKING
+    load_dotenv() #TODO comprobar para pruebas
+    if not timeout: timeout = os.getenv('TIMEOUT_CONFIRM_BOOKING', TIMEOUT_CONFIRM_BOOKING)
     if timeout is None or timeout <= 0: return timeout
     
-    check_booking_status.apply_async(args=[booking_id], countdown=10)
+    check_booking_status.apply_async(args=[booking_id], countdown=60 * timeout)
     
     # thread = threading.Thread(target=waiter_booking_status, args=(booking_id,timeout,)) # Mirar eficiencia
     # thread.start()

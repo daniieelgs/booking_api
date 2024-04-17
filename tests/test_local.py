@@ -4,6 +4,7 @@ import json
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
+from globals import MIN_TIMEOUT_CONFIRM_BOOKING
 from tests import config_test, getUrl
 
 ENDPOINT = 'local'
@@ -25,6 +26,18 @@ class TestLocal(TestCase):
         db.session.remove()
         db.drop_all()
         config_test.drop(self.locals)
+
+    def put_local(self, local, token):
+        return self.client.put(getUrl(ENDPOINT), data=json.dumps(local), headers={'Authorization': f"Bearer {token}"}, content_type='application/json')
+
+    def patch_local(self, local, token):
+        return self.client.patch(getUrl(ENDPOINT), data=json.dumps(local), headers={'Authorization': f"Bearer {token}"}, content_type='application/json')
+
+    def post_local(self, local):
+        return self.client.post(getUrl(ENDPOINT), data=json.dumps(local), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
+
+    def del_local(self, token):
+        return self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
 
     def create_local(self):
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
@@ -119,6 +132,74 @@ class TestLocal(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
+    def create_settings(self):
+        
+        self.maxDiff = None
+        
+        self.data['local_settings'] = self.local_settings
+        
+        #Configuracion basica
+        response_post = self.post_local(self.data)
+
+        self.assertEqual(response_post.status_code, 201)
+
+        self.local = dict(response_post.json)
+        
+        self.local['local']['local_settings'].pop('smtp_settings')
+        
+        self.assertEqual(self.local['local']['local_settings'], self.local_settings)
+
+        r = self.del_local(self.local['access_token'])
+        self.assertEqual(r.status_code, 204)
+
+        #Test booking_tiemout
+        self.data['local_settings']['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING - 1
+        response_post = self.post_local(self.data)
+
+        print("response_post:\n", self.local)
+
+        self.locals.append(self.local['local']['id'])
+        
+    def update_settings(self):
+        pass
+
+    def test_integration_settings(self):
+        
+        self.data = {
+            "name": "Local-Test-Settings",
+            "tlf": "123456789",
+            "email": "settings@test.com",
+            "address": "Test Address",
+            "postal_code": "98765",
+            "village": "Test Village",
+            "province": "Test Province",
+            "location": "Europe/Madrid"
+        }
+        
+        
+        self.local_settings = {
+            "website": "https://www.website.com",
+            "instagram": "https://www.instagram.com/local_ig",
+            "facebook": "https://www.facebook.com/local_fb",
+            "twitter": "https://www.twitter.com/local_tw",
+            "whatsapp": "https://api.whatsapp.com/message/0000000000",
+            "linkedin": "https://www.linkedin.com/local_lkd",
+            "tiktok": "https://www.tiktok.com/local_tk",
+            "maps": "https://www.google.com/maps/place/local",
+            "email_contact": "contact@local.com",
+            "phone_contact": "+34 000000000",
+            "email_support": "support@local.com",
+            "domain": "local.com",
+            "confirmation_link": "https://www.local.com/confirm/{token}",
+            "cancel_link": "https://www.local.com/cancel/{token}",
+            "booking_timeout": 10
+        }
+        
+        
+        
+        self.create_settings()
+        self.update_settings()
+
     def test_integration_local(self):
 
         self.data = {
@@ -131,8 +212,7 @@ class TestLocal(TestCase):
             "province": "Test Province",
             "location": "Europe/Madrid"
         }
-
-
+    
         #POST
         self.create_local()
         
@@ -142,7 +222,7 @@ class TestLocal(TestCase):
         
         #PUT
         self.update_local()
-        
+                
         #Refresh Token
         self.refresh()
         

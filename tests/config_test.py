@@ -15,6 +15,7 @@ class ConfigTest(DefaultConfig):
         super().__init__()
         self.database_uri = TEST_DATABASE_URI
         self.waiter_booking_status = None
+        self.email_test_mode = True
        
     def insertUserSession(self, db):
         

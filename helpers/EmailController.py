@@ -2,21 +2,25 @@
 import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import os
 import smtplib
 import socket
 import time
 import traceback
 from db import addAndCommit, rollback
-from globals import DEFAULT_LOCATION_TIME, EMAIL_CONFIRMATION_PAGE, KEYWORDS_PAGES
+from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, KEYWORDS_PAGES
 from helpers.DatetimeHelper import naiveToAware, now
 from helpers.path import generatePagePath
 from helpers.security import decrypt_str
 from models.booking import BookingModel
 from models.local import LocalModel
 from models.local_settings import LocalSettingsModel
+from models.session_token import SessionTokenModel
 from models.smtp_settings import SmtpSettingsModel
 from resources.public_files import generateFileResponse
 from dateutil.relativedelta import relativedelta
+
+from dotenv import load_dotenv
 
 
 def generate_message_id(domain):
@@ -37,11 +41,16 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
     email["Message-ID"] = generate_message_id(domain)
 
     email.attach(MIMEText(content, type))
+    
+    load_dotenv() #TODO comprobar
+    if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
+        print("Email test mode activated.")
+        return True
+
+    print("Email test mode not activated.")
 
     try:
-        
-        return True
-        
+                
         server = smtplib.SMTP(smtp_host, smtp_port)
         server.starttls()
             
@@ -132,6 +141,7 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     local_name = local.name
     date = book.datetime_init.strftime("%d/%m/%Y")
     time = book.datetime_init.strftime("%H:%M")
+    comment = book.comment
     service = ", ".join([service.name for service in book.services])
     cost = str(book.total_price)
     address_maps = local_settings.maps
@@ -145,7 +155,25 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     try:
         response = generateFileResponse(local.id, generatePagePath(page))
                 
-        mail_body = response.get_data().decode('utf-8').replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], confirmation_link).replace(KEYWORDS_PAGES['CANCEL_LINK'], cancel_link).replace(KEYWORDS_PAGES['CLIENT_NAME'], client_name).replace(KEYWORDS_PAGES['LOCAL_NAME'], local_name).replace(KEYWORDS_PAGES['DATE'], date).replace(KEYWORDS_PAGES['TIME'], time).replace(KEYWORDS_PAGES['SERVICE'], service).replace(KEYWORDS_PAGES['COST'], cost).replace(KEYWORDS_PAGES['ADDRESS-MAPS'], address_maps).replace(KEYWORDS_PAGES['ADDRESS'], address).replace(KEYWORDS_PAGES['PHONE_CONTACT'], phone_contact).replace(KEYWORDS_PAGES['EMAIL_CONTACT'], email_contact).replace(KEYWORDS_PAGES['TIMEOUT_CONFIRM_BOOKING'], str(timeout_confirm_booking)).replace(KEYWORDS_PAGES['WEBSITE'], website).replace(KEYWORDS_PAGES['WHATSAPP_LINK'], whatsapp_link)
+        mail_body = (
+                    response.get_data().decode('utf-8')
+                    .replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], confirmation_link)
+                    .replace(KEYWORDS_PAGES['CANCEL_LINK'], cancel_link)
+                    .replace(KEYWORDS_PAGES['CLIENT_NAME'], client_name)
+                    .replace(KEYWORDS_PAGES['LOCAL_NAME'], local_name)
+                    .replace(KEYWORDS_PAGES['DATE'], date)
+                    .replace(KEYWORDS_PAGES['TIME'], time)
+                    .replace(KEYWORDS_PAGES['SERVICE'], service)
+                    .replace(KEYWORDS_PAGES['COST'], cost)
+                    .replace(KEYWORDS_PAGES['ADDRESS-MAPS'], address_maps)
+                    .replace(KEYWORDS_PAGES['ADDRESS'], address)
+                    .replace(KEYWORDS_PAGES['PHONE_CONTACT'], phone_contact)
+                    .replace(KEYWORDS_PAGES['EMAIL_CONTACT'], email_contact)
+                    .replace(KEYWORDS_PAGES['TIMEOUT_CONFIRM_BOOKING'], str(timeout_confirm_booking))
+                    .replace(KEYWORDS_PAGES['WEBSITE'], website)
+                    .replace(KEYWORDS_PAGES['WHATSAPP_LINK'], whatsapp_link)
+                    .replace(KEYWORDS_PAGES['COMMENT'], comment)
+                    )
         subject = mail_body.split("<title>")[1].split("</title>")[0]
         
         return (mail_body, subject)
@@ -154,7 +182,7 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
         traceback.print_exc()
         return False
 
-def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_token) -> bool:
+def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page) -> bool:
     to = book.client_email
     
     local_settings = local.local_settings
@@ -162,10 +190,19 @@ def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_toke
     
     if not local_settings.booking_timeout or local_settings.booking_timeout == -1: return False
     
-    renderPage = render_page(local, local_settings, book, booking_token, EMAIL_CONFIRMATION_PAGE)
+    renderPage = render_page(local, local_settings, book, booking_token, page)
 
     if not renderPage: return False
 
     mail_body, subject = renderPage
 
     return mail_local_sender(local_settings, to, subject, mail_body, 'html', local.name, location_local = local.location)
+
+def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_token) -> bool:
+    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMATION_PAGE)
+
+def send_confirmed_booking_mail(local: LocalModel, book: BookingModel, booking_token: SessionTokenModel) -> bool:
+    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMED_PAGE)
+
+def send_cancelled_booking_mail(local: LocalModel, book: BookingModel, booking_token: SessionTokenModel) -> bool:
+    return send_mail_booking(local, book, booking_token, EMAIL_CANCELLED_PAGE)

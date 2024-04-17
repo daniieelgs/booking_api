@@ -1,9 +1,13 @@
 import time
 from celery import shared_task
 from celery import current_task
+from helpers.EmailController import send_cancelled_booking_mail, send_confirmed_booking_mail
+from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundException
+from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from models.booking import BookingModel
-from globals import PENDING_STATUS
-from models.status import StatusModel
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, RETRY_SEND_EMAIL
+from models.local import LocalModel
+from models.session_token import SessionTokenModel
 from helpers.BookingController import cancelBooking
 
 @shared_task(queue='priority')
@@ -34,8 +38,7 @@ def send_email(self, email_info):
     except Exception as exc:
         # Esto reintentará la tarea
         print(f'Error al enviar el correo, intentando de nuevo en {self.default_retry_delay} segundos...')
-        self.retry(exc=exc)
-        
+        self.retry(exc=exc)        
         
         
         
@@ -53,6 +56,47 @@ def check_booking_status(booking_id):
 
     if booking.status.status == PENDING_STATUS:
         cancelBooking(booking)
-        print(f'Booking {booking_id} cancelled!')
+        
+@shared_task(bind=True, queue='priority', max_retries=3, default_retry_delay=60 * RETRY_SEND_EMAIL)
+def send_mail_task(self, local_id, booking_id, booking_token_id, email_type):
+     
+    local = LocalModel.query.get(local_id)
+    
+    if not local:
+        raise LocalNotFoundException(id=local_id)
+    
+    local_settings = local.local_settings
+    if not local_settings: return
+    
+    if not local_settings.booking_timeout or local_settings.booking_timeout == -1: return
+    
+    booking = BookingModel.query.get(booking_id)
+    
+    if not booking:
+        raise BookingNotFoundException(id = booking_id)
+    
+    token = SessionTokenModel.query.get(booking_token_id)
+    
+    if email_type == CONFIRMED_STATUS:
+        send_mail = send_confirmed_booking_mail
+    elif email_type == CANCELLED_STATUS:
+        send_mail = send_cancelled_booking_mail
     else:
-        print(f'Booking {booking_id} OK!')    
+        raise Exception(f"Unknown email_type '{email_type}'.")
+    
+    try:
+        success = send_mail(local, booking, token)
+        if not success:
+            raise Exception("Failed to send confirmed booking to")
+    except Exception as exc:
+        #self.default_retry_delay
+        self.retry(exc=exc)
+        
+        
+
+
+def send_confirmed_mail_second_plan(local_id, booking_id, session_token_id):
+    send_mail_task.delay(local_id, booking_id, session_token_id, CONFIRMED_STATUS)   
+    
+def send_cancelled_mail_second_plan(local_id, booking_id, session_token_id):
+    send_mail_task.delay(local_id, booking_id, session_token_id, CANCELLED_STATUS)   

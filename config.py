@@ -4,7 +4,7 @@ from typing import Union
 
 class Config:
     
-    def __init__(self, template_folder: str, public_folder: str, public_folder_url: str, database_uri: str, secret_jwt: str, api_prefix: str, api_title: str, api_version: str, openapi_version: str, openapi_url_prefix: str, openapi_swagger_ui_path: str, openapi_swagger_ui_url: str, waiter_booking_status: Union[int, None], celery_broker_url: str, celery_result_backend: str) -> None:
+    def __init__(self, template_folder: str, public_folder: str, public_folder_url: str, database_uri: str, secret_jwt: str, api_prefix: str, api_title: str, api_version: str, openapi_version: str, openapi_url_prefix: str, openapi_swagger_ui_path: str, openapi_swagger_ui_url: str, waiter_booking_status: Union[int, None], celery_broker_url: str, celery_result_backend: str, email_test_mode: bool) -> None:
         self.template_folder = template_folder
         self.public_folder = public_folder
         self.public_folder_url = public_folder_url
@@ -20,6 +20,7 @@ class Config:
         self.waiter_booking_status = waiter_booking_status
         self.celery_broker_url = celery_broker_url
         self.celery_result_backend = celery_result_backend
+        self.email_test_mode = email_test_mode
         
     def config(selg, *args, **kwargs):
         pass

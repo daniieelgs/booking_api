@@ -2,9 +2,8 @@
 
 from operator import or_
 import random
-import traceback
 from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DEFAULT_LOCATION_TIME, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
@@ -311,20 +310,26 @@ def checkTimetableBookings(local_id):
     
     return True
 
-def cancelBooking(booking: BookingModel, comment = None):
-    changeBookingStatus(booking, CANCELLED_STATUS)
-    
+def cancelBooking(booking: BookingModel, comment = None) -> BookingModel:
+    return changeBookingStatus(booking, CANCELLED_STATUS, comment)
+        
+def confirmBooking(booking: BookingModel, comment = None) -> BookingModel:
+    return changeBookingStatus(booking, CONFIRMED_STATUS, comment)
 
-def confirmBooking(booking: BookingModel, comment = None):
-    changeBookingStatus(booking, CONFIRMED_STATUS)
+def pendingBooking(booking: BookingModel, comment = None) -> BookingModel:
+    return changeBookingStatus(booking, PENDING_STATUS, comment)
 
-def pendingBooking(booking: BookingModel, comment = None):
-    changeBookingStatus(booking, PENDING_STATUS)
-
-def changeBookingStatus(booking, status):
+def changeBookingStatus(booking, status_name, comment = None) -> BookingModel:
     try:
-        booking.status_id = StatusModel.query.filter_by(status=status).first().id
+        status = StatusModel.query.filter_by(status=status_name).first().id
+        
+        if not status:
+            raise StatusNotFoundException(f"Status '{status_name}' was not found")
+        
+        booking.status_id = status
+        if comment: booking.comment = comment
         addAndCommit(booking)
+        return booking
     except SQLAlchemyError as e:
         rollback()
         raise e

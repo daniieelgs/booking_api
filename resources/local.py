@@ -219,7 +219,7 @@ class Local(MethodView):
     @blp.response(401, description='Falta cabecera de autorización.')
     @blp.response(201, LocalTokensSchema)
     def post(self, local_data):
-        F"""
+        f"""
         Crea un nuevo local.
         Si no se encuentra la contraseña, generará una nueva y la devolverá.
         Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
@@ -314,7 +314,7 @@ class Local(MethodView):
         
         return update_local(local_data, get_jwt_identity(), patch=True)
         
-    @blp.response(409, description='El email ya está en uso.')
+    @blp.response(401, description='Credenciales inválidaso falta cabecera de autenticación.')
     @blp.response(404, description='El local no existe.')
     @blp.response(204, description='Local eliminado.')
     @jwt_required(fresh=True)

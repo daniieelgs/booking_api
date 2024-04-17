@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import calculatEndTimeBooking, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.ConfirmBookingController import start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
@@ -327,6 +327,7 @@ class Booking(MethodView):
             else:
                 booking.email_sent = False
                 addAndCommit(booking)
+                #TODO confirm booking
             
             return {
                 "booking": booking,
@@ -587,11 +588,13 @@ class BookingSession(MethodView):
         if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
         
+        comment = None
+        
         if 'comment' in data:
-            booking.comment = data['comment']
+            comment = data['comment']
         
         try:
-            cancelBooking(booking)
+            cancelBooking(booking, comment=comment)
             #TODO send email cancelled
             return {}
         except SQLAlchemyError as e:
@@ -719,16 +722,9 @@ class BookingConfirm(MethodView):
             if not status: abort(500, message='The status was not found.')
             abort(409, message=f"The booking is '{status.name}'.")
         
-        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
-        
-        if not status:
-            abort(500, message='The status was not found.')
-            
-        booking.status_id = status.id
-        
         try:
-            addAndCommit(booking)
-        except SQLAlchemyError as e:
+            booking = confirmBooking(booking)
+        except (SQLAlchemyError, StatusNotFoundException) as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
@@ -760,27 +756,19 @@ class BookingConfirmId(MethodView):
             if not status: abort(500, message='The status was not found.')
             abort(409, message=f"The booking is '{status.name}'.")
         
-        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
-        
-        if not status:
-            abort(500, message='The status was not found.')
-            
-        booking.status_id = status.id
-        
         try:
-            addAndCommit(booking)
+            booking = confirmBooking(booking)
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
         #TODO send email confirmed
-        # TODO send email confirmed
             
         return booking
  
 @blp.route('cancel/<int:booking_id>')
-class BookingConfirmId(MethodView):
+class BookingCancelId(MethodView):
     
     
     @blp.arguments(CommentSchema)
@@ -797,7 +785,7 @@ class BookingConfirmId(MethodView):
         local = LocalModel.query.get(get_jwt_identity())
         
         if not booking.local_id == local.id:
-            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+            abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
         
         if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
