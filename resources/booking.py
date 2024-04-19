@@ -300,6 +300,8 @@ class Booking(MethodView):
         Crea una nueva reserva.
         """
         
+        print("CREANDO RESERVA")
+        
         local = LocalModel.query.get_or_404(local_id)
         
         try:
@@ -318,7 +320,11 @@ class Booking(MethodView):
                         
             commit()
             
+            print("ENVIANDO EMAIL")
+            
             email_sent = send_confirm_booking_mail(local, booking, token)
+            
+            print("EMAIL ENVIADO:", email_sent)
             
             timeout = None
             
@@ -672,7 +678,7 @@ class BookingSession(MethodView):
             
             datetime_end = booking.datetime_end
             
-            timeout = start_waiter_booking_status(booking.id)
+            timeout = start_waiter_booking_status(booking.id) #TODO check
                 
             local = LocalModel.query.get_or_404(local_id)
                 

@@ -57,6 +57,8 @@ def create_app(config: Config = DefaultConfig()):
     app.debug = DEBUG
     app.jinja_env.auto_reload = DEBUG
     
+    print("DEBUG MODE:", DEBUG)
+    
     app.config['API_TITLE'] = config.api_title
     app.config['API_VERSION'] = config.api_version
     app.config['OPENAPI_VERSION'] = config.openapi_version

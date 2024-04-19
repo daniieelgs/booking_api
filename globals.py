@@ -91,6 +91,8 @@ DEFAULT_RETRY_SEND_EMAIL = 120
 
 DEBUG = os.getenv('FLASK_DEBUG', 'False') == '1' or os.getenv('FLASK_DEBUG', 'False') == 1 or os.getenv('FLASK_DEBUG', 'False') == 'True'
 
+print("TEST MODE:", DEBUG, os.getenv('FLASK_DEBUG'))
+
 DATABASE_NAME = os.getenv('DATABASE_NAME')
 DATABASE_USER = os.getenv('DATABASE_USER')
 DATABASE_PASS = os.getenv('DATABASE_PASS')

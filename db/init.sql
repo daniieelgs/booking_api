@@ -123,7 +123,7 @@ CREATE TABLE smtp_settings (
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL,
     FOREIGN KEY (local_settings_id) REFERENCES local_settings(id) ON DELETE CASCADE,
-    UNIQUE (name),
+    UNIQUE (local_settings_id, name),
     UNIQUE (local_settings_id, priority)
 );
 

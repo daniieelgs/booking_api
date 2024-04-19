@@ -12,7 +12,7 @@ class LocalBase():
         self.assertEqual = assertEqual
         self.locals = []
     
-    def create_local(self):
+    def create_local(self, booking_timeout):
         self.local = {
             "name": "Local-Test",
             "tlf": "123456789",
@@ -23,6 +23,54 @@ class LocalBase():
             "province": "Test Province",
             "location": "Europe/Madrid"
         }
+        
+        self.local_settings = {
+            "website": "https://www.website.com",
+            "instagram": "https://www.instagram.com/local_ig",
+            "facebook": "https://www.facebook.com/local_fb",
+            "twitter": "https://www.twitter.com/local_tw",
+            "whatsapp": "https://api.whatsapp.com/message/0000000000",
+            "linkedin": "https://www.linkedin.com/local_lkd",
+            "tiktok": "https://www.tiktok.com/local_tk",
+            "maps": "https://www.google.com/maps/place/local",
+            "email_contact": "contact@local.com",
+            "phone_contact": "+34 000000000",
+            "email_support": "support@local.com",
+            "domain": "local.com",
+            "confirmation_link": "https://www.local.com/confirm/{token}",
+            "cancel_link": "https://www.local.com/cancel/{token}",
+            "booking_timeout": booking_timeout
+        }
+        
+        self.smtp_settings = [
+            {
+                "host": "smtp-relay.brevo.com",
+                "mail": "info@local.com",
+                "max_send_per_day": 300,
+                "name": "config-1",
+                "password": "0000000000000000000",
+                "port": 587,
+                "priority": 10,
+                "reset_send_per_day": "2024-03-10T00:00:00",
+                "send_per_day": 100,
+                "user": "user@mail.com"
+            },
+            {
+                "host": "smtp.sendgrid.net",
+                "mail": "info@local.com",
+                "max_send_per_day": 100,
+                "name": "config-2",
+                "password": "0000000000000000",
+                "port": 587,
+                "priority": 20,
+                "reset_send_per_day": "2024-04-06T00:00:00",
+                "send_per_day": 10,
+                "user": "apikey"
+            },
+        ]
+        
+        self.local_settings['smtp_settings'] = self.smtp_settings
+        self.local['local_settings'] = self.local_settings
         
         r = self.client.post(getUrl('local'), data=json.dumps(self.local),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(r.status_code, 201)
@@ -162,20 +210,16 @@ class LocalBase():
                     workers.append(worker)
                     self.work_groups[index]['workers'] = workers
                     
-    def configure_settings(self):
-        pass
-               
-    def configure_local(self):
-        self.create_local()
+    def configure_local(self, booking_timeout):
+        self.create_local(booking_timeout)
         self.create_timetable()
         self.create_work_group()
         self.create_service()
         self.create_worker()
-        self.configure_settings()
 
-def configure(client, admin_token, assertEqual):
+def configure(client, admin_token, assertEqual, booking_timeout=-1):
     lb = LocalBase(client, admin_token, assertEqual)
-    lb.configure_local()
+    lb.configure_local(booking_timeout)
     
     return lb
    

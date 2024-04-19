@@ -34,13 +34,13 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
         
         if not (user == domain):
             warnings.append(f"The domain of the email '{smtp_mail}' does not match the domain of the local '{domain}'.")
-    
+        
     if settings_data:
     
         if 'booking_timeout' in settings_data and settings_data['booking_timeout'] != None and settings_data['booking_timeout'] < MIN_TIMEOUT_CONFIRM_BOOKING:
-            if settings_data['booking_timeout'] == -1:
-                 settings_data['booking_timeout'] = None
-                 warnings.append(f'The booking timeout is disabled.')
+            if settings_data['booking_timeout'] < 0:
+                settings_data['booking_timeout'] = None
+                warnings.append(f'The booking timeout is disabled.')
             else:
                 settings_data['booking_timeout'] = MIN_TIMEOUT_CONFIRM_BOOKING
                 warnings.append(f'The minimum booking timeout is {MIN_TIMEOUT_CONFIRM_BOOKING} minutes.')
@@ -66,6 +66,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
         if smtp_settings is not None:
             
             priorities = []
+            names = []
             
             if len(smtp_settings) == 0:
                 deleteAndFlush(*smtp_settings_models)
@@ -95,11 +96,17 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                             smtp_setting.pop('new_name')
                         
                         for key, value in smtp_setting.items():
+                            print(f"Actualizando [{name}]: [{key}] -> [{value}]")
                             setattr(smtp_setting_model, key, value)
                         
                         for smtp_model in smtp_settings_models:
                             if smtp_model.id != smtp_setting_model.id and smtp_model.priority == smtp_setting_model.priority:
+                                rollback()
                                 abort(409, message = f'The priority {smtp_setting_model.priority} is already in use.')
+                                
+                            if smtp_model.id != smtp_setting_model.id and smtp_model.name == smtp_setting_model.name:
+                                rollback()
+                                abort(409, message = f'The name {smtp_setting_model.name} is already in use.')
                         
                         addAndFlush(smtp_setting_model)
                         
@@ -109,19 +116,27 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                         keys = [ field_name for field_name, field_obj in schema.fields.items() if getattr(field_obj, 'required', False) ]
                         for k in keys:
                             if k not in smtp_setting:
+                                rollback()
                                 abort(404, message = f"The smtp setting '{name}' does not exist. The field '{k}' is required.")
-                    
                 
                 if 'max_send_per_month' in smtp_setting and 'reset_send_per_month' not in smtp_setting:
+                    rollback()
                     abort(400, message = f"The smtp setting '{smtp_setting['name']}' does not have a reset_send_per_month date.")
                     
                 if 'max_send_per_day' in smtp_setting and 'reset_send_per_day' not in smtp_setting:
+                    rollback()
                     abort(400, message = f"The smtp setting '{smtp_setting['name']}' does not have a reset_send_per_month date.")
                 
                 if smtp_setting['priority'] in priorities:
+                    rollback()
                     abort(409, message = f'The priority {smtp_setting["priority"]} is already in use.')
                     
+                if smtp_setting['name'] in names:
+                    rollback()
+                    abort(409, message = f'The name {smtp_setting["name"]} is already in use.')
+                    
                 priorities.append(smtp_setting['priority'])
+                names.append(smtp_setting['name'])
                 
                 check_domain_smtp(smtp_setting['mail'])
                                         
@@ -133,7 +148,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                 except IntegrityError as e:
                     traceback.print_exc()
                     rollback()
-                    abort(409, message = f"The smtp name '{smtp_model.name}' is already in use.")
+                    raise e
                 
         if len(smtp_settings_models) == 0: warnings.append(f'The local has no smtp settings.')
         
@@ -143,7 +158,7 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                 
         
         local_settings.smtp_settings = smtp_settings_models
-                
+                               
     else: warnings.append(f'The local has no settings.')
     
     local.local_settings = local_settings if settings_data else None
@@ -171,6 +186,8 @@ def update_local(local_data, local_id, patch = False):
             settings_model = None
         elif settings_model and patch and settings_data and 'booking_timeout' not in settings_data:
             settings_data['booking_timeout'] = local.local_settings.booking_timeout
+        elif not settings_data and settings_model and patch:
+            settings_data = settings_model.__dict__
         
         warnings = set_local_settings(settings_data, local, local_settings=settings_model)
         
@@ -318,7 +335,7 @@ class Local(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(204, description='Local eliminado.')
     @jwt_required(fresh=True)
-    def delete(self):
+    def delete(self): #TODO cambiar token a admin token
         """
         Elimina completamente el local. Requiere token de acceso.
         """

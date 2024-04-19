@@ -5,7 +5,7 @@ import json
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS, DEBUG
 from tests import config_test, getUrl, setParams
 from tests.configure_local_base import configure
 

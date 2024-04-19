@@ -8,7 +8,7 @@ import socket
 import time
 import traceback
 from db import addAndCommit, rollback
-from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, KEYWORDS_PAGES
+from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, KEYWORDS_PAGES, DEBUG
 from helpers.DatetimeHelper import naiveToAware, now
 from helpers.path import generatePagePath
 from helpers.security import decrypt_str
@@ -42,10 +42,11 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
 
     email.attach(MIMEText(content, type))
     
-    load_dotenv() #TODO comprobar
-    if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
-        print("Email test mode activated.")
-        return True
+    if DEBUG:
+        load_dotenv() #TODO comprobar
+        if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
+            print("Email test mode activated.")
+            return True
 
     print("Email test mode not activated.")
 
@@ -89,7 +90,7 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                 smtp.reset_send_per_day = datetime.datetime.combine(date_now.date() + datetime.timedelta(days=1), date_reset.time())
                 print(f"reset_send_per_day: {smtp.reset_send_per_day}")
                 
-            if smtp.send_per_day >= max_day: continue
+            if max_day is not None and smtp.send_per_day >= max_day: continue
             
             smtp.send_per_day += 1
                 
@@ -101,7 +102,7 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                 smtp.send_per_month = 0
                 smtp.reset_send_per_month = datetime.datetime.combine(date_now.date() + relativedelta(months=+1), date_reset.time()).replace(day=date_reset.day)
             
-            if smtp.send_per_month >= smtp.max_send_per_month: continue
+            if max_month is not None and smtp.send_per_month >= max_month: continue
         
             smtp.send_per_month += 1
             
@@ -179,6 +180,10 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
         return (mail_body, subject)
         
     except:
+        if DEBUG:
+            load_dotenv()
+            if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
+                return ("Body Mail Test Mode", "Subject Test Mode")
         traceback.print_exc()
         return False
 
@@ -188,7 +193,9 @@ def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page)
     local_settings = local.local_settings
     if not local_settings: return False
     
-    if not local_settings.booking_timeout or local_settings.booking_timeout == -1: return False
+    
+    if not local_settings.booking_timeout or local_settings.booking_timeout == -1:
+        return False
     
     renderPage = render_page(local, local_settings, book, booking_token, page)
 
