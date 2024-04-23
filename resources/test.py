@@ -8,7 +8,7 @@ from resources.public_files import generateFileResponse
 
 from celery.result import AsyncResult
 from celery_app.tasks import check_booking, send_email
-from helpers.ConfirmBookingController import start_waiter_booking_status
+from helpers.BookingEmailController import start_waiter_booking_status
 
 
 blp = Blueprint('test', __name__)

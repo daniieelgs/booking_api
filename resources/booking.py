@@ -3,7 +3,7 @@ from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from helpers.BookingController import calculatEndTimeBooking, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
-from helpers.ConfirmBookingController import start_waiter_booking_status
+from helpers.BookingEmailController import send_cancelled_mail_async, send_confirmed_mail_async, send_updated_mail_async, start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
 from helpers.EmailController import send_confirm_booking_mail
@@ -22,7 +22,7 @@ from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvided
 from helpers.error.SecurityError.TokenNotFound import TokenNotFoundException
 from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundException
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
-from helpers.security import decodeJWT, decodeToken, generateTokens
+from helpers.security import decodeJWT, decodeToken, generateTokens, getTokenId
 from models.booking import BookingModel
 from db import addAndFlush, addAndCommit, commit, deleteAndCommit, deleteAndFlush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -327,14 +327,15 @@ class Booking(MethodView):
             print("EMAIL ENVIADO:", email_sent)
             
             timeout = None
-            
+            timeout_local = local.local_settings.booking_timeout
             if email_sent:
-                timeout = start_waiter_booking_status(booking.id, timeout=local.local_settings.booking_timeout)
+                timeout = start_waiter_booking_status(booking.id, timeout=timeout_local)
             else:
                 booking.email_sent = False
-                addAndCommit(booking)
-                #TODO confirm booking
-            
+                
+                if timeout_local is not None and timeout_local > 0: confirmBooking(booking)
+                else: addAndCommit(booking)
+                    
             return {
                 "booking": booking,
                 "timeout": timeout,
@@ -529,8 +530,8 @@ class BookingSession(MethodView):
 
         try:
             booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
-            #TODO generate new token and expire the old
             #TODO send email updated
+            send_updated_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
@@ -602,6 +603,7 @@ class BookingSession(MethodView):
         try:
             cancelBooking(booking, comment=comment)
             #TODO send email cancelled
+            send_cancelled_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
@@ -736,6 +738,8 @@ class BookingConfirm(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
         #TODO send email confirmed
+        
+        send_confirmed_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
             
         return booking
     
@@ -769,7 +773,7 @@ class BookingConfirmId(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
-        #TODO send email confirmed
+        #TODO send email confirmed if notify
             
         return booking
  

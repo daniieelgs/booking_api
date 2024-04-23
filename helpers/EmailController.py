@@ -8,7 +8,7 @@ import socket
 import time
 import traceback
 from db import addAndCommit, rollback
-from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, KEYWORDS_PAGES, DEBUG
+from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, EMAIL_UPDATED_PAGE, KEYWORDS_PAGES, DEBUG
 from helpers.DatetimeHelper import naiveToAware, now
 from helpers.path import generatePagePath
 from helpers.security import decrypt_str
@@ -43,7 +43,7 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
     email.attach(MIMEText(content, type))
     
     if DEBUG:
-        load_dotenv() #TODO comprobar
+        load_dotenv()
         if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
             print("Email test mode activated.")
             return True
@@ -216,8 +216,11 @@ def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page)
 def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_token) -> bool:
     return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMATION_PAGE)
 
-def send_confirmed_booking_mail(local: LocalModel, book: BookingModel, booking_token: SessionTokenModel) -> bool:
+def send_confirmed_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
     return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMED_PAGE)
 
-def send_cancelled_booking_mail(local: LocalModel, book: BookingModel, booking_token: SessionTokenModel) -> bool:
+def send_cancelled_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
     return send_mail_booking(local, book, booking_token, EMAIL_CANCELLED_PAGE)
+
+def send_updated_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
+    return send_mail_booking(local, book, booking_token, EMAIL_UPDATED_PAGE)

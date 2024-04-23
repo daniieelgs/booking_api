@@ -100,9 +100,7 @@ class TestEmail(TestCase):
         self.assertEqual(response['email_sent'], True)
     
     def check_control_email(self):
-        #2.1. Control de envio de emails por dia
-        #2.2. Control de envio de emails por mes
-        #2.3. Control de envio de emails por dia y mes
+        #2.1. Control de envio de emails por dia y mes
         
         send_day_pre = self.get_local_settings()['smtp_settings'][0]['send_per_day']
         send_month_pre = self.get_local_settings()['smtp_settings'][0]['send_per_month']
@@ -121,7 +119,7 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)        
         
-        #2.4. Comprobar reseteos
+        #2.2. Comprobar reseteos
 
         send_day_pre = 300
         send_month_pre = 300
@@ -156,7 +154,6 @@ class TestEmail(TestCase):
         self.assertEqual(send_month_post, send_month_pre + 1)
         
         self.assertEqual(reset_day, (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00"))
-        
                 
         response = post_booking.json
                 
@@ -208,7 +205,7 @@ class TestEmail(TestCase):
         
         self.cancel_booking(response['session_token'])
         
-        #2.5. Comprobar limite de emails en una configuracion (dia/mes)
+        #2.3. Comprobar limite de emails en una configuracion (dia/mes)
                 
             #Limite por dia
                 
@@ -229,9 +226,7 @@ class TestEmail(TestCase):
         send_month_pre0 = self.get_local_settings()['smtp_settings'][0]['send_per_month']
         
         post_booking = self.post_booking(self.booking)
-        
-        print("response:", post_booking.json)
-        
+                
         self.assertEqual(post_booking.status_code, 201)
         
         response = post_booking.json
@@ -285,7 +280,7 @@ class TestEmail(TestCase):
         
         self.cancel_booking(response['session_token'])
         
-        #2.6. Comprobar limite de emails en todas las configuraciones
+        #2.4. Comprobar limite de emails en todas las configuraciones
         
         self.local.local_settings['smtp_settings'][0]['send_per_day'] = self.local.local_settings['smtp_settings'][0]['max_send_per_day']
         self.local.local_settings['smtp_settings'][1]['send_per_day'] = self.local.local_settings['smtp_settings'][1]['max_send_per_day']
@@ -320,10 +315,67 @@ class TestEmail(TestCase):
         
         self.cancel_booking(response['session_token'])
         
-        #2.7. Comprobar limite de emails en todas las configuraciones y reseteos
+        #2.5. Comprobar limite de emails en todas las configuraciones y reseteos
     
+            #Resetear por dia
+    
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_day'] = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
         
-    
+        data = self.local.local
+        
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        self.assertEqual(r.status_code, 200)
+        
+        data['id'] = local_id
+        
+        settings = self.get_local_settings()
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], False)
+        
+        settings = self.get_local_settings()
+        
+        self.cancel_booking(response['session_token'])
+        
+            #Resetear por mes
+            
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_month'] = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        
+        data = self.local.local
+        
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        self.assertEqual(r.status_code, 200)
+        
+        data['id'] = local_id
+        
+        settings = self.get_local_settings()
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], True)
+        
+        settings = self.get_local_settings()
+        
+        self.assertEqual(settings['smtp_settings'][0]['send_per_day'], 1)
+        self.assertEqual(settings['smtp_settings'][0]['send_per_month'], 1)
+        
+        self.cancel_booking(response['session_token'])
+
     def check_cancel_confirm_email(self):
         #3.1. Sin confirmar reserva
         

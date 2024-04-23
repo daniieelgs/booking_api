@@ -53,6 +53,18 @@ def generateTokens(identity, localId, access_token = False, refresh_token = True
 
     return token_fresh if token_fresh else token_refresh
  
+def copyToken(id, jti, local_id, user_session_id):
+    # token = decode_token(token)
+    # new_token = decode_token(new_token)
+    
+    # token['token'] = new_token['token']
+    
+    # return token
+    pass
+ 
+def getTokenId(token):
+    return decode_token(token)['token']
+ 
 def decodeToken(token):
     return decode_token(token)
 
