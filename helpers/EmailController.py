@@ -76,6 +76,9 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
         
         date_now = now(location_local)
         
+        modify_day = False
+        modify_month = False
+        
         if max_day:
             
             print(f"max_day: {max_day}")
@@ -93,6 +96,7 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
             if max_day is not None and smtp.send_per_day >= max_day: continue
             
             smtp.send_per_day += 1
+            modify_day = True
                 
         if max_month:
             
@@ -102,9 +106,13 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                 smtp.send_per_month = 0
                 smtp.reset_send_per_month = datetime.datetime.combine(date_now.date() + relativedelta(months=+1), date_reset.time()).replace(day=date_reset.day)
             
-            if max_month is not None and smtp.send_per_month >= max_month: continue
+            if max_month is not None and smtp.send_per_month >= max_month:
+                if modify_day:
+                    smtp.send_per_day -= 1
+                continue
         
             smtp.send_per_month += 1
+            modify_month = True
             
         try:
             addAndCommit(smtp)
@@ -117,8 +125,8 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
             return True
         else:
             
-            if max_day: smtp.send_per_day -= 1
-            if max_month: smtp.send_per_month -= 1
+            if modify_day: smtp.send_per_day -= 1
+            if modify_month: smtp.send_per_month -= 1
             
             try:
                 addAndCommit(smtp)

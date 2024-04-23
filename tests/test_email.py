@@ -8,6 +8,7 @@ from app import create_app, db
 from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS, DEBUG
 from tests import ConfigTest, getUrl, setParams
 from tests.configure_local_base import configure
+from dateutil.relativedelta import relativedelta
 
 ENDPOINT = 'booking'
 
@@ -83,6 +84,271 @@ class TestEmail(TestCase):
     def delete_booking_admin(self, id):
         return self.client.delete(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
           
+    def get_local_settings(self):
+        response = self.client.get(getUrl('local'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
+        response = response.json
+        return response['local_settings']
+          
+    def check_email(self):
+        post_booking = self.post_booking(self.booking)
+                
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['booking']['status']['status'], PENDING_STATUS)
+        self.assertEqual(response['email_sent'], True)
+    
+    def check_control_email(self):
+        #2.1. Control de envio de emails por dia
+        #2.2. Control de envio de emails por mes
+        #2.3. Control de envio de emails por dia y mes
+        
+        send_day_pre = self.get_local_settings()['smtp_settings'][0]['send_per_day']
+        send_month_pre = self.get_local_settings()['smtp_settings'][0]['send_per_month']
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], True)
+        
+        send_day_post = self.get_local_settings()['smtp_settings'][0]['send_per_day']
+        send_month_post = self.get_local_settings()['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre + 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)        
+        
+        #2.4. Comprobar reseteos
+
+        send_day_pre = 300
+        send_month_pre = 300
+        
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_day'] = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        self.local.local_settings['smtp_settings'][0]['send_per_day'] = send_day_pre
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_month'] = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        self.local.local_settings['smtp_settings'][0]['send_per_month'] = send_month_pre
+        
+        data = self.local.local
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(self.local.local),  headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        data['id'] = local_id
+        
+        print("response:", r.json)
+        
+        self.assertEqual(r.status_code, 200)
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        reset_day = settings['smtp_settings'][0]['reset_send_per_day']
+        
+        self.assertEqual(send_day_post, 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.assertEqual(reset_day, (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00"))
+        
+                
+        response = post_booking.json
+                
+        self.cancel_booking(response['session_token'])
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        send_day_post = self.get_local_settings()['smtp_settings'][0]['send_per_day']
+        send_month_post = self.get_local_settings()['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, 2)
+        self.assertEqual(send_month_post, send_month_pre + 2)
+        
+        response = post_booking.json
+        
+        self.cancel_booking(response['session_token'])
+        
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_month'] = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_day'] = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+
+        self.local.local_settings['smtp_settings'][0]['send_per_day'] = 2
+        self.local.local_settings['smtp_settings'][0]['send_per_month'] = 50
+        
+        data = self.local.local
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(self.local.local),  headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        data['id'] = local_id
+        
+        self.assertEqual(r.status_code, 200)
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        send_day_post = self.get_local_settings()['smtp_settings'][0]['send_per_day']
+        send_month_post = self.get_local_settings()['smtp_settings'][0]['send_per_month']
+        reset_month = self.get_local_settings()['smtp_settings'][0]['reset_send_per_month']
+        
+        self.assertEqual(send_day_post, 3)
+        self.assertEqual(send_month_post, 1)
+        
+        self.assertEqual(reset_month, (datetime.datetime.now() - datetime.timedelta(days=1) + relativedelta(months=+1)).strftime("%Y-%m-%dT00:00:00"))
+        
+        self.cancel_booking(response['session_token'])
+        
+        #2.5. Comprobar limite de emails en una configuracion (dia/mes)
+                
+            #Limite por dia
+                
+        self.local.local_settings['smtp_settings'][0]['send_per_day'] = self.local.local_settings['smtp_settings'][0]['max_send_per_day']
+        
+        data = self.local.local
+        
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(self.local.local),  headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        self.assertEqual(r.status_code, 200)
+        
+        data['id'] = local_id
+        
+        send_day_pre0 = self.get_local_settings()['smtp_settings'][0]['send_per_day']
+        send_day_pre1 = self.get_local_settings()['smtp_settings'][1]['send_per_day']
+        send_month_pre0 = self.get_local_settings()['smtp_settings'][0]['send_per_month']
+        
+        post_booking = self.post_booking(self.booking)
+        
+        print("response:", post_booking.json)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], True)
+          
+        settings = self.get_local_settings()
+                
+        self.assertEqual(settings['smtp_settings'][0]['send_per_day'], send_day_pre0)
+        self.assertEqual(settings['smtp_settings'][0]['send_per_month'], send_month_pre0)                
+
+        self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1 + 1)
+        
+        self.cancel_booking(response['session_token'])
+        
+            #Limite por mes
+        
+        self.local.local_settings['smtp_settings'][0]['send_per_month'] = self.local.local_settings['smtp_settings'][0]['max_send_per_month']
+        self.local.local_settings['smtp_settings'][0]['send_per_day'] = 0
+        self.local.local_settings['smtp_settings'][0]['reset_send_per_day'] = self.local.local_settings['smtp_settings'][0]['reset_send_per_month'] = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        
+        data = self.local.local
+        
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(data),  headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        self.assertEqual(r.status_code, 200)
+        
+        data['id'] = local_id
+        
+        settings = self.get_local_settings()
+        
+        send_month_pre0 = settings['smtp_settings'][0]['send_per_month']
+        send_day_pre0 = settings['smtp_settings'][0]['send_per_day']
+        send_day_pre1 = settings['smtp_settings'][1]['send_per_day']
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], True)
+        
+        settings = self.get_local_settings()
+        
+        self.assertEqual(settings['smtp_settings'][0]['send_per_month'], send_month_pre0)
+        self.assertEqual(settings['smtp_settings'][0]['send_per_day'], send_day_pre0)
+        self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1 + 1)
+        
+        self.cancel_booking(response['session_token'])
+        
+        #2.6. Comprobar limite de emails en todas las configuraciones
+        
+        self.local.local_settings['smtp_settings'][0]['send_per_day'] = self.local.local_settings['smtp_settings'][0]['max_send_per_day']
+        self.local.local_settings['smtp_settings'][1]['send_per_day'] = self.local.local_settings['smtp_settings'][1]['max_send_per_day']
+
+        data = self.local.local
+        
+        local_id = data.pop('id')
+        
+        r = self.client.put(getUrl('local'), data=json.dumps(data),  headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+        
+        self.assertEqual(r.status_code, 200)
+        
+        data['id'] = local_id
+        
+        settings = self.get_local_settings()
+        
+        send_day_pre0 = settings['smtp_settings'][0]['send_per_day']
+        send_day_pre1 = settings['smtp_settings'][1]['send_per_day']
+        
+        post_booking = self.post_booking(self.booking)
+        
+        self.assertEqual(post_booking.status_code, 201)
+        
+        response = post_booking.json
+        
+        self.assertEqual(response['email_sent'], False)
+        
+        settings = self.get_local_settings()
+        
+        self.assertEqual(settings['smtp_settings'][0]['send_per_day'], send_day_pre0)
+        self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1)
+        
+        self.cancel_booking(response['session_token'])
+        
+        #2.7. Comprobar limite de emails en todas las configuraciones y reseteos
+    
+        
+    
+    def check_cancel_confirm_email(self):
+        #3.1. Sin confirmar reserva
+        
+        #3.2. Confirmando reserva
+        
+        #3.3 Confirmacion automatica de reserva
+        pass
+    
+    def check_email_confirmation(self):
+        pass
+    
+    def check_email_cancellation(self):
+        pass
+    
+    def check_email_update(self):
+        pass
+    
+    def check_email_notification(self):
+        #7.1. Creando reserva
+        
+        #7.2. Actualizando reserva
+        
+        #7.3. Cancelando reserva
+        pass
+          
     def test_integration_email(self):
         
         self.configure_local()
@@ -92,7 +358,7 @@ class TestEmail(TestCase):
         time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S")).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         
-        booking = {
+        self.booking = {
             "client_name": "Client Test",
             "client_tlf": "123456789",
             "client_email": "client@example.com",
@@ -101,38 +367,24 @@ class TestEmail(TestCase):
         }
         
         #1. Comprobar envio de emails
+        self.check_email()
         
         #2. Comprobar control de envio de emails
+        self.check_control_email()
         
-            #2.1. Control de envio de emails por dia
-            
-            #2.2. Control de envio de emails por mes
-            
-            #2.3. Control de envio de emails por dia y mes
-            
-            #2.4. Comprobar reseteos
-            
-            #2.5. Comprobar limite de emails en una configuracion
-            
-            #2.6. Comprobar limite de emails en todas las configuraciones
-            
-            #2.7. Comprobar limite de emails en todas las configuraciones y reseteos
-        
-        #3. Comprobar cancelacion automatica de emails
-            #3.1. Sin confirmar reserva
-            
-            #3.2. Confirmando reserva
+        #3. Comprobar cancelacion/confirmacion automatica de emails
+        self.check_cancel_confirm_email()
             
         #4. Comprobar email de confirmacion
+        self.check_email_confirmation()
         
         #5. Comprobar email de cancelacion
+        self.check_email_cancellation()
         
         #6. Comprobar email de actualizacion
+        self.check_email_update()
         
         #7. Comprobar email de notificacion por parte del local
-            #7.1. Creando reserva
-            
-            #7.2. Actualizando reserva
-            
-            #7.3. Cancelando reserva
+        self.check_email_notification()
+
     

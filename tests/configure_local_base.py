@@ -1,4 +1,5 @@
 
+import datetime
 import json
 from globals import WEEK_DAYS
 from tests.config_test import getUrl
@@ -42,17 +43,22 @@ class LocalBase():
             "booking_timeout": booking_timeout
         }
         
+        reset_time =  (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
+        
         self.smtp_settings = [
-            {
+            {   
                 "host": "smtp-relay.brevo.com",
                 "mail": "info@local.com",
                 "max_send_per_day": 300,
+                "max_send_per_month": 1000,
                 "name": "config-1",
                 "password": "0000000000000000000",
                 "port": 587,
                 "priority": 10,
-                "reset_send_per_day": "2024-03-10T00:00:00",
+                "reset_send_per_day": reset_time,
+                "reset_send_per_month": reset_time,
                 "send_per_day": 100,
+                "send_per_month": 100,
                 "user": "user@mail.com"
             },
             {
@@ -63,7 +69,7 @@ class LocalBase():
                 "password": "0000000000000000",
                 "port": 587,
                 "priority": 20,
-                "reset_send_per_day": "2024-04-06T00:00:00",
+                "reset_send_per_day": reset_time,
                 "send_per_day": 10,
                 "user": "apikey"
             },
