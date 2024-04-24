@@ -269,6 +269,27 @@ class TestBooking(TestCase):
         
         r = self.get_booking(session)
         self.assertEqual(r.status_code, 401)
+        
+        #Comprobar caducidad del token
+        
+        # timetable = self.local.timetable
+        timetable = []
+        
+        for day in WEEK_DAYS:
+            timetable.append({
+                "opening_time": "00:00:00",
+                "closing_time": "23:59:59",
+                "weekday_short": day
+            })
+            
+        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')    
+        self.assertEqual(r.status_code, 200)
+        
+        datetime_init = (datetime.datetime.now() + datetime.timedelta(seconds=2)).__str__().split('.')[0] #TODO
+        
+        timetable = self.local.timetable
+        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')    
+        self.assertEqual(r.status_code, 200)
     
     def checkUpdateBooking(self, _booking):
         booking = _booking.copy()
