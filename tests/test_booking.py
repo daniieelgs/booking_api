@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import time
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
@@ -285,10 +286,34 @@ class TestBooking(TestCase):
         r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')    
         self.assertEqual(r.status_code, 200)
         
-        datetime_init = (datetime.datetime.now() + datetime.timedelta(seconds=2)).__str__().split('.')[0] #TODO
+        time_wait = 2
         
+        datetime_init = (datetime.datetime.now() + datetime.timedelta(seconds=time_wait)).__str__().split('.')[0] #TODO
+        
+        pre_datetime_init = booking['datetime_init']
+        
+        booking['datetime_init'] = datetime_init
+        
+        post_booking = self.post_booking(booking)
+        self.assertEqual(post_booking.status_code, 201)
+        
+        get_booking = self.get_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(get_booking.status_code, 200)
+        
+        time.sleep(time_wait)
+        get_booking = self.get_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(get_booking.status_code, 403)
+        
+        cancel_booking = self.cancel_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(cancel_booking.status_code, 403)
+        
+        booking['datetime_init'] = pre_datetime_init
+        
+        cancel_booking_admin = self.cancel_booking_admin(dict(post_booking.json)['booking']['id'])
+        self.assertEqual(cancel_booking_admin.status_code, 204)
+                
         timetable = self.local.timetable
-        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')    
+        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')
         self.assertEqual(r.status_code, 200)
     
     def checkUpdateBooking(self, _booking):
@@ -851,7 +876,7 @@ class TestBooking(TestCase):
         
         #Cancelar reserva con admin
         r = self.cancel_booking_admin(id)
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 204)
         r = self.get_booking_admin(id)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
@@ -866,9 +891,10 @@ class TestBooking(TestCase):
                 
         booking['worker_id'] = worker_id
         r = self.post_booking_local(booking, force=True)
+        print(r.json)
         self.assertEqual(r.status_code, 201)
         
-    def test_integration_booking(self): #TODO testear cadudcidad de token
+    def test_integration_booking(self):
         
         self.configure_local()
         

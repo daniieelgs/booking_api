@@ -328,9 +328,10 @@ class DeleteParams(Schema):
     force = fields.Bool(required=False, description='Fuerza la eliminación del item incluso si tiene reservas.')
     comment = fields.Str(required=False, description='Comentario para la eliminación.')
     
-class UpdateParams(Schema):
+class NotifyParams(Schema):
+    notify = fields.Bool(required=False, description='Notifica a los clientes de la acción.')
+class UpdateParams(NotifyParams):
     force = fields.Bool(required=False, description='Fuerza la actualización del item incluso si tiene reservas.')
-    notify = fields.Bool(required=False, description='Notifica a los clientes de la actualización.') #TODO: check
     
 class LocalAdminParams(Schema):
     name = fields.Str(required=False, description='Espefica el nombre para filtrar locales.')

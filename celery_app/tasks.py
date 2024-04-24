@@ -1,6 +1,10 @@
+from logging import DEBUG
+import os
 import time
 from celery import shared_task
 from celery import current_task
+from dotenv import load_dotenv
+import sqlalchemy
 from helpers.EmailController import send_cancelled_booking_mail, send_confirmed_booking_mail, send_updated_booking_mail
 from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundException
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
@@ -49,7 +53,16 @@ def check_booking_status(booking_id):
     
     print(f'Checking booking status for booking_id: {booking_id}')
     
-    booking = BookingModel.query.get(booking_id)
+    try:
+        booking = BookingModel.query.get(booking_id)
+    except sqlalchemy.exc.OperationalError as e:
+        if DEBUG: #Only for testing
+            if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
+                short_msg_error = str(e).split('\n')[0]
+                print(f'TEST MODE OperationalError: {short_msg_error}')
+                return
+                        
+        raise e
     
     if not booking: 
         print(f'Booking {booking_id} not found!')

@@ -81,7 +81,7 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
         
         if max_day:
             
-            print(f"max_day: {max_day}")
+            print(f"max_day: {max_day} - send_per_day: {smtp.send_per_day}")
             
             date_reset = naiveToAware(smtp.reset_send_per_day, location_local)
             
@@ -93,20 +93,25 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                 smtp.reset_send_per_day = datetime.datetime.combine(date_now.date() + datetime.timedelta(days=1), date_reset.time())
                 print(f"reset_send_per_day: {smtp.reset_send_per_day}")
                 
-            if max_day is not None and smtp.send_per_day >= max_day: continue
+            if smtp.send_per_day >= max_day: continue
             
             smtp.send_per_day += 1
             modify_day = True
                 
         if max_month:
             
+            print(f"max_month: {max_month} - send_per_month: {smtp.send_per_month}")
+            
             date_reset = naiveToAware(smtp.reset_send_per_month, location_local)
+            
+            print(f"date_reset: {date_reset}, date_now: {date_now}")
+            print(f"date_reset <= date_now: {date_reset <= date_now}")
             
             if date_reset <= date_now:
                 smtp.send_per_month = 0
                 smtp.reset_send_per_month = datetime.datetime.combine(date_now.date() + relativedelta(months=+1), date_reset.time()).replace(day=date_reset.day)
             
-            if max_month is not None and smtp.send_per_month >= max_month:
+            if smtp.send_per_month >= max_month:
                 if modify_day:
                     smtp.send_per_day -= 1
                 continue
@@ -223,4 +228,5 @@ def send_cancelled_booking_mail(local: LocalModel, book: BookingModel, booking_t
     return send_mail_booking(local, book, booking_token, EMAIL_CANCELLED_PAGE)
 
 def send_updated_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
+    print("send_updated_booking_mail")
     return send_mail_booking(local, book, booking_token, EMAIL_UPDATED_PAGE)

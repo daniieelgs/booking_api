@@ -173,7 +173,7 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None):
+def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None, force = False):
     
     new_booking['services_ids'] = list(set(new_booking['services_ids']))
     new_booking['client_name'] = new_booking['client_name'].strip().title()
@@ -198,7 +198,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     except ValueError:
         raise ValueError('Invalid date format.')
     
-    if datetime_init < now(local.location):
+    if not force and datetime_init < now(local.location):
         raise PastDateException()
     
     total_duration = 0
@@ -229,7 +229,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     if not week_day:
         raise WeekdayNotFoundException()
     
-    if not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
+    if not force and not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
         raise LocalUnavailableException()
     
     if worker_id:
@@ -237,13 +237,16 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         if not worker or worker.work_groups.first().local_id != local_id:
             raise WorkerNotFoundException(id = worker_id)
         
-        if services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
+        if not force and services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
             raise WrongWorkerWorkGroupException()
+          
+          
+        if not force:
             
-        bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id)
-            
-        if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id):
-            raise WorkerUnavailableException()
+            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id)
+                
+            if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id):
+                raise WorkerUnavailableException()
              
     else: 
                 
@@ -252,7 +255,14 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None)
         
         if not worker_id:
-            raise AlredyBookingExceptionException()
+            if not force:
+                raise AlredyBookingExceptionException()
+                        
+            workers = list(workers)
+            
+            random.shuffle(workers)
+            
+            worker_id = workers[0].id
     
     new_status = new_booking.pop('status') if 'status' in new_booking else (PENDING_STATUS if bookingModel is None else bookingModel.status.status)
     
@@ -300,7 +310,9 @@ def calculateExpireBookingToken(datetime_end: datetime, location):
                            
     diff = datetime_end - now(location)
             
-    return timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+    print("now:", now(location), "datetime_end:", datetime_end, "diff:", diff)
+            
+    return diff
 
 def checkTimetableBookings(local_id):
     

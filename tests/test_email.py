@@ -44,15 +44,15 @@ class TestEmail(TestCase):
     
     def post_booking_local(self, booking, **params):
         return self.client.post(setParams(getUrl(ENDPOINT), **params), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
-    
+        
     def cancel_booking(self, session, data = None):
         return self.client.delete(setParams(getUrl(ENDPOINT), session=session), content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(data), content_type='application/json')
     
-    def cancel_booking_admin(self, id, data = None):
-        return self.client.delete(setParams(getUrl(ENDPOINT, 'cancel', id)), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT, id)), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
+    def cancel_booking_admin(self, id, data = None, **params):
+        return self.client.delete(setParams(getUrl(ENDPOINT, 'cancel', id), **params), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT, id)), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
   
-    def update_booking_admin(self, id, booking):
-        return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
+    def update_booking_admin(self, id, booking, **params):
+        return self.client.put(setParams(getUrl(ENDPOINT, id), **params), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def patch_booking_admin(self, id, booking):
         return self.client.patch(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
@@ -427,11 +427,96 @@ class TestEmail(TestCase):
     def check_email_notification(self):
         #7.1. Creando reserva
         
+        self.reset_smtp_config()
+        
+        settings = self.get_local_settings()
+        
+        send_day_pre = settings['smtp_settings'][0]['send_per_day']
+        send_month_pre = settings['smtp_settings'][0]['send_per_month']
+        
+        booking_admin0 = self.post_booking_local(self.booking, force = True)
+        self.assertEqual(booking_admin0.status_code, 201)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre)
+        self.assertEqual(send_month_post, send_month_pre)
+        
+        booking_admin = self.post_booking_local(self.booking, force = True, notify = True)
+        self.assertEqual(booking_admin.status_code, 201)
+        booking_response = booking_admin.json
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre + 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)
+        
         #7.2. Actualizando reserva
         
+        self.booking['new_status'] = 'C'
+        
+        settings = self.get_local_settings()
+
+        send_day_pre = settings['smtp_settings'][0]['send_per_day']
+        send_month_pre = settings['smtp_settings'][0]['send_per_month']
+        
+        booking_update = self.update_booking_admin(booking_response['id'], self.booking, force=True)
+        self.assertEqual(booking_update.status_code, 200)
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre)
+        self.assertEqual(send_month_post, send_month_pre)
+        
+        booking_update = self.update_booking_admin(booking_response['id'], self.booking, force=True, notify=True)
+        self.assertEqual(booking_update.status_code, 200)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre + 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.booking.pop('new_status')
+        
         #7.3. Cancelando reserva
-        pass
-          
+        
+        booking_response0 = booking_admin0.json
+        
+        settings = self.get_local_settings()
+
+        send_day_pre = settings['smtp_settings'][0]['send_per_day']
+        send_month_pre = settings['smtp_settings'][0]['send_per_month']
+        
+        booking_cancel = self.cancel_booking_admin(booking_response0['id'], data=None)
+        self.assertEqual(booking_cancel.status_code, 204)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        self.assertEqual(send_day_post, send_day_pre)
+        self.assertEqual(send_month_post, send_month_pre)
+        
+        booking_cancel = self.cancel_booking_admin(booking_response['id'], data=None, notify=True)
+        self.assertEqual(booking_cancel.status_code, 204)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        self.assertEqual(send_day_post, send_day_pre + 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)
+                  
     def test_integration_email(self):
         
         self.configure_local()
