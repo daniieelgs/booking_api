@@ -143,7 +143,7 @@ def main():
     parser.add_argument('--remove-id', type=str, help='Remove admin access with token.')
     parser.add_argument('--remove', type=str, help='Remove admin access with token.')
     parser.add_argument('--remove-all', action='store_true', help='Remove all admin access.')
-    parser.add_argument('--env', nargs='?', const=True, default=False, help='Load environment data file. Optional: specify .env file name.')
+    parser.add_argument('--env', nargs='?', const=True, default=False, help='Load environment data file. Optional: specify .env file name. \'?\' to show required environment data.')
     parser.add_argument('--data', type=str_to_dict, default={}, help='Load inline data. Format: key1=value1,key2=value2')
 
     args = parser.parse_args()

@@ -4,11 +4,12 @@ from celery import current_task
 from helpers.EmailController import send_cancelled_booking_mail, send_confirmed_booking_mail, send_updated_booking_mail
 from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundException
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
+from helpers.security import generateTokens
 from models.booking import BookingModel
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, RETRY_SEND_EMAIL, EmailType
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
-from helpers.BookingController import cancelBooking
+from helpers.BookingController import calculateExpireBookingToken, cancelBooking
 
 @shared_task(queue='priority')
 def notify_hello():
@@ -58,7 +59,7 @@ def check_booking_status(booking_id):
         cancelBooking(booking)
         
 @shared_task(bind=True, queue='priority', max_retries=3, default_retry_delay=60 * RETRY_SEND_EMAIL)
-def send_mail_task(self, local_id, booking_id, booking_token_id, email_type: EmailType):
+def send_mail_task(self, local_id, booking_id, email_type: EmailType):
      
     local = LocalModel.query.get(local_id)
     
@@ -74,9 +75,11 @@ def send_mail_task(self, local_id, booking_id, booking_token_id, email_type: Ema
     
     if not booking:
         raise BookingNotFoundException(id = booking_id)
+        
+    exp = calculateExpireBookingToken(booking.datetime_end, local.location)
     
-    token = SessionTokenModel.query.get(booking_token_id)
-    
+    token = generateTokens(booking_id, local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+        
     if email_type == EmailType.CONFIRMED_EMAIL:
         send_mail = send_confirmed_booking_mail
     elif email_type == EmailType.CANCELLED_EMAIL:

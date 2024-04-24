@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import calculatEndTimeBooking, calculateExpireBookingToken, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
 from helpers.BookingEmailController import send_cancelled_mail_async, send_confirmed_mail_async, send_updated_mail_async, start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
@@ -307,12 +307,8 @@ class Booking(MethodView):
         try:
             
             booking = createOrUpdateBooking(new_booking, local=local, commit=False)
-            
-            datetime_end = booking.datetime_end
-               
-            diff = datetime_end - now(local.location)
-            
-            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+                        
+            exp = calculateExpireBookingToken(booking.datetime_end, local.location)
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                         
@@ -531,7 +527,7 @@ class BookingSession(MethodView):
         try:
             booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             #TODO send email updated
-            send_updated_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
+            send_updated_mail_async(booking.local_id, booking.id)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
@@ -603,7 +599,7 @@ class BookingSession(MethodView):
         try:
             cancelBooking(booking, comment=comment)
             #TODO send email cancelled
-            send_cancelled_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
+            send_cancelled_mail_async(booking.local_id, booking.id)
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
@@ -654,7 +650,7 @@ class BookingSession(MethodView):
                 addAndFlush(booking)
                 timeout = 0
                 
-                exp = timedelta(minutes=0)
+                exp = timedelta(minutes=0) #TODO check
                 
                 token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                 
@@ -677,16 +673,12 @@ class BookingSession(MethodView):
             local_id = get_jwt_identity()
             
             booking = createOrUpdateBooking(new_booking, local_id, commit=False)
-            
-            datetime_end = booking.datetime_end
-            
+                        
             timeout = start_waiter_booking_status(booking.id) #TODO check
                 
             local = LocalModel.query.get_or_404(local_id)
-                
-            diff = datetime_end - now(local.location)
-            
-            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+                                        
+            exp = calculateExpireBookingToken(booking.datetime_end, local.location)
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
             
@@ -739,7 +731,7 @@ class BookingConfirm(MethodView):
             
         #TODO send email confirmed
         
-        send_confirmed_mail_async(booking.local_id, booking.id, getTokenId(params[SESSION_GET]))
+        send_confirmed_mail_async(booking.local_id, booking.id)
             
         return booking
     

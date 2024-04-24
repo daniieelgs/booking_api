@@ -156,6 +156,7 @@ class TestBooking(TestCase):
         booking['services_ids'] = [service_id]
         r = self.post_booking(booking)
         booking_response = dict(r.json)
+        print('Booking response:', booking_response)
         self.assertEqual(r.status_code, 201)
         
         #Servicio que tiene un trabajador: Reserva 2
@@ -846,7 +847,7 @@ class TestBooking(TestCase):
         r = self.post_booking_local(booking, force=True)
         self.assertEqual(r.status_code, 201)
         
-    def test_integration_booking(self):
+    def test_integration_booking(self): #TODO testear cadudcidad de token
         
         self.configure_local()
         

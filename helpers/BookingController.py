@@ -294,6 +294,14 @@ def calculatEndTimeBooking(booking):
     booking.datetime_end = datetime_end
     return booking
 
+def calculateExpireBookingToken(datetime_end: datetime, location):
+                           
+    datetime_end = datetime_end.replace(tzinfo=now().tzinfo)
+                           
+    diff = datetime_end - now(location)
+            
+    return timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+
 def checkTimetableBookings(local_id):
     
     local = LocalModel.query.get(local_id)
