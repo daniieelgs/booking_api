@@ -8,7 +8,7 @@ import socket
 import time
 import traceback
 from db import addAndCommit, rollback
-from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, EMAIL_UPDATED_PAGE, KEYWORDS_PAGES, DEBUG
+from globals import DEFAULT_LOCATION_TIME, EMAIL_CANCELLED_PAGE, EMAIL_CONFIRMATION_PAGE, EMAIL_CONFIRMED_PAGE, EMAIL_UPDATED_PAGE, KEYWORDS_PAGES, DEBUG, EmailType, get_fqdn_cache
 from helpers.DatetimeHelper import naiveToAware, now
 from helpers.path import generatePagePath
 from helpers.security import decrypt_str
@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 
 def generate_message_id(domain):
-    return f"<{int(time.time())}.{socket.getfqdn()}@{domain}>"
+    return f"<{int(time.time())}.{get_fqdn_cache()}@{domain}>"
 
 def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subject, domain, content, type, name = None) -> bool:
 
@@ -39,7 +39,7 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
     email["To"] = to
     email["Subject"] = subject
     email["Message-ID"] = generate_message_id(domain)
-
+    
     email.attach(MIMEText(content, type))
     
     if DEBUG:
@@ -141,7 +141,7 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                             
     return False
     
-def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:BookingModel, booking_token, page):
+def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:BookingModel, booking_token, page): #TODO mostrar estado de la reserva
     
     confirmation_link:str = local_settings.confirmation_link
     if not confirmation_link: return False
@@ -162,7 +162,7 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     address = local.address
     phone_contact = local_settings.phone_contact
     email_contact = local_settings.email_contact
-    timeout_confirm_booking = str(int(local_settings.booking_timeout / 60))
+    timeout_confirm_booking = str(int(local_settings.booking_timeout / 60)) if local_settings.booking_timeout and local_settings.booking_timeout > 0 else 0
     website = local_settings.website
     whatsapp_link = local_settings.whatsapp
     
@@ -200,14 +200,13 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
         traceback.print_exc()
         return False
 
-def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page) -> bool:
+def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page, email_type: EmailType) -> bool:
     to = book.client_email
     
     local_settings = local.local_settings
     if not local_settings: return False
     
-    
-    if not local_settings.booking_timeout or local_settings.booking_timeout == -1:
+    if email_type == EmailType.CONFIRM_EMAIL and (not local_settings.booking_timeout or local_settings.booking_timeout == -1): #TODO check    
         return False
     
     renderPage = render_page(local, local_settings, book, booking_token, page)
@@ -219,14 +218,13 @@ def send_mail_booking(local: LocalModel, book:BookingModel, booking_token, page)
     return mail_local_sender(local_settings, to, subject, mail_body, 'html', local.name, location_local = local.location)
 
 def send_confirm_booking_mail(local: LocalModel, book:BookingModel, booking_token) -> bool:
-    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMATION_PAGE)
+    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMATION_PAGE, EmailType.CONFIRM_EMAIL)
 
 def send_confirmed_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
-    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMED_PAGE)
+    return send_mail_booking(local, book, booking_token, EMAIL_CONFIRMED_PAGE, EmailType.CONFIRMED_EMAIL)
 
 def send_cancelled_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
-    return send_mail_booking(local, book, booking_token, EMAIL_CANCELLED_PAGE)
+    return send_mail_booking(local, book, booking_token, EMAIL_CANCELLED_PAGE, EmailType.CANCELLED_EMAIL)
 
 def send_updated_booking_mail(local: LocalModel, book: BookingModel, booking_token) -> bool:
-    print("send_updated_booking_mail")
-    return send_mail_booking(local, book, booking_token, EMAIL_UPDATED_PAGE)
+    return send_mail_booking(local, book, booking_token, EMAIL_UPDATED_PAGE, EmailType.UPDATED_EMAIL)

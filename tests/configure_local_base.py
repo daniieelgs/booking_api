@@ -13,7 +13,7 @@ class LocalBase():
         self.assertEqual = assertEqual
         self.locals = []
     
-    def create_local(self, booking_timeout):
+    def create_local(self, booking_timeout, set_local_settings=True, set_smtp_settings=True):
         self.local = {
             "name": "Local-Test",
             "tlf": "123456789",
@@ -75,8 +75,8 @@ class LocalBase():
             },
         ]
         
-        self.local_settings['smtp_settings'] = self.smtp_settings
-        self.local['local_settings'] = self.local_settings
+        if set_smtp_settings: self.local_settings['smtp_settings'] = self.smtp_settings
+        if set_local_settings: self.local['local_settings'] = self.local_settings
         
         r = self.client.post(getUrl('local'), data=json.dumps(self.local),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(r.status_code, 201)
@@ -216,16 +216,16 @@ class LocalBase():
                     workers.append(worker)
                     self.work_groups[index]['workers'] = workers
                     
-    def configure_local(self, booking_timeout):
-        self.create_local(booking_timeout)
-        self.create_timetable()
-        self.create_work_group()
-        self.create_service()
-        self.create_worker()
+    def configure_local(self, booking_timeout, set_local_settings=True, set_smtp_settings=True, set_timetable=True, set_work_groups=True, set_services=True, set_workers=True):
+        self.create_local(booking_timeout, set_local_settings, set_smtp_settings)
+        if set_timetable: self.create_timetable()
+        if set_work_groups: self.create_work_group()
+        if set_services: self.create_service()
+        if set_workers: self.create_worker()
 
-def configure(client, admin_token, assertEqual, booking_timeout=-1):
+def configure(client, admin_token, assertEqual, booking_timeout=-1, set_local_settings=True, set_smtp_settings=True, set_timetable=True, set_work_groups=True, set_services=True, set_workers=True):
     lb = LocalBase(client, admin_token, assertEqual)
-    lb.configure_local(booking_timeout)
+    lb.configure_local(booking_timeout, set_local_settings, set_smtp_settings, set_timetable, set_work_groups, set_services, set_workers)
     
     return lb
    

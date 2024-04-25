@@ -1,4 +1,5 @@
 from enum import Enum
+import socket
 from dotenv import load_dotenv
 import os
 
@@ -169,6 +170,23 @@ RETRY_SEND_EMAIL = int(os.getenv('RETRY_SEND_EMAIL', DEFAULT_RETRY_SEND_EMAIL))
 
 CERT_SSL = os.getenv('CERT_SSL', None)
 KEY_SSL = os.getenv('KEY_SSL', None)
+
+FQDN_CACHE = None
+
+def update_fqdn_cache():
+    global FQDN_CACHE
+    FQDN_CACHE = socket.getfqdn()
+
+def get_fqdn_cache():
+    global FQDN_CACHE
+    if not FQDN_CACHE:
+        update_fqdn_cache()
+    return FQDN_CACHE
+
+def is_email_test_mode():
+    if DEBUG:
+        load_dotenv()
+        return os.getenv('EMAIL_TEST_MODE', 'False') == 'True'
 
 class EmailType(Enum):
     CONFIRM_EMAIL = 0

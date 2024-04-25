@@ -142,23 +142,48 @@ class TestEmail(TestCase):
         
         response = post_booking.json
         
-        self._intern_bookging = response
+        self._intern_booking = response
         
         return response
     
     def cancel_intern_booking(self):
         
-        if not hasattr(self, '_intern_bookging') or 'session_token' not in self._intern_bookging: return
+        if not hasattr(self, '_intern_booking') or 'session_token' not in self._intern_booking: return
         
-        self.cancel_booking(self._intern_bookging['session_token'])
+        self.cancel_booking(self._intern_booking['session_token'])
         
-        self._intern_bookging = None
+        self._intern_booking = None
+        
+    def check_email_booking(self, email, value, booking_id = None):
+        
+        if booking_id is None: booking_id = self._intern_booking['booking']['id']
+        
+        booking_admin = self.get_booking_admin(booking_id)
+        self.assertEqual(booking_admin.status_code, 200)
+        booking_response = booking_admin.json
+        
+        self.assertEqual(booking_response[email], value)
         
     def recreate_intern_booking(self, booking = None):
         self.cancel_intern_booking()
-        return self.create_intern_booking(booking=booking)
-        
+        return self.create_intern_booking(booking=booking)  
           
+    def patch_local(self, data):
+        return self.client.patch(getUrl('local'), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
+    
+    def enable_send_email_confirm(self, timeout = 0):
+        data = {
+            "local_settings": {
+                "booking_timeout": timeout
+            }
+        }
+        
+        r = self.patch_local(data)
+        self.assertEqual(r.status_code, 200)
+        
+    def disable_send_email_confirm(self):
+        self.enable_send_email_confirm(-1)
+
     def check_email(self):
         post_booking = self.post_booking(self.booking)
                 
@@ -167,7 +192,10 @@ class TestEmail(TestCase):
         response = post_booking.json
         
         self.assertEqual(response['booking']['status']['status'], PENDING_STATUS)
-        self.assertEqual(response['email_sent'], True)
+        self.assertEqual(response['email_confirm'], True)
+        
+        self.check_email_booking('email_confirm', True, response['booking']['id'])
+        
     
     def check_control_email(self):
         #2.1. Control de envio de emails por dia y mes
@@ -177,13 +205,15 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()
         
-        self.assertEqual(response['email_sent'], True)
+        self.assertEqual(response['email_confirm'], True)
         
         send_day_post = self.get_local_settings()['smtp_settings'][0]['send_per_day']
         send_month_post = self.get_local_settings()['smtp_settings'][0]['send_per_month']
         
         self.assertEqual(send_day_post, send_day_pre + 1)
-        self.assertEqual(send_month_post, send_month_pre + 1)        
+        self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.check_email_booking('email_confirm', True)        
                 
         #2.2. Comprobar reseteos
 
@@ -203,6 +233,8 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, 2)
         self.assertEqual(send_month_post, send_month_pre + 2)
         
+        self.check_email_booking('email_confirm', True)
+        
         self.assertEqual(reset_day, (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00"))
                                 
         response = self.recreate_intern_booking()#+1
@@ -215,6 +247,8 @@ class TestEmail(TestCase):
         
         self.reset_smtp_config(send_per_day=2, send_per_month=50, reset_send_per_day=1, reset_send_per_month=-1, edit_configs=[0])
                         
+        self.check_email_booking('email_confirm', True)
+                        
         self.recreate_intern_booking()#+1
         
         send_day_post = self.get_local_settings()['smtp_settings'][0]['send_per_day']
@@ -225,6 +259,8 @@ class TestEmail(TestCase):
         self.assertEqual(send_month_post, 2)
         
         self.assertEqual(reset_month, (datetime.datetime.now() - datetime.timedelta(days=1) + relativedelta(months=+1)).strftime("%Y-%m-%dT00:00:00"))
+                
+        self.check_email_booking('email_confirm', True)
                 
         #2.3. Comprobar limite de emails en una configuracion (dia/mes)
                 
@@ -240,7 +276,7 @@ class TestEmail(TestCase):
         
         self.recreate_intern_booking()#+1
         
-        self.assertEqual(response['email_sent'], True)
+        self.assertEqual(response['email_confirm'], True)
           
         settings = self.get_local_settings()
                 
@@ -248,6 +284,8 @@ class TestEmail(TestCase):
         self.assertEqual(settings['smtp_settings'][0]['send_per_month'], send_month_pre0)                
 
         self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1 + 2)
+        
+        self.check_email_booking('email_confirm', True)
         
             #Limite por mes
         
@@ -265,13 +303,16 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()#+1
         
-        self.assertEqual(response['email_sent'], True)
+        self.assertEqual(response['email_confirm'], True)
+        
         
         settings = self.get_local_settings()
         
         self.assertEqual(settings['smtp_settings'][0]['send_per_month'], send_month_pre0)
         self.assertEqual(settings['smtp_settings'][0]['send_per_day'], send_day_pre0)
         self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1 + 2)
+                
+        self.check_email_booking('email_confirm', True)
                 
         #2.4. Comprobar limite de emails en todas las configuraciones
         
@@ -287,12 +328,14 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()#+1
         
-        self.assertEqual(response['email_sent'], False)
+        self.assertEqual(response['email_confirm'], False)
         
         settings = self.get_local_settings()
         
         self.assertEqual(settings['smtp_settings'][0]['send_per_day'], send_day_pre0)
         self.assertEqual(settings['smtp_settings'][1]['send_per_day'], send_day_pre1)
+                
+        self.check_email_booking('email_confirm', False)
                 
         #2.5. Comprobar limite de emails en todas las configuraciones y reseteos
     
@@ -306,7 +349,7 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()#+1
         
-        self.assertEqual(response['email_sent'], False)
+        self.assertEqual(response['email_confirm'], False)
         
         settings = self.get_local_settings()
                 
@@ -320,12 +363,14 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()#+1
         
-        self.assertEqual(response['email_sent'], True)
+        self.assertEqual(response['email_confirm'], True)
         
         settings = self.get_local_settings()
         
         self.assertEqual(settings['smtp_settings'][0]['send_per_day'], 2)
         self.assertEqual(settings['smtp_settings'][0]['send_per_month'], 2)
+        
+        self.check_email_booking('email_confirm', True)
         
     def check_cancel_confirm_email(self):
         #3.1 Confirmacion automatica de reserva
@@ -334,20 +379,26 @@ class TestEmail(TestCase):
         
         response = self.recreate_intern_booking()
         
-        self.assertEqual(response['email_sent'], False)
+        self.assertEqual(response['email_confirm'], False)
         self.assertEqual(response['booking']['status']['status'], CONFIRMED_STATUS)
+        
+        self.check_email_booking('email_confirm', False)
         
         #3.2. Cancelacion automatica. Sin confirmar reserva
         
         self.reset_smtp_config()
         
         booking3_2 = self.recreate_intern_booking()
+        
+        self.check_email_booking('email_confirm', True, booking3_2['booking']['id'])
                 
         #3.3. Confirmando reserva
         
         self.booking['datetime_init'] = booking3_2['booking']['datetime_end']
         
         booking3_3 = self.create_intern_booking()
+        
+        self.check_email_booking('email_confirm', True, booking3_3['booking']['id'])
         
         r = self.confirm_booking(booking3_3['session_token'])
         self.assertEqual(r.status_code, 200)
@@ -357,8 +408,12 @@ class TestEmail(TestCase):
         booking3_2 = self.get_booking(booking3_2['session_token']).json
         self.assertEqual(booking3_2['status']['status'], CANCELLED_STATUS)
         
+        self.check_email_booking('email_cancelled', True, booking3_2['id'])
+        
         booking3_3 = self.get_booking(booking3_3['session_token']).json
         self.assertEqual(booking3_3['status']['status'], CONFIRMED_STATUS)
+        
+        self.check_email_booking('email_confirmed', True, booking3_3['id'])
             
     def check_email_confirmation(self):
         
@@ -382,6 +437,8 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
             
+        self.check_email_booking('email_confirmed', True)
+            
     def check_email_cancellation(self):
         self.reset_smtp_config()
         
@@ -402,6 +459,8 @@ class TestEmail(TestCase):
         
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.check_email_booking('email_cancelled', True)
     
     def check_email_update(self):
         
@@ -423,6 +482,7 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
         
+        self.check_email_booking('email_updated', True)
     
     def check_email_notification(self):
         #7.1. Creando reserva
@@ -436,6 +496,7 @@ class TestEmail(TestCase):
         
         booking_admin0 = self.post_booking_local(self.booking, force = True)
         self.assertEqual(booking_admin0.status_code, 201)
+        booking_response0 = booking_admin0.json
         
         settings = self.get_local_settings()
         
@@ -444,6 +505,9 @@ class TestEmail(TestCase):
         
         self.assertEqual(send_day_post, send_day_pre)
         self.assertEqual(send_month_post, send_month_pre)
+        
+        self.check_email_booking('email_confirm', False, booking_response0['id'])
+        self.check_email_booking('email_confirmed', False, booking_response0['id'])
         
         booking_admin = self.post_booking_local(self.booking, force = True, notify = True)
         self.assertEqual(booking_admin.status_code, 201)
@@ -456,6 +520,9 @@ class TestEmail(TestCase):
         
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.check_email_booking('email_confirm', False, booking_response['id'])
+        self.check_email_booking('email_confirmed', True, booking_response['id'])
         
         #7.2. Actualizando reserva
         
@@ -475,6 +542,8 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre)
         self.assertEqual(send_month_post, send_month_pre)
         
+        self.check_email_booking('email_updated', False, booking_response0['id'])
+        
         booking_update = self.update_booking_admin(booking_response['id'], self.booking, force=True, notify=True)
         self.assertEqual(booking_update.status_code, 200)
         
@@ -486,11 +555,11 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
         
+        self.check_email_booking('email_updated', True, booking_response['id'])
+        
         self.booking.pop('new_status')
         
         #7.3. Cancelando reserva
-        
-        booking_response0 = booking_admin0.json
         
         settings = self.get_local_settings()
 
@@ -507,6 +576,8 @@ class TestEmail(TestCase):
         self.assertEqual(send_day_post, send_day_pre)
         self.assertEqual(send_month_post, send_month_pre)
         
+        self.check_email_booking('email_cancelled', False, booking_response0['id'])
+        
         booking_cancel = self.cancel_booking_admin(booking_response['id'], data=None, notify=True)
         self.assertEqual(booking_cancel.status_code, 204)
         
@@ -516,6 +587,131 @@ class TestEmail(TestCase):
         send_month_post = settings['smtp_settings'][0]['send_per_month']
         self.assertEqual(send_day_post, send_day_pre + 1)
         self.assertEqual(send_month_post, send_month_pre + 1)
+                  
+        self.check_email_booking('email_cancelled', True, booking_response['id'])
+              
+    def check_booking_status(self):
+        response = self.create_intern_booking()
+        
+        self.assertEqual(response['booking']['status']['status'], PENDING_STATUS)
+        self.assertEqual(response['email_confirm'], True)
+        
+        session_token = response['session_token']
+        booking_id = response['booking']['id']
+        
+        get_booking = self.get_booking(session_token)
+        self.assertEqual(get_booking.status_code, 200)
+        response = get_booking.json
+        
+        self.assertEqual(response['status']['status'], PENDING_STATUS)
+        
+        booking_admin = self.get_booking_admin(booking_id)
+        self.assertEqual(booking_admin.status_code, 200)
+        response = booking_admin.json
+        
+        self.assertEqual(response['email_confirm'], True)
+        
+        confirm_booking = self.confirm_booking(session_token)
+        self.assertEqual(confirm_booking.status_code, 200)
+        response = confirm_booking.json
+        
+        self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
+        
+        booking_admin = self.get_booking_admin(booking_id)
+        self.assertEqual(booking_admin.status_code, 200)
+        response = booking_admin.json
+        
+        self.assertEqual(response['email_confirmed'], True)
+        
+        self.cancel_booking(session_token)
+        
+        #Desactivar el envio de emails de confirmacion
+        
+        self.disable_send_email_confirm()
+        
+        response = self.create_intern_booking()
+        
+        self.assertEqual(response['booking']['status']['status'], CONFIRMED_STATUS)
+        self.assertEqual(response['email_confirm'], False)
+        
+        session_token = response['session_token']
+        booking_id = response['booking']['id']
+        
+        get_booking = self.get_booking(session_token)
+        self.assertEqual(get_booking.status_code, 200)
+        response = get_booking.json
+        
+        self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
+        
+        booking_admin = self.get_booking_admin(booking_id)
+        self.assertEqual(booking_admin.status_code, 200)
+        response = booking_admin.json
+        
+        self.assertEqual(response['email_confirm'], False)
+        self.assertEqual(response['email_confirmed'], True)
+        
+        confirm_booking = self.confirm_booking(session_token)
+        self.assertEqual(confirm_booking.status_code, 409)
+        
+        self.cancel_booking(session_token)
+        
+        self.enable_send_email_confirm()
+        
+    
+    def check_booking_confirm_mail_disabled(self):
+        
+        self.reset_smtp_config()
+        self.disable_send_email_confirm()
+        
+        settings = self.get_local_settings()
+        
+        send_day_pre = settings['smtp_settings'][0]['send_per_day']
+        send_month_pre = settings['smtp_settings'][0]['send_per_month']
+        
+        response = self.create_intern_booking()
+        
+        self.assertEqual(response['booking']['status']['status'], CONFIRMED_STATUS)
+        
+        self.check_email_booking('email_confirm', False)
+        self.check_email_booking('email_confirmed', True)
+        
+        settings = self.get_local_settings()
+        
+        send_day_post = settings['smtp_settings'][0]['send_per_day']
+        send_month_post = settings['smtp_settings'][0]['send_per_month']
+        
+        self.assertEqual(send_day_post, send_day_pre + 1)
+        self.assertEqual(send_month_post, send_month_pre + 1)
+        
+        self.cancel_booking(response['session_token'])
+        
+        get_booking = self.get_booking(response['session_token'])
+        self.assertEqual(get_booking.status_code, 200)
+        response = get_booking.json
+        
+        self.assertEqual(response['status']['status'], CANCELLED_STATUS)
+        self.check_email_booking('email_cancelled', True)
+        
+        #Limite de correos:
+        
+        self.reset_smtp_config(send_per_day=300, max_send_per_day=300)
+        
+        response = self.create_intern_booking()
+        
+        self.assertEqual(response['booking']['status']['status'], CONFIRMED_STATUS)
+        self.assertEqual(response['email_confirm'], False)
+        
+        self.cancel_booking(response['session_token'])
+        
+        get_booking = self.get_booking(response['session_token'])
+        self.assertEqual(get_booking.status_code, 200)
+        response = get_booking.json
+        
+        self.assertEqual(response['status']['status'], CANCELLED_STATUS)
+        self.check_email_booking('email_cancelled', False)
+        
+        self.enable_send_email_confirm()
+        self.reset_smtp_config()
                   
     def test_integration_email(self):
         
@@ -552,7 +748,12 @@ class TestEmail(TestCase):
         #7. Comprobar email de notificacion por parte del local
         self.check_email_notification()
         
+        #8. Comprobar estados de reservas
+        self.check_booking_status()
+        
+        #9. Comprobar no envio de emails para confirmacion
+        self.check_booking_confirm_mail_disabled()
+        
         #3. Comprobar cancelacion/confirmacion automatica de emails
         self.check_cancel_confirm_email()
-
     

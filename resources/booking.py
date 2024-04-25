@@ -316,30 +316,37 @@ class Booking(MethodView):
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                         
-            booking.email_sent = True
+            booking.email_confirm = True
                         
             commit()
             
             print("ENVIANDO EMAIL")
             
-            email_sent = send_confirm_booking_mail(local, booking, token)
+            email_confirm = send_confirm_booking_mail(local, booking, token)
             
-            print("EMAIL ENVIADO:", email_sent)
+            print("EMAIL ENVIADO:", email_confirm)
             
             timeout = None
-            timeout_local = local.local_settings.booking_timeout
-            if email_sent:
+            
+            if email_confirm:
+                timeout_local = local.local_settings.booking_timeout
                 timeout = start_waiter_booking_status(booking.id, timeout=timeout_local)
             else:
-                booking.email_sent = False
+                booking.email_confirm = False
                 
-                if timeout_local is not None and timeout_local > 0: confirmBooking(booking)
-                else: addAndCommit(booking)
+                # if timeout_local is not None and timeout_local > 0: confirmBooking(booking)
+                # else: addAndCommit(booking)
+                    
+                confirmBooking(booking)
+                    
+                send_confirmed_mail_async(local_id, booking.id) #TODO: check
+                    
+                addAndCommit(booking)
                     
             return {
                 "booking": booking,
                 "timeout": timeout,
-                "email_sent": email_sent,
+                "email_confirm": email_confirm,
                 "session_token": token
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:

@@ -84,7 +84,7 @@ class LocalSettingsSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)
 
 class LocalSettingsPatchSchema(_LocalSettingsSchema):
-    booking_timeout = fields.Int(required=False, validate=validate.Range(min=MIN_TIMEOUT_CONFIRM_BOOKING), allow_none=True)
+    booking_timeout = fields.Int(required=False, validate=validate.Range(min=-1), allow_none=True)
     smtp_settings = fields.Nested(SmtpSettingsPatchSchema, many=True, required=False)
 
 class PublicLocalSchema(Schema):
@@ -277,12 +277,14 @@ class NewBookingSchema(Schema):
     booking = fields.Nested(BookingSchema(), required=True)
     session_token = fields.Str(required=True)
     timeout = fields.Float(required=True)
-    email_sent = fields.Bool(required=True, dump_only=True)
+    email_confirm = fields.Bool(required=True, dump_only=True)
     
 class BookingAdminSchema(BookingSchema):
     new_status = fields.Str(required=True, load_only=True)
-    email_sent = fields.Bool(required=True, dump_only=True)
-    
+    email_confirm = fields.Bool(required=True, dump_only=True)
+    email_confirmed = fields.Bool(required=True, dump_only=True)
+    email_cancelled = fields.Bool(required=True, dump_only=True)
+    email_updated = fields.Bool(required=True, dump_only=True)    
 class BookingAdminPatchSchema(BookingPatchSchema):
     new_status = fields.Str(required=False, load_only=True)
    
