@@ -194,7 +194,8 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(PublicFilesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}')
     api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     
-    api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
+    if DEBUG:
+        api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
     
     ##Loal Routes
     
