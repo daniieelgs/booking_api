@@ -47,22 +47,22 @@ def start_waiter_booking_status(booking_id, timeout=None):
 
     
 def send_confirmed_mail_async(local_id, booking_id):
-    if is_email_test_mode(): return send_mail_task(local_id, booking_id, EmailType.CONFIRMED_EMAIL)
+    if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.CONFIRMED_EMAIL))
 
-    return send_mail_task.delay(local_id, booking_id, EmailType.CONFIRMED_EMAIL)   
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.CONFIRMED_EMAIL))   
     
 def send_cancelled_mail_async(local_id, booking_id):
-    if is_email_test_mode(): return send_mail_task(local_id, booking_id, EmailType.CANCELLED_EMAIL)
+    if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.CANCELLED_EMAIL))
 
-    return send_mail_task.delay(local_id, booking_id, EmailType.CANCELLED_EMAIL)   
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.CANCELLED_EMAIL))   
 
 def send_updated_mail_async(local_id, booking_id):
-    if is_email_test_mode(): return send_mail_task(local_id, booking_id, EmailType.UPDATED_EMAIL)
+    if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.UPDATED_EMAIL))
 
-    return send_mail_task.delay(local_id, booking_id, EmailType.UPDATED_EMAIL)
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.UPDATED_EMAIL))
 
 
-def send_email_debug(local_id, booking_id, email_type: EmailType):
+def send_email_debug(local_id, booking_id, email_type: int):
     
     local = LocalModel.query.get(local_id)
     booking = BookingModel.query.get(booking_id)
@@ -70,11 +70,11 @@ def send_email_debug(local_id, booking_id, email_type: EmailType):
     exp = calculateExpireBookingToken(booking.datetime_end, local.location)
     token = generateTokens(booking_id, local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
     
-    if email_type == EmailType.CONFIRMED_EMAIL:
+    if email_type == int(EmailType.CONFIRMED_EMAIL):
         send_mail = send_confirmed_booking_mail
-    elif email_type == EmailType.CANCELLED_EMAIL:
+    elif email_type == int(EmailType.CANCELLED_EMAIL):
         send_mail = send_cancelled_booking_mail
-    elif email_type == EmailType.UPDATED_EMAIL:
+    elif email_type == int(EmailType.UPDATED_EMAIL):
         send_mail = send_updated_booking_mail
         
     success = send_mail(local, booking, token)

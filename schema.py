@@ -79,6 +79,7 @@ class _LocalSettingsSchema(PublicSettingsSchema):
     domain = fields.Str(required=False, validate=validate.Length(min=0, max=100))
     confirmation_link = fields.Str(required=False, validate=validate.URL())
     cancel_link = fields.Str(required=False, validate=validate.URL())
+    update_link = fields.Str(required=False, validate=validate.URL())
     booking_timeout = fields.Int(required=False, load_default=TIMEOUT_CONFIRM_BOOKING, validate=validate.Range(min=-1), allow_none=True)
 class LocalSettingsSchema(_LocalSettingsSchema):
     smtp_settings = fields.Nested(SmtpSettingsSchema, many=True, required=False)

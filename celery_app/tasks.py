@@ -72,14 +72,14 @@ def check_booking_status(booking_id):
     if booking.status.status == PENDING_STATUS:
         cancelBooking(booking)
         
-        if is_email_test_mode(): return send_mail_task(booking.local_id, booking_id, EmailType.CANCELLED_EMAIL)
+        if is_email_test_mode(): return send_mail_task(booking.local_id, booking_id, int(EmailType.CANCELLED_EMAIL))
         
-        send_mail_task.delay(booking.local_id, booking_id, EmailType.CANCELLED_EMAIL)   
+        send_mail_task.delay(booking.local_id, booking_id, int(EmailType.CANCELLED_EMAIL))   
     
-def set_email_sent(booking, email_type: EmailType, email_sent, commit = True):
-    if email_type == EmailType.CONFIRMED_EMAIL: booking.email_confirmed = email_sent
-    elif email_type == EmailType.CANCELLED_EMAIL: booking.email_cancelled = email_sent
-    elif email_type == EmailType.UPDATED_EMAIL: booking.email_updated = email_sent
+def set_email_sent(booking, email_type: int, email_sent, commit = True):
+    if email_type == int(EmailType.CONFIRMED_EMAIL): booking.email_confirmed = email_sent
+    elif email_type == int(EmailType.CANCELLED_EMAIL): booking.email_cancelled = email_sent
+    elif email_type == int(EmailType.UPDATED_EMAIL): booking.email_updated = email_sent
     else: raise Exception(f"Unknown email_type '{email_type}'.")
     
     if commit: addAndCommit(booking)
@@ -87,7 +87,7 @@ def set_email_sent(booking, email_type: EmailType, email_sent, commit = True):
     return booking
         
 @shared_task(bind=True, queue='priority', max_retries=3, default_retry_delay=60 * RETRY_SEND_EMAIL)
-def send_mail_task(self, local_id, booking_id, email_type: EmailType):
+def send_mail_task(self, local_id, booking_id, email_type: int):
      
     local = LocalModel.query.get(local_id)
     
@@ -108,15 +108,18 @@ def send_mail_task(self, local_id, booking_id, email_type: EmailType):
     
     token = generateTokens(booking_id, local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
         
+    print("Email type:", email_type)
+    print("CONFIRMED_EMAIL:", EmailType.CONFIRMED_EMAIL)
+    print("Check:", email_type == int(EmailType.CONFIRMED_EMAIL))
         
-    if email_type == EmailType.CONFIRMED_EMAIL:
+    if email_type == int(EmailType.CONFIRMED_EMAIL):
         send_mail = send_confirmed_booking_mail
-    elif email_type == EmailType.CANCELLED_EMAIL:
+    elif email_type == int(EmailType.CANCELLED_EMAIL):
         send_mail = send_cancelled_booking_mail
-    elif email_type == EmailType.UPDATED_EMAIL:
+    elif email_type == int(EmailType.UPDATED_EMAIL):
         send_mail = send_updated_booking_mail
     else:
-        raise Exception(f"Unknown email_type '{email_type}'.")
+        raise Exception(f"Unknown email_type '{email_type}'. CONFIRMED_EMAIL '{EmailType.CONFIRMED_EMAIL}'. Check: {email_type == int(EmailType.CONFIRMED_EMAIL)}")
     
     try:
         success = send_mail(local, booking, token)

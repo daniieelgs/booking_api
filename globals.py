@@ -65,6 +65,8 @@ DEFAULT_EMAIL_UPDATED_PAGE = "email_updated.html"
 
 DEFAULT_KEYWORDS_PAGES = {
     "CONFIRMATION_LINK": "{confirmation_link}",
+    "CANCEL_LINK": "{cancel_link}",
+    "UPDATE_LINK": "{update_link}",
     "BOOKING_TOKEN": "{booking_token}",
     "CLIENT_NAME": "{client_name}",
     "LOCAL_NAME": "{local_name}",
@@ -72,11 +74,11 @@ DEFAULT_KEYWORDS_PAGES = {
     "TIME": "{time}",
     "SERVICE": "{service}",
     "COST": "{cost}",
+    "WORKER": "{worker}",
     "ADDRESS-MAPS": "{address_maps}",
     "ADDRESS": "{address}",
     "PHONE_CONTACT": "{phone_contact}",
     "TIMEOUT_CONFIRM_BOOKING": "{timeout_confirm_booking}",
-    "CANCEL_LINK": "{cancel_link}",
     "EMAIL_CONTACT": "{email_contact}",
     "WHATSAPP_LINK": "{whatsapp_link}",
     "WEBSITE": "{website}",
@@ -188,7 +190,7 @@ def is_email_test_mode():
         load_dotenv()
         return os.getenv('EMAIL_TEST_MODE', 'False') == 'True'
 
-class EmailType(Enum):
+class EmailType():
     CONFIRM_EMAIL = 0
     CONFIRMED_EMAIL = 1
     CANCELLED_EMAIL = 2

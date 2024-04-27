@@ -143,21 +143,23 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
     
 def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:BookingModel, booking_token, page): #TODO mostrar estado de la reserva
     
-    confirmation_link:str = local_settings.confirmation_link
-    if not confirmation_link: return False
+    confirmation_link:str = local_settings.confirmation_link if local_settings.confirmation_link is not None else ""
     confirmation_link = confirmation_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
 
-    cancel_link:str = local_settings.cancel_link
-    if not cancel_link: return False
+    cancel_link:str = local_settings.cancel_link if local_settings.cancel_link is not None else ""
     cancel_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
+    
+    update_link:str = local_settings.update_link if local_settings.update_link is not None else ""
+    update_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
     
     client_name = book.client_name
     local_name = local.name
     date = book.datetime_init.strftime("%d/%m/%Y")
     time = book.datetime_init.strftime("%H:%M")
-    comment = book.comment
+    comment = book.comment if book.comment is not None else ""
     service = ", ".join([service.name for service in book.services])
     cost = str(book.total_price)
+    worker = book.worker.name + ((" " + book.worker.last_name ) if book.worker.last_name is not None else "")
     address_maps = local_settings.maps
     address = local.address
     phone_contact = local_settings.phone_contact
@@ -173,12 +175,14 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
                     response.get_data().decode('utf-8')
                     .replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], confirmation_link)
                     .replace(KEYWORDS_PAGES['CANCEL_LINK'], cancel_link)
+                    .replace(KEYWORDS_PAGES['UPDATE_LINK'], update_link)
                     .replace(KEYWORDS_PAGES['CLIENT_NAME'], client_name)
                     .replace(KEYWORDS_PAGES['LOCAL_NAME'], local_name)
                     .replace(KEYWORDS_PAGES['DATE'], date)
                     .replace(KEYWORDS_PAGES['TIME'], time)
                     .replace(KEYWORDS_PAGES['SERVICE'], service)
                     .replace(KEYWORDS_PAGES['COST'], cost)
+                    .replace(KEYWORDS_PAGES['WORKER'], worker)
                     .replace(KEYWORDS_PAGES['ADDRESS-MAPS'], address_maps)
                     .replace(KEYWORDS_PAGES['ADDRESS'], address)
                     .replace(KEYWORDS_PAGES['PHONE_CONTACT'], phone_contact)
