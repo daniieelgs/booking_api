@@ -41,33 +41,4 @@ def validateTimetable(local_id):
             raise TimetableOverlapsException()
         
     return True
-        
-        
-
-# def validate_timetable(local_id, weekday_id, opening_time, closing_time, timetable_id=None):
-#     # Comprobar que el tiempo de cierre es posterior al tiempo de apertura
-#     if opening_time >= closing_time:
-#         return "The closing time must be later than the opening time.", False
-
-#     # Construir la consulta para buscar solapamientos
-#     query = Timetable.query.filter(
-#         Timetable.local_id == local_id,
-#         Timetable.weekday_id == weekday_id,
-#         or_(
-#             and_(Timetable.opening_time <= opening_time, Timetable.closing_time >= opening_time),
-#             and_(Timetable.opening_time <= closing_time, Timetable.closing_time >= closing_time),
-#             and_(opening_time <= Timetable.opening_time, closing_time >= Timetable.closing_time)
-#         )
-#     )
-
-#     # Excluir el registro actual en caso de actualización
-#     if timetable_id:
-#         query = query.filter(Timetable.id != timetable_id)
-
-#     # Comprobar si existe algún solapamiento
-#     if query.first():
-#         return "The new timetable overlaps with an existing one.", False
-
-#     return None, True
-    
     

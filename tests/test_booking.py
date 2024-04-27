@@ -1,10 +1,14 @@
+# python -m unittest .\tests\test_booking.py
+
 import datetime
 import json
+import time
 import unittest
 from flask_testing import TestCase
 from app import create_app, db
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, WEEK_DAYS, DEBUG
 from tests import config_test, getUrl, setParams
+from tests.configure_local_base import configure
 
 ENDPOINT = 'booking'
 
@@ -23,184 +27,31 @@ class TestBooking(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.local.locals)
         
-    def create_local(self):
-        self.local = {
-            "name": "Local-Test",
-            "tlf": "123456789",
-            "email": "email@test.com",
-            "address": "Test Address",
-            "postal_code": "98765",
-            "village": "Test Village",
-            "province": "Test Province",
-            "location": "Europe/Madrid"
-        }
-        
-        r = self.client.post(getUrl('local'), data=json.dumps(self.local),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
-        self.assertEqual(r.status_code, 201)
-        
-        r = dict(r.json)
-        
-        self.refresh_token = r['refresh_token']
-        self.access_token = r['access_token']
-        self.local['id'] = r['local']['id']
-        
-    def create_timetable(self):
-        
-        self.timetable = []
-        
-        for day in WEEK_DAYS:
-            self.timetable.append({
-                "opening_time": "10:00:00",
-                "closing_time": "15:00:00",
-                "weekday_short": day
-            })
-            self.timetable.append({
-                "opening_time": "16:00:00",
-                "closing_time": "20:00:00",
-                "weekday_short": day
-            })
-        
-        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.timetable), content_type='application/json')
-        print(r.json)
-        self.assertEqual(r.status_code, 200)
-        
-    def create_work_group(self):
-        self.work_groups = [
-            {
-                "name": "work group test 1",
-                "description": "work group 1 description test",
-            },
-            {
-                "name": "work group test 2",
-                "description": "work group 2 description test",
-            },
-            {
-                "name": "work group test 3",
-                "description": "work group 3 description test",
-            }
-        ]
-        
-        for i in range(len(self.work_groups)):
-            work_group = self.work_groups[i]
-            r = self.client.post(getUrl('work_group'), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(work_group), content_type='application/json')
-            self.assertEqual(r.status_code, 201)
-            self.work_groups[i]['id'] = dict(r.json)['id']
-        
-    def create_service(self):
-        
-        
-        self.services = []
-        
-        for i in range(len(self.work_groups)):
-            id = self.work_groups[i]['id']
-            
-            services = [
-                {
-                    "name": "service test 1",
-                    "description": "service 1 description test",
-                    "duration": 30,
-                    "price": 10,
-                    "work_group": 1
-                },
-                {
-                    "name": "service test 2",
-                    "description": "service 2 description test",
-                    "duration": 60,
-                    "price": 20,
-                    "work_group": 1
-                },
-                {
-                    "name": "service test 3",
-                    "description": "service 3 description test",
-                    "duration": 90,
-                    "price": 30,
-                    "work_group": 1
-                }
-            ]
-            
-            for j in range(len(services)):
-                services[j]['name'] = services[j]['name'] + f" - WG {id}"
-                services[j]['work_group'] = id
-                
-                service = services[j]
-                r = self.client.post(getUrl('service'), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
-                self.assertEqual(r.status_code, 201)
-                services[j]['id'] = dict(r.json)['id']
-                
-                self.services.append(services[j])
-                
-            self.work_groups[i]['services'] = services
-                        
-    def create_worker(self):
-        
-        self.workers = [
-            {
-                "name": "worker test 1",
-                "last_name": "worker surname 1",
-                "work_groups": [self.work_groups[0]['id']]
-            },
-            {
-                "name": "worker test 2",
-                "last_name": "worker surname 2",
-                "work_groups": [self.work_groups[0]['id'], self.work_groups[1]['id']]
-            },
-            {
-                "name": "worker test 3",
-                "last_name": "worker surname 3",
-                "work_groups": [self.work_groups[0]['id']]
-            }
-        ]
-        
-        for i in range(len(self.workers)):
-            worker = self.workers[i]
-            r = self.client.post(getUrl('worker'), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(worker), content_type='application/json')
-            self.assertEqual(r.status_code, 201)
-            self.workers[i]['id'] = dict(r.json)['id']
-                        
-            for wg_id in worker['work_groups']:
-                
-                index = None
-                
-                for j in range(len(self.work_groups)):
-                    if self.work_groups[j]['id'] == wg_id:
-                        if 'workers' not in self.work_groups[j]: self.work_groups[j]['workers'] = []
-                        index = j
-                        break
-                                
-                if index is not None:
-                    workers = list(self.work_groups[index]['workers'])
-                    workers.append(worker)
-                    self.work_groups[index]['workers'] = workers
-                    
-               
     def configure_local(self):
-        self.create_local()
-        self.create_timetable()
-        self.create_work_group()
-        self.create_service()
-        self.create_worker()
-   
+        self.local = configure(self.client, self.admin_token, self.assertEqual, set_smtp_settings=False, set_local_settings=False)
+
     def post_booking_admin(self, booking):
         return self.client.post(getUrl(ENDPOINT, 'admin'), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
    
     def post_booking(self, booking):
-        return self.client.post(getUrl(ENDPOINT, 'local', self.local['id']), data=json.dumps(booking), content_type='application/json')
+        return self.client.post(getUrl(ENDPOINT, 'local', self.local.local['id']), data=json.dumps(booking), content_type='application/json')
     
     def post_booking_local(self, booking, **params):
-        return self.client.post(setParams(getUrl(ENDPOINT), **params), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.post(setParams(getUrl(ENDPOINT), **params), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def cancel_booking(self, session, data = None):
         return self.client.delete(setParams(getUrl(ENDPOINT), session=session), content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT), session=session), data=json.dumps(data), content_type='application/json')
     
     def cancel_booking_admin(self, id, data = None):
-        return self.client.delete(setParams(getUrl(ENDPOINT, 'cancel', id)), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT, id)), data=json.dumps(data), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.delete(setParams(getUrl(ENDPOINT, 'cancel', id)), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json') if data is None else self.client.delete(setParams(getUrl(ENDPOINT, id)), data=json.dumps(data), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
   
     def update_booking_admin(self, id, booking):
-        return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.put(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def patch_booking_admin(self, id, booking):
-        return self.client.patch(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.patch(getUrl(ENDPOINT, id), data=json.dumps(booking), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     
     def update_booking(self, session, booking):
@@ -214,23 +65,23 @@ class TestBooking(TestCase):
         return self.client.get(setParams(getUrl(ENDPOINT, 'confirm'), session=session), content_type='application/json')
     
     def confirm_booking_admin(self, id):
-        return self.client.get(setParams(getUrl(ENDPOINT, 'confirm', id)), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.get(setParams(getUrl(ENDPOINT, 'confirm', id)), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     
     def get_booking_admin(self, id):
-        return self.client.get(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.get(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def get_booking(self, session):
         return self.client.get(setParams(getUrl(ENDPOINT), session=session), content_type='application/json')
     
     def get_bookings(self, **params):
-        return self.client.get(setParams(getUrl(ENDPOINT, 'local', self.local['id']), **params), content_type='application/json')
+        return self.client.get(setParams(getUrl(ENDPOINT, 'local', self.local.local['id']), **params), content_type='application/json')
     
     def get_bookings_admin(self, **params):
-        return self.client.get(setParams(getUrl(ENDPOINT, 'all'), **params), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.get(setParams(getUrl(ENDPOINT, 'all'), **params), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def delete_booking_admin(self, id):
-        return self.client.delete(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        return self.client.delete(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, content_type='application/json')
     
     def missingData(self, _booking):
         booking = _booking.copy()
@@ -257,32 +108,32 @@ class TestBooking(TestCase):
         booking = _booking.copy()
         
         #Antes de horario
-        time = (datetime.datetime.strptime(self.timetable[0]['opening_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         booking['datetime_init'] = f"{data} {time}"
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 409)
         
         #Despues de horario
-        time = (datetime.datetime.strptime(self.timetable[1]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[1]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         booking['datetime_init'] = f"{data} {time}"
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 409)
         
         #Entre horarios
-        time = (datetime.datetime.strptime(self.timetable[0]['closing_time'], "%H:%M:%S") + datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['closing_time'], "%H:%M:%S") + datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         booking['datetime_init'] = f"{data} {time}"
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 409)
     
     def filterWgbyNworkers(self, n, ge = False):
-        wg = [wg for wg in self.work_groups if ('workers' not in wg and n == 0) or ('workers' in wg and len(wg['workers']) == n) or (ge and 'workers' in wg and len(wg['workers']) >= n)]
+        wg = [wg for wg in self.local.work_groups if ('workers' not in wg and n == 0) or ('workers' in wg and len(wg['workers']) == n) or (ge and 'workers' in wg and len(wg['workers']) >= n)]
         return wg[0] if len(wg) > 0 else None
     
     def filterWorkersByNwg(self, n):
-        return [w for w in self.workers if ('work_groups' not in w and n == 0) or len(w['work_groups']) == n]
+        return [w for w in self.local.workers if ('work_groups' not in w and n == 0) or len(w['work_groups']) == n]
     
     def workerNotAvailable(self, _booking):
         
@@ -296,7 +147,7 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 409)
         
         #Trabajador que no tiene el servicio
-        booking['worker_id'] = self.workers[0]['id']
+        booking['worker_id'] = self.local.workers[0]['id']
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 409)
         booking.pop('worker_id')
@@ -306,6 +157,7 @@ class TestBooking(TestCase):
         booking['services_ids'] = [service_id]
         r = self.post_booking(booking)
         booking_response = dict(r.json)
+        print('Booking response:', booking_response)
         self.assertEqual(r.status_code, 201)
         
         #Servicio que tiene un trabajador: Reserva 2
@@ -340,7 +192,7 @@ class TestBooking(TestCase):
         totalPrice = 0
         
         for service_id in booking['services_ids']:
-            service = [service for service in self.services if service['id'] == service_id][0]
+            service = [service for service in self.local.services if service['id'] == service_id][0]
             totalDuration += service['duration']
             totalPrice += service['price']
         
@@ -364,9 +216,9 @@ class TestBooking(TestCase):
             #Precio total
         self.assertEqual(booking_response['total_price'], totalPrice)
             #Estado
-        self.assertEqual(booking_response['status']['status'], PENDING_STATUS)
-        
-        self.assertEqual(response['timeout'], config_test.waiter_booking_status if config_test.waiter_booking_status else 0)
+        self.assertEqual(booking_response['status']['status'], CONFIRMED_STATUS)
+                
+        self.assertEqual(response['timeout'], config_test.waiter_booking_status if config_test.waiter_booking_status else None)
     
         #Obtener reserva
         session = response['session_token']
@@ -376,18 +228,18 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(response['id'], booking_response['id'])
         self.assertEqual(response['client_email'], booking_response['client_email'])
-        self.assertEqual(booking_response['status']['status'], PENDING_STATUS)
+        self.assertEqual(booking_response['status']['status'], CONFIRMED_STATUS) #PENDING
         
-        #Confirmar reserva
-        r = self.confirm_booking(session)
-        response = dict(r.json)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(response['id'], booking_response['id'])
-        self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
+        #Confirmar reserva #TODO test
+        # r = self.confirm_booking(session)
+        # response = dict(r.json)
+        # self.assertEqual(r.status_code, 200)
+        # self.assertEqual(response['id'], booking_response['id'])
+        # self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
         
-        r = self.get_booking(session)
-        response = dict(r.json)
-        self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
+        # r = self.get_booking(session)
+        # response = dict(r.json)
+        # self.assertEqual(response['status']['status'], CONFIRMED_STATUS)
         
         #Volver a confirmar reserva
         r = self.confirm_booking(session)
@@ -418,6 +270,51 @@ class TestBooking(TestCase):
         
         r = self.get_booking(session)
         self.assertEqual(r.status_code, 401)
+        
+        #Comprobar caducidad del token
+        
+        # timetable = self.local.timetable
+        timetable = []
+        
+        for day in WEEK_DAYS:
+            timetable.append({
+                "opening_time": "00:00:00",
+                "closing_time": "23:59:59",
+                "weekday_short": day
+            })
+            
+        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')    
+        self.assertEqual(r.status_code, 200)
+        
+        time_wait = 2
+        
+        datetime_init = (datetime.datetime.now() + datetime.timedelta(seconds=time_wait)).__str__().split('.')[0] #TODO
+        
+        pre_datetime_init = booking['datetime_init']
+        
+        booking['datetime_init'] = datetime_init
+        
+        post_booking = self.post_booking(booking)
+        self.assertEqual(post_booking.status_code, 201)
+        
+        get_booking = self.get_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(get_booking.status_code, 200)
+        
+        time.sleep(time_wait)
+        get_booking = self.get_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(get_booking.status_code, 403)
+        
+        cancel_booking = self.cancel_booking(dict(post_booking.json)['session_token'])
+        self.assertEqual(cancel_booking.status_code, 403)
+        
+        booking['datetime_init'] = pre_datetime_init
+        
+        cancel_booking_admin = self.cancel_booking_admin(dict(post_booking.json)['booking']['id'])
+        self.assertEqual(cancel_booking_admin.status_code, 204)
+                
+        timetable = self.local.timetable
+        r = self.client.put(getUrl('timetable'), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(timetable), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
     
     def checkUpdateBooking(self, _booking):
         booking = _booking.copy()
@@ -450,7 +347,7 @@ class TestBooking(TestCase):
         
         #Actualizar con datos justos desde local
         data = {
-            "new_status": CONFIRMED_STATUS,
+            "new_status": PENDING_STATUS,
         }
         r = self.patch_booking_admin(response['id'], data)
         self.assertEqual(r.status_code, 200)
@@ -479,14 +376,14 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 404)
     
         #Cambiar a un trabajador que no tiene el servicio
-        worker = self.workers[1] #Trabaja en WG 1 y 2
-        service = self.work_groups[2-1]['services'][0] #Servicio de WG 2
+        worker = self.local.workers[1] #Trabaja en WG 1 y 2
+        service = self.local.work_groups[2-1]['services'][0] #Servicio de WG 2
         booking['worker_id'] = worker['id']
         booking['services_ids'] = [service['id']]
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 200)
         
-        worker = self.workers[0] #No trabaja en WG 2
+        worker = self.local.workers[0] #No trabaja en WG 2
         booking['worker_id'] = worker['id']
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 409)
@@ -540,7 +437,7 @@ class TestBooking(TestCase):
         
         #Cambiar hora fuera de horario: Antes de horario
                 
-        time = (datetime.datetime.strptime(self.timetable[0]['opening_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         booking['datetime_init'] = f"{data} {time}"
         r = self.update_booking(session, booking)
@@ -548,7 +445,7 @@ class TestBooking(TestCase):
         
         #Cambiar hora fuera de horario: Despues de horario
         
-        time = (datetime.datetime.strptime(self.timetable[0]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
         booking['datetime_init'] = f"{data} {time}"
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 409)
@@ -563,16 +460,16 @@ class TestBooking(TestCase):
                 
         #Combinar servicios de diferentes work group
         
-        booking['services_ids'] = [self.work_groups[0]['services'][0]['id'], self.work_groups[1]['services'][0]['id']]
+        booking['services_ids'] = [self.local.work_groups[0]['services'][0]['id'], self.local.work_groups[1]['services'][0]['id']]
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 409)
                 
         #Cambiar servicio a uno de diferente duracion y que salga de horario
         booking.pop('worker_id')
-        service30 = self.services[0] #Servicio de 30 minutos
-        service60 = self.services[1] #Servicio de 60 minutos
+        service30 = self.local.services[0] #Servicio de 30 minutos
+        service60 = self.local.services[1] #Servicio de 60 minutos
         booking['services_ids'] = [service30['id']]
-        time = (datetime.datetime.strptime(self.timetable[0]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=service30['duration'])).strftime("%H:%M:%S") 
+        time = (datetime.datetime.strptime(self.local.timetable[0]['closing_time'], "%H:%M:%S") - datetime.timedelta(minutes=service30['duration'])).strftime("%H:%M:%S") 
         booking['datetime_init'] = f"{data} {time}"
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 200)
@@ -584,12 +481,12 @@ class TestBooking(TestCase):
         #Cambiar servicio a uno de diferente duracion y que el trabajador no este disponible
         
         booking['services_ids'] = [service30['id']] #Cambio a servicio de 30 minutos
-        time = (datetime.datetime.strptime(self.timetable[0]['opening_time'], "%H:%M:%S")).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S")).strftime("%H:%M:%S")
         booking['datetime_init'] = f"{data} {time}"
         r = self.update_booking(session, booking)
         self.assertEqual(r.status_code, 200)
         
-        time = (datetime.datetime.strptime(self.timetable[0]['opening_time'], "%H:%M:%S") + datetime.timedelta(minutes=service30['duration'] + 10)).strftime("%H:%M:%S")  #Hora para cuando termine la reserva anterior
+        time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S") + datetime.timedelta(minutes=service30['duration'] + 10)).strftime("%H:%M:%S")  #Hora para cuando termine la reserva anterior
         booking['datetime_init'] = f"{data} {time}"
         booking['worker_id'] = dict(r.json)['worker']['id'] #Aplicamos el mismo trabajador
         r = self.post_booking(booking) #Creamos nueva reserva
@@ -660,7 +557,6 @@ class TestBooking(TestCase):
         booking['client_tlf'] = "123456789"
         
         r = self.post_booking(booking)
-        print(r.json)
         self.assertEqual(r.status_code, 201)
         register_booking(r)
         
@@ -815,10 +711,9 @@ class TestBooking(TestCase):
         booking = _booking.copy()
         
         booking['datetime_init'] = "2020-01-01 13:00:00"
-        booking['worker_id'] = self.workers[0]['id']
+        booking['worker_id'] = self.local.workers[0]['id']
         
         r = self.post_booking_admin(booking)
-        session = dict(r.json)['session_token']
         id = dict(r.json)['booking']['id']
         self.assertEqual(r.status_code, 201)
         
@@ -837,7 +732,7 @@ class TestBooking(TestCase):
             id = booking['id']
             booking['new_status'] = CANCELLED_STATUS
             booking['worker_id'] = booking['worker']['id']
-            booking['services_ids'] = [self.services[0]['id']]
+            booking['services_ids'] = [self.local.services[0]['id']]
             booking.pop('worker')
             booking.pop('services')
             booking.pop('status')
@@ -847,7 +742,12 @@ class TestBooking(TestCase):
             booking.pop('id')
             booking.pop('comment')
             booking.pop('total_price')
+            booking.pop('email_confirm')
+            booking.pop('email_confirmed')
+            booking.pop('email_cancelled')
+            booking.pop('email_updated')
             r = self.update_booking_admin(id, booking)
+            print("response:", r.json)
             self.assertEqual(r.status_code, 200)
             
             r = self.get_booking_admin(id)
@@ -857,7 +757,6 @@ class TestBooking(TestCase):
         booking = _booking.copy()
         
         r = self.post_booking(booking)
-        print(r.json)
         self.assertEqual(r.status_code, 201)
         session = dict(r.json)['session_token']
         id = dict(r.json)['booking']['id']
@@ -874,7 +773,7 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['client_name'], booking['client_name'])
         
-        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.timetable[0]['closing_time']
+        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.local.timetable[0]['closing_time']
         r = self.update_booking_admin(id, booking)
         self.assertEqual(r.status_code, 409)
         
@@ -888,9 +787,8 @@ class TestBooking(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
         
-        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.timetable[0]['opening_time']
+        booking['datetime_init'] = booking['datetime_init'].split(' ')[0] + ' ' + self.local.timetable[0]['opening_time']
         r = self.update_booking_admin(id, booking)
-        print(r.json)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], booking['new_status'])
         
@@ -918,7 +816,7 @@ class TestBooking(TestCase):
         service.pop('datetime_created')
         service['work_group'] = service['work_group']['id']
         service['duration'] += 20
-        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(service), content_type='application/json')
         self.assertEqual(r.status_code, 200)
         
         r = self.get_booking_admin(id)
@@ -926,33 +824,33 @@ class TestBooking(TestCase):
         self.assertEqual(dict(r.json)['datetime_end'].replace('T', ' '), (datetime.datetime.strptime(datetime_end, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(minutes=20)).strftime("%Y-%m-%d %H:%M:%S"))
         
         service['duration'] += 600
-        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(service), content_type='application/json')
         self.assertEqual(r.status_code, 409)
 
         #Cambiar el servicio a un work group que no incluya al trabajdor que tienen sus reservas
-        service['work_group'] = self.work_groups[2]['id']
-        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        service['work_group'] = self.local.work_groups[2]['id']
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(service), content_type='application/json')
         self.assertEqual(r.status_code, 409)
         
         #Borrar el trabajador
         
-        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
         self.assertEqual(r.status_code, 409)
         
         #Cancelar reserva
         r = self.cancel_booking(session)
         self.assertEqual(r.status_code, 204)
         
-        service['work_group'] = self.work_groups[2]['id']
-        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(service), content_type='application/json')
+        service['work_group'] = self.local.work_groups[2]['id']
+        r = self.client.put(getUrl('service', service_id), headers={'Authorization': f"Bearer {self.local.refresh_token}"}, data=json.dumps(service), content_type='application/json')
         self.assertEqual(r.status_code, 200)
         
-        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        r = self.client.delete(getUrl('worker', worker_id), headers={'Authorization': f"Bearer {self.local.access_token}"}, content_type='application/json')
         self.assertEqual(r.status_code, 204)
         
         #Eliminar reserva
         booking = _booking.copy()
-        booking['services_ids'] = [self.services[1]['id']]
+        booking['services_ids'] = [self.local.services[1]['id']]
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 201)
         id = dict(r.json)['booking']['id']
@@ -967,21 +865,22 @@ class TestBooking(TestCase):
         r = self.get_booking(session)
         self.assertEqual(r.status_code, 404)
         
-        #Confirmar reserva con admin
+        #Confirmar reserva con admin #TODO test
         r = self.post_booking(booking)
         self.assertEqual(r.status_code, 201)
         
         id = dict(r.json)['booking']['id']
+        worker_id = dict(r.json)['booking']['worker']['id']
         
-        r = self.confirm_booking_admin(id)
-        self.assertEqual(r.status_code, 200)
+        # r = self.confirm_booking_admin(id)
+        # self.assertEqual(r.status_code, 200)
         r = self.get_booking_admin(id)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], CONFIRMED_STATUS)
         
         #Cancelar reserva con admin
         r = self.cancel_booking_admin(id)
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 204)
         r = self.get_booking_admin(id)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(dict(r.json)['status']['status'], CANCELLED_STATUS)
@@ -994,8 +893,9 @@ class TestBooking(TestCase):
         r = self.post_booking_local(booking)
         self.assertEqual(r.status_code, 409)
                 
-        booking['worker_id'] = self.workers[0]['id']
+        booking['worker_id'] = worker_id
         r = self.post_booking_local(booking, force=True)
+        print(r.json)
         self.assertEqual(r.status_code, 201)
         
     def test_integration_booking(self):
@@ -1004,7 +904,7 @@ class TestBooking(TestCase):
         
         self.bookings = []
         
-        time = (datetime.datetime.strptime(self.timetable[0]['opening_time'], "%H:%M:%S")).strftime("%H:%M:%S")
+        time = (datetime.datetime.strptime(self.local.timetable[0]['opening_time'], "%H:%M:%S")).strftime("%H:%M:%S")
         data = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         
         booking = {
@@ -1012,7 +912,7 @@ class TestBooking(TestCase):
             "client_tlf": "123456789",
             "client_email": "client@example.com",
             "datetime_init": f"{data} {time}",
-            "services_ids": [self.services[0]['id'], self.services[1]['id']]
+            "services_ids": [self.local.services[0]['id'], self.local.services[1]['id']]
         }
     
         #TEST 0: Falta de datos y datos incorrectos

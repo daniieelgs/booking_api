@@ -2,10 +2,12 @@ from datetime import datetime, timedelta
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from helpers.BookingController import calculatEndTimeBooking, cancelBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
-from helpers.ConfirmBookingController import start_waiter_booking_status
+from jwt import ExpiredSignatureError
+from helpers.BookingController import calculatEndTimeBooking, calculateExpireBookingToken, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingEmailController import send_cancelled_mail_async, send_confirmed_mail_async, send_updated_mail_async, start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
+from helpers.EmailController import send_confirm_booking_mail
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
@@ -21,7 +23,7 @@ from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvided
 from helpers.error.SecurityError.TokenNotFound import TokenNotFoundException
 from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundException
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
-from helpers.security import decodeJWT, decodeToken, generateTokens
+from helpers.security import decodeJWT, decodeToken, generateTokens, getTokenId
 from models.booking import BookingModel
 from db import addAndFlush, addAndCommit, commit, deleteAndCommit, deleteAndFlush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -36,7 +38,7 @@ from models.session_token import SessionTokenModel
 from models.status import StatusModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
+from schema import BookingAdminListSchema, BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, NotifyParams, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
 
 blp = Blueprint('booking', __name__, description='Control de reservas.')
 
@@ -47,6 +49,8 @@ def getBookingBySession(token):
         abort(400, message=str(e))
     except InvalidTokenException as e:
         abort(401, message=str(e))
+    except ExpiredSignatureError as e:
+        abort(403, message="The token has expired.")
     except TokenNotFoundException as e:
         abort(404, message=str(e))
     except BookingNotFoundException as e:
@@ -172,7 +176,7 @@ class SeeBookingWeek(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -202,7 +206,7 @@ class SeeBookingWeek(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))     
-                
+                                
         return {"bookings": bookings, "total": len(bookings)}  
        
 @blp.route('/all/week')
@@ -212,7 +216,7 @@ class SeeBookingWeek(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -242,7 +246,7 @@ class SeeBookingWeek(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-                        
+                                                
         return {"bookings": bookings, "total": len(bookings)}  
     
 @blp.route('/all/month')
@@ -252,7 +256,7 @@ class SeeBookingMonth(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
-    @blp.response(200, BookingListSchema)
+    @blp.response(200, BookingAdminListSchema)
     @jwt_required(refresh=True)
     def get(self, _):
         """
@@ -282,7 +286,7 @@ class SeeBookingMonth(MethodView):
             abort(404, message=str(e))
         except UnspecifedDateException as e:
             abort(422, message=str(e))    
-                        
+        
         return {"bookings": bookings, "total": len(bookings)}  
 
 @blp.route('/local/<string:local_id>')
@@ -291,33 +295,58 @@ class Booking(MethodView):
     @blp.arguments(BookingSchema)
     @blp.response(404, description='El local no existe, el servicio no existe o el trabajador no existe.')
     @blp.response(400, description='Formato de fecha no válido o no se ha proporcionado el token de sesión.')
-    @blp.response(401, description='El token de sesión es inválido.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(201, NewBookingSchema)
     def post(self, new_booking, local_id):
         """
         Crea una nueva reserva.
         """
+        
+        print("CREANDO RESERVA")
+        
+        local = LocalModel.query.get_or_404(local_id)
+        
         try:
-            booking = createOrUpdateBooking(new_booking, local_id, commit=False)
             
-            datetime_end = booking.datetime_end
+            booking = createOrUpdateBooking(new_booking, local=local, commit=False)
+                        
+            exp:timedelta = calculateExpireBookingToken(booking.datetime_init, local.location)
             
-            timeout = start_waiter_booking_status(booking.id)
-                
-            local = LocalModel.query.get_or_404(local_id)
-                
-            diff = datetime_end - now(local.location)
-            
-            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
+            print("Expire:", exp)
             
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
-            
+                        
+            booking.email_confirm = True
+                        
             commit()
             
+            print("ENVIANDO EMAIL")
+            
+            email_confirm = send_confirm_booking_mail(local, booking, token)
+            
+            print("EMAIL ENVIADO:", email_confirm)
+            
+            timeout = None
+            
+            if email_confirm:
+                timeout_local = local.local_settings.booking_timeout
+                timeout = start_waiter_booking_status(booking.id, timeout=timeout_local)
+            else:
+                booking.email_confirm = False
+                
+                # if timeout_local is not None and timeout_local > 0: confirmBooking(booking)
+                # else: addAndCommit(booking)
+                    
+                confirmBooking(booking)
+                    
+                send_confirmed_mail_async(local_id, booking.id) #TODO: check
+                    
+                addAndCommit(booking)
+                    
             return {
                 "booking": booking,
                 "timeout": timeout,
+                "email_confirm": email_confirm,
                 "session_token": token
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -339,21 +368,22 @@ class BookingAdmin(MethodView):
     
     @blp.response(404, description='La reserva no existe.')
     @blp.response(401, description='No tienes permisos para obtener la reserva.')
-    @blp.response(200, BookingSchema)
+    @blp.response(200, BookingAdminSchema)
     @jwt_required(refresh=True)
     def get(self, booking_id):
         """
-        Devuelve una reserva.
+        Devuelve una reserva. Identificado por el local.
         """
         
         booking = BookingModel.query.get_or_404(booking_id)
         
         if not booking.local_id == get_jwt_identity():
             abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
-        
+                
         return booking
     
     
+    @blp.arguments(UpdateParams, location='query')
     @blp.arguments(BookingAdminSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
@@ -361,13 +391,16 @@ class BookingAdmin(MethodView):
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def put(self, booking_data, booking_id):
+    def put(self, params, booking_data, booking_id):
         """
-        Actualiza una reserva.
+        Actualiza una reserva. Por parte del local.
         """
         
         booking = BookingModel.query.get(booking_id)
-
+        
+        force = 'force' in params and params['force']
+        notify = 'notify' in params and params['notify']
+        
         if not booking:
             abort(404, message = f'The booking [{booking_id}] was not found.')
                 
@@ -377,7 +410,11 @@ class BookingAdmin(MethodView):
         booking_data['status'] = booking_data.pop('new_status')
                 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            
+            if notify: send_updated_mail_async(booking.local_id, booking.id)
+            
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -391,6 +428,7 @@ class BookingAdmin(MethodView):
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
     
+    @blp.arguments(UpdateParams, location='query')
     @blp.arguments(BookingAdminPatchSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
@@ -398,10 +436,13 @@ class BookingAdmin(MethodView):
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def patch(self, booking_data, booking_id):
+    def patch(self, params, booking_data, booking_id):
         """
-        Actualiza una reserva indicando los campos a modificar.
+        Actualiza una reserva indicando los campos a modificar. Por parte del local.
         """
+        
+        notify = 'notify' in params and params['notify']
+        force = 'force' in params and params['force']
         
         booking = BookingModel.query.get(booking_id)
 
@@ -416,7 +457,11 @@ class BookingAdmin(MethodView):
         booking_data = patchBooking(booking, booking_data, admin = True)
                 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            
+            if notify: send_updated_mail_async(booking.local_id, booking.id)
+            
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -461,6 +506,7 @@ class BookingSession(MethodView):
     @blp.response(404, description='La reserva no existe.')
     @blp.response(400, description='No se ha proporcionado el token de sesión.')
     @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(403, description='El token de sesión ha expirado.')
     @blp.response(200, BookingSchema)
     def get(self, params):
         """
@@ -484,6 +530,7 @@ class BookingSession(MethodView):
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
     @blp.response(401, description='Token de sesión inválido.')
+    @blp.response(403, description='El token de sesión ha expirado.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     def put(self, params, booking_data):
@@ -497,7 +544,9 @@ class BookingSession(MethodView):
             abort(409, message = f"The booking is '{booking.status.name}'.")
 
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            send_updated_mail_async(booking.local_id, booking.id)
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -516,6 +565,7 @@ class BookingSession(MethodView):
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
     @blp.response(401, description='Token de sesión inválido.')
+    @blp.response(403, description='El token de sesión ha expirado.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     def patch(self, params, booking_data):
@@ -550,6 +600,7 @@ class BookingSession(MethodView):
     @blp.response(404, description='La reserva no existe.')
     @blp.response(400, description='No se ha proporcionado el token de sesión.')
     @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(403, description='El token de sesión ha expirado.')
     @blp.response(204, description='La reserva ha sido cancelada.')
     def delete(self, params, data):
         """
@@ -560,11 +611,14 @@ class BookingSession(MethodView):
         if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
         
+        comment = None
+        
         if 'comment' in data:
-            booking.comment = data['comment']
+            comment = data['comment']
         
         try:
-            cancelBooking(booking)
+            cancelBooking(booking, comment=comment)
+            send_cancelled_mail_async(booking.local_id, booking.id)
             return {}
         except SQLAlchemyError as e:
             traceback.print_exc()
@@ -576,7 +630,7 @@ class BookingSession(MethodView):
     @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
     @blp.response(401, description='No tienes permisos para crear la reserva.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
-    @blp.response(201, NewBookingSchema)
+    @blp.response(201, BookingSchema)
     @jwt_required(refresh=True)
     def post(self, params, new_booking):
         """
@@ -584,77 +638,23 @@ class BookingSession(MethodView):
         """
         
         force = 'force' in params and params['force']
-        
-        if force:
-            services_ids = new_booking.pop('services_ids')
-            services = [ServiceModel.query.get_or_404(id) for id in services_ids]
-
-            for service in services:
-                if service.work_group.local_id != get_jwt_identity():
-                    abort(401, message = f'You are not allowed to create a booking with the service [{service.id}].')
-
-            if 'worker_id' not in new_booking:
-                abort(400, message = 'The worker_id is required.')
-                
-            worker = WorkerModel.query.get_or_404(new_booking.pop('worker_id'))
-
-            if worker.work_groups.first().local_id != get_jwt_identity():
-                abort(401, message = f'You are not allowed to create a booking with the worker [{worker.id}].')
-
-            status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
-            
-            booking = BookingModel(**new_booking)
-            
-            booking.services = services
-            booking.worker = worker
-            booking.status = status
-            booking = calculatEndTimeBooking(booking)
-                        
-            try:
-                addAndFlush(booking)
-                timeout = 0
-                
-                exp = timedelta(minutes=0)
-                
-                token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
-                
-                commit()
-                
-                return {
-                    "booking": booking,
-                    "timeout": timeout,
-                    "session_token": token
-                }
-            except SQLAlchemyError as e:
-                traceback.print_exc()
-                rollback()
-                abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
+        notify = 'notify' in params and params['notify']
         
         try:
             
             local_id = get_jwt_identity()
             
-            booking = createOrUpdateBooking(new_booking, local_id, commit=False)
+            new_booking['status'] = CONFIRMED_STATUS
             
-            datetime_end = booking.datetime_end
-            
-            timeout = start_waiter_booking_status(booking.id)
-                
-            local = LocalModel.query.get_or_404(local_id)
-                
-            diff = datetime_end - now(local.location)
-            
-            exp = timedelta(days=diff.days, hours=diff.seconds//3600, minutes=(diff.seconds % 3600) // 60)
-            
-            token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
+            booking = createOrUpdateBooking(new_booking, local_id, commit=False, force=force)
             
             commit()
             
-            return {
-                "booking": booking,
-                "timeout": timeout,
-                "session_token": token
-            }
+            if notify:
+                send_confirmed_mail_async(booking.local_id, booking.id)
+            
+            return booking
+        
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except (ModelNotFoundException, LocalNotFoundException) as e:
@@ -675,6 +675,8 @@ class BookingConfirm(MethodView):
     @blp.response(404, description='La reserva no existe.')
     @blp.response(400, description='No se ha proporcionado el token de sesión.')
     @blp.response(401, description='El token de sesión es inválido.')
+    @blp.response(403, description='El token de sesión ha expirado.')
+    @blp.response(409, description='La reserva no está pendiente.')
     @blp.response(200, BookingSchema)
     def get(self, params):
         """
@@ -687,36 +689,35 @@ class BookingConfirm(MethodView):
             if not status: abort(500, message='The status was not found.')
             abort(409, message=f"The booking is '{status.name}'.")
         
-        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
-        
-        if not status:
-            abort(500, message='The status was not found.')
-            
-        booking.status_id = status.id
-        
         try:
-            addAndCommit(booking)
-        except SQLAlchemyError as e:
+            booking = confirmBooking(booking)
+        except (SQLAlchemyError, StatusNotFoundException) as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
+            
+        send_confirmed_mail_async(booking.local_id, booking.id)
             
         return booking
     
 @blp.route('confirm/<int:booking_id>')
 class BookingConfirmId(MethodView):
     
+    @blp.arguments(NotifyParams, location='query')
     @blp.response(404, description='La reserva no existe.')
     @blp.response(401, description='No tienes permisos para confirmar la reserva.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
-    def get(self, booking_id):
+    def get(self, params, booking_id):
         """
         Confirma una reserva por parte del local identificado por el token de refresco. Cambia el estado a confirmado.
         """
+        
         booking = BookingModel.query.get_or_404(booking_id)
         
         local = LocalModel.query.get(get_jwt_identity())
+        
+        notify = 'notify' in params and params['notify']
         
         if not booking.local_id == local.id:
             abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
@@ -726,32 +727,30 @@ class BookingConfirmId(MethodView):
             if not status: abort(500, message='The status was not found.')
             abort(409, message=f"The booking is '{status.name}'.")
         
-        status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
-        
-        if not status:
-            abort(500, message='The status was not found.')
-            
-        booking.status_id = status.id
-        
         try:
-            addAndCommit(booking)
+            booking = confirmBooking(booking)
         except SQLAlchemyError as e:
             traceback.print_exc()
             rollback()
             abort(500, message = str(e) if DEBUG else 'Could not confirm the booking.')
             
+        
+        if notify:
+            send_confirmed_mail_async(booking.local_id, booking.id)
+            
         return booking
  
 @blp.route('cancel/<int:booking_id>')
-class BookingConfirmId(MethodView):
+class BookingCancelId(MethodView):
     
     
+    @blp.arguments(NotifyParams, location='query')
     @blp.arguments(CommentSchema)
     @blp.response(404, description='La reserva no existe.')
     @blp.response(401, description='No tienes permisos para cancelar la reserva.')
-    @blp.response(200, BookingSchema)
+    @blp.response(204, BookingSchema)
     @jwt_required(refresh=True)
-    def delete(self, data, booking_id):
+    def delete(self, params, data, booking_id):
         """
         Cancela una reserva por parte del local identificado por el token de refresco. Cambia el estado a cancelado.
         """
@@ -759,17 +758,24 @@ class BookingConfirmId(MethodView):
         
         local = LocalModel.query.get(get_jwt_identity())
         
+        notify = 'notify' in params and params['notify']
+        
         if not booking.local_id == local.id:
-            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+            abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
         
         if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
         
+        comment = None
+        
         if 'comment' in data:
-            booking.comment = data['comment']
+            comment = data['comment']
         
         try:
-            cancelBooking(booking)
+            cancelBooking(booking, comment=comment)
+            
+            if notify:
+                send_cancelled_mail_async(booking.local_id, booking.id)
             
             return {}
         except SQLAlchemyError as e:

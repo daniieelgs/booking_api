@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_RUN_HOST=0.0.0.0
+      - FLASK_RUN_PORT=5000
+      - FLASK_RUN_WORKERS=5
+      - FLASK_RUN_TIMEOUT=60
+    depends_on:
+      - database
+
+  database:
+    image: mariadb:10.5.19
+    ports:
+      - "3307:3306"
+    env_file:
+      - ./db/.env
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "4403:80"
+    depends_on:
+      - database
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+
+
+  worker:
+    build: .
+    command: celery -A make_celery.celery worker --loglevel=info -Q priority,default
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+  beat:
+    build: .
+    command: celery -A make_celery.celery beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    depends_on:
+      - web
+    volumes:
+      - redis-data:/data
+
+volumes:
+  db-data:
+  redis-data:

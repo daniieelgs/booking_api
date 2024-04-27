@@ -15,5 +15,4 @@ def now(location=DEFAULT_LOCATION_TIME):
 
 def naiveToAware(datetime, timezone=DEFAULT_LOCATION_TIME):
     timezone = pytz.timezone(timezone)
-
     return timezone.localize(datetime)

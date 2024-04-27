@@ -11,6 +11,7 @@ ENDPOINT = 'timetable'
 class TestTimetable(TestCase):
     def create_app(self):
         app = create_app(config_test)
+        self.locals = []
         return app
 
     def setUp(self):
@@ -23,6 +24,7 @@ class TestTimetable(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.locals)
 
     def create_timetable(self):
         
@@ -40,6 +42,8 @@ class TestTimetable(TestCase):
         self.access_token = responseLocal.json['access_token']
                 
         self.local_id = responseLocal.json['local']['id']
+                
+        self.locals.append(self.local_id)
                 
         new_timetable = {
                 "opening_time": "13:00:00",

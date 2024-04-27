@@ -9,6 +9,7 @@ ENDPOINT = 'work_group'
 class TestWorkGroup(TestCase):
     def create_app(self):
         app = create_app(config_test)
+        self.locals = []
         return app
 
     def setUp(self):
@@ -21,6 +22,7 @@ class TestWorkGroup(TestCase):
 
         db.session.remove()
         db.drop_all()
+        config_test.drop(self.locals)
 
     def create_work_group(self):
         
@@ -43,6 +45,9 @@ class TestWorkGroup(TestCase):
         
         self.local_id1 = responseLocal1.json['local']['id']
         self.local_id2 = responseLocal2.json['local']['id']
+        
+        self.locals.append(self.local_id1)
+        self.locals.append(self.local_id2)
         
         #Create work groups
         self.data2 = self.data.copy()
