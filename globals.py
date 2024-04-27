@@ -188,7 +188,10 @@ def get_fqdn_cache():
 def is_email_test_mode():
     if DEBUG:
         load_dotenv()
-        return os.getenv('EMAIL_TEST_MODE', 'False') == 'True'
+        
+        email_test_mode = os.getenv('EMAIL_TEST_MODE', 'False')
+        
+        return email_test_mode == 'True' or email_test_mode == '1'
 
 class EmailType():
     CONFIRM_EMAIL = 0
