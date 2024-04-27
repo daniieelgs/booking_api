@@ -777,8 +777,9 @@ class TestLocal(TestCase):
             "phone_contact": "+34 000000000",
             "email_support": "support@local.com",
             "domain": "local.com",
-            "confirmation_link": "https://www.local.com/confirm/{token}",
-            "cancel_link": "https://www.local.com/cancel/{token}",
+            "confirmation_link": "https://www.local.com/confirm/{booking_token}",
+            "cancel_link": "https://www.local.com/cancel/{booking_token}",
+            "update_link": "https://www.local.com/cancel/{booking_token}",
             "booking_timeout": 10
         }
         
