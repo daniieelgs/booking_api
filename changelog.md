@@ -1,139 +1,55 @@
 
 # Endpoint changelog
 
-- **api/v1/booking/local/:local_id** : 
+- **PUT | api/v1/booking/local** : 
     1. Response format
         `
         {
-            "bookings": [],
-            "total": n
+            "local": {
+                ...
+                "local_settings": {
+                    ...
+                    "smtp_settings": [{...}, ...]
+                }
+            },
+            "warnings": [...]
         }
         `
+        - local_settings es un objeto que contiene la configuración del local, en este caso se agrega un nuevo campo smtp_settings que contiene la configuración de los servidores smtp para el envío de correos electrónicos. También contiene datos como correo de contacto, de soporte, enlace a RRSS, dominio publico, web, enlaces de confirmacion y cancelacion de reservas, etc.
+        - Se agrega un campo warnings que contiene advertencias sobre la configuración del local.
+        - El campo "booking_timeout" de local_settings define el tiempo en minutos que tiene el usuario para confirmar la reserva. Se usa el valor -1 para desactivar la confirmación de reserva.
 
-- **api/v1/booking/local/:local_id/week** : 
+- **GET | api/v1/booking/local** : 
     1. Response format
         `
         {
-            "bookings": [],
-            "total": n
+            ...
+            "local_settings": {
+                "email_contact": "str|null",
+                "email_support": "str|null",
+                "facebook": "str|null",
+                "instagram": "str|null",
+                "linkedin": "str|null",
+                "maps": "str|null",
+                "phone_contact": "str|null",
+                "tiktok": "str|null",
+                "twitter": "str|null",
+                "website": "str|null",
+                "whatsapp": "str|null"
+                
+            }
         }
         `
 
-- **api/v1/booking/local/:local_id/month** : 
-    1. Response format
+- **POST | api/v1/booking/local/:local_id**
+    1. Request format
         `
         {
-            "bookings": [],
-            "total": n
+            "booking": {...},
+            "email_sent": true|false,
+            "session_token": "str",
+            "timeout": int|null
         }
         `
+        - Se agrega el email_sent que indica si se envió el correo de confirmación de la reserva y el timeout que indica el tiempo en minutos que tiene el usuario para confirmar la reserva.
 
-- **api/v1/booking/all** : 
-    1. Response format
-        `
-        {
-            "bookings": [],
-            "total": n
-        }
-        `
-
-- **api/v1/booking/all/week** : 
-    1. Response format
-        `
-        {
-            "bookings": [],
-            "total": n
-        }
-        `
-
-- **api/v1/booking/all/month** : 
-    1. Response format
-        `
-        {
-            "bookings": [],
-            "total": n
-        }
-        `
-
-- **api/v1/service/local/:local_id** : 
-    1. Response format
-        `
-        {
-            "services": [],
-            "total": n
-        }
-        `
-
-- **api/v1/work_group/local/:local_id** : 
-    1. Response format
-        `
-        {
-            "work_groups": [],
-            "total": n
-        }
-        `
-
-- **api/v1/work_group/local/:local_id/workers** : 
-    1. Response format
-        `
-        {
-            "work_groups": [],
-            "total": n
-        }
-        `
-
-- **api/v1/work_group/workers** : 
-    1. Response format
-        `
-        {
-            "work_groups": [],
-            "total": n
-        }
-        `
-
-- **api/v1/work_group/local/:local_id/services** : 
-    1. Response format
-        `
-        {
-            "work_groups": [],
-            "total": n
-        }
-        `
-
-
-- **api/v1/worker/local/:local_id** : 
-    1. Response format
-        `
-        {
-            "workers": [],
-            "total": n
-        }
-        `
-
-- **api/v1/worker/local/:local_id/work_group** : 
-    1. Response format
-        `
-        {
-            "workers": [],
-            "total": n
-        }
-        `
-
-- **api/v1/worker** : 
-    1. Response format
-        `
-        {
-            "workers": [],
-            "total": n
-        }
-        `
-
-- **api/v1/admin/local/all** : 
-    1. Response format
-        `
-        {
-            "locals": [],
-            "total": n
-        }
-        `
-    2. Parameters query for filter

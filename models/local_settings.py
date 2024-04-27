@@ -19,7 +19,8 @@ class LocalSettingsModel(db.Model):
     email_support = db.Column(db.String(100), unique=False, nullable=True)
     confirmation_link = db.Column(db.String(500), unique=False, nullable=True)
     cancel_link = db.Column(db.String(500), unique=False, nullable=True)
-    booking_timeout = db.Column(db.Integer, unique=False, nullable=False)
+    update_link = db.Column(db.String(500), unique=False, nullable=True) 
+    booking_timeout = db.Column(db.Integer, unique=False, nullable=True)
     datetime_created = db.Column(db.DateTime, unique=False, nullable=False)
     datetime_updated = db.Column(db.DateTime, unique=False, nullable=False)
     

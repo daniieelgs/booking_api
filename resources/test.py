@@ -6,6 +6,10 @@ from helpers.path import generatePagePath
 
 from resources.public_files import generateFileResponse
 
+from celery.result import AsyncResult
+from celery_app.tasks import check_booking, send_email
+from helpers.BookingEmailController import start_waiter_booking_status
+
 
 blp = Blueprint('test', __name__)
 
@@ -22,3 +26,50 @@ class Test(MethodView):
         body = body.replace(KEYWORDS_PAGES['CONFIRMATION_LINK'], 'https://www.google.com')
         
         return body
+    
+    
+@blp.route('celery')
+class CeleryTest(MethodView):
+    def get(self):
+        
+        response = check_booking.delay(1)
+        
+        return {"message": f"Task {response.id} started!"}
+    
+        
+@blp.route('celery/email')
+class CeleryTest(MethodView):
+    def get(self):
+        
+        send_email.delay("daniieelgs@gmail.com")
+        
+        return {"message": f"Email sending!"}
+    
+@blp.route('celery/booking/<int:booking_id>')
+class CeleryTest(MethodView):
+    def get(self, booking_id):
+        
+        start_waiter_booking_status(booking_id)
+        
+        return {"message": f"Check booking"}
+    
+
+@blp.route('celery/<string:task_id>')
+class CeleryTest(MethodView):
+    def get(self, task_id):
+        
+        response = AsyncResult(task_id)
+        
+        return {
+            "ready": response.ready(),
+            "successful": response.successful(),
+            "value": response.result if response.ready() else None,
+        }   
+    
+@blp.route('celery/wait')
+class CeleryTest(MethodView):
+    def get(self):
+        
+        response = check_booking.wait(1)
+        
+        return {"response": response}

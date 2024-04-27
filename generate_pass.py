@@ -51,6 +51,9 @@ def main():
         passwd = generar_solo_numeros(args.len)
     elif args.complex:
         passwd = generar_compleja(args.len)
+    elif args.help:
+        showHelp()
+        return
     else:
         passwd = generar_alfanumerica(args.len)
         

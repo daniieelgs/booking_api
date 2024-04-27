@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import traceback
 from dotenv import load_dotenv
@@ -9,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from flask_cors import CORS
 
-import nltk
 from config import Config
 
 from db import db, deleteAndCommit
@@ -30,6 +30,10 @@ from resources.admin import blp as AdminBlueprint
 
 from resources.test import blp as TestBlueprint
 
+from celery_app import celery_config
+
+from celery.schedules import crontab
+
 #TODO desarrollas sistema de LOGs
 
 #TODO cambiar datetime.now() por hora actual del location del local
@@ -42,17 +46,18 @@ def create_app(config: Config = DefaultConfig()):
 
     os.environ['PUBLIC_FOLDER'] = config.public_folder
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
-    os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else 0)
-        
+    os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else -1)
+    os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
+    
     load_dotenv()
             
-    nltk.download('punkt')
-    
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER)
     CORS(app)
         
     app.debug = DEBUG
     app.jinja_env.auto_reload = DEBUG
+    
+    print("DEBUG MODE:", DEBUG)
     
     app.config['API_TITLE'] = config.api_title
     app.config['API_VERSION'] = config.api_version
@@ -71,7 +76,31 @@ def create_app(config: Config = DefaultConfig()):
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
+    ##Celery
     
+    app.config.from_mapping(
+        CELERY=dict(
+            broker_url=config.celery_broker_url,
+            result_backend=config.celery_result_backend,
+            imports="celery_app.tasks",
+            task_ignore_result=True,
+            beat_schedule={
+                # 'notify-every-5-seconds': {
+                #     'task': 'celery_app.tasks.notify_hello',
+                #     'schedule': timedelta(seconds=5),
+                #     "options": {"queue": "priority"}
+                # },
+                # 'execute-daily-at-specific-time': {
+                #     'task': 'nombre_del_modulo.execute_daily_at_specific_time',
+                #     'schedule': crontab(hour=H, minute=M),  # Reemplaza H con la hora y M con los minutos
+                # },
+            }    
+        ),
+    )
+    
+    # execute_after_x_hours.apply_async(countdown=3600 * X)
+        
+    celery_config.make_celery(app)
         
     db.init_app(app)
     

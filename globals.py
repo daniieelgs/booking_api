@@ -1,7 +1,9 @@
+from enum import Enum
+import socket
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv(verbose=True, override=True)
 
 DEFAULT_SECRET_JWT = '303333537232571254035672536717968198213'
 DEFAULT_CRYPTO_JWT = 'RkElcKTNxr_IfO-puTA7ZjiD9EisBbi0Zeo_Z00NrPA='
@@ -12,6 +14,9 @@ DEFAULT_API_PREFIX = 'api/v1'
 DEFAULT_PASSWORD_SIZE = 8
 DEFAULT_EXPRIE_TOKEN = 30
 DEFAULT_EXPIRE_ACCESS = 5
+
+DEFAULT_CELERY_BROKER_URL = 'redis://localhost:6379/0'
+DEFAULT_CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 DEFAULT_ADMIN_IDENTITY = '744656b1e8a24f998685134efabe2f3f'
 DEFAULT_JWT_ALGORITHM = 'HS256'
@@ -55,9 +60,13 @@ DEFAULT_PAGES_FOLDER = 'pages'
 
 DEFAULT_EMAIL_CONFIRMATION_PAGE = "email_confirmation.html"
 DEFAULT_EMAIL_CONFIRMED_PAGE = "email_confirmed.html"
+DEFAULT_EMAIL_CANCELLED_PAGE = "email_cancelled.html"
+DEFAULT_EMAIL_UPDATED_PAGE = "email_updated.html"
 
 DEFAULT_KEYWORDS_PAGES = {
     "CONFIRMATION_LINK": "{confirmation_link}",
+    "CANCEL_LINK": "{cancel_link}",
+    "UPDATE_LINK": "{update_link}",
     "BOOKING_TOKEN": "{booking_token}",
     "CLIENT_NAME": "{client_name}",
     "LOCAL_NAME": "{local_name}",
@@ -65,14 +74,15 @@ DEFAULT_KEYWORDS_PAGES = {
     "TIME": "{time}",
     "SERVICE": "{service}",
     "COST": "{cost}",
+    "WORKER": "{worker}",
     "ADDRESS-MAPS": "{address_maps}",
     "ADDRESS": "{address}",
     "PHONE_CONTACT": "{phone_contact}",
     "TIMEOUT_CONFIRM_BOOKING": "{timeout_confirm_booking}",
-    "CANCEL_LINK": "{cancel_link}",
     "EMAIL_CONTACT": "{email_contact}",
     "WHATSAPP_LINK": "{whatsapp_link}",
     "WEBSITE": "{website}",
+    "COMMENT": "{comment}"
 }
 
 DEFAULT_TIMEOUT_CONFIRM_BOOKING = 60
@@ -81,7 +91,12 @@ DEFAULT_LOCATION_TIME = 'Europe/Madrid'
 
 DEFAULT_MIN_TIMEOUT_CONFIRM_BOOKING = 5
 
+DEFAULT_RETRY_SEND_EMAIL = 120
+
+
 DEBUG = os.getenv('FLASK_DEBUG', 'False') == '1' or os.getenv('FLASK_DEBUG', 'False') == 1 or os.getenv('FLASK_DEBUG', 'False') == 'True'
+
+print("TEST MODE:", DEBUG, os.getenv('FLASK_DEBUG'))
 
 DATABASE_NAME = os.getenv('DATABASE_NAME')
 DATABASE_USER = os.getenv('DATABASE_USER')
@@ -96,6 +111,9 @@ def getDatabaseUri():
         return DEFAULT_DATABASE_URI
 
 DATABASE_URI = os.getenv("DATABASE_URI", getDatabaseUri())
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', DEFAULT_CELERY_BROKER_URL)
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', DEFAULT_CELERY_RESULT_BACKEND)
 
 SECRET_JWT = os.getenv('SECRET_JWT', DEFAULT_SECRET_JWT)
 CRYPTO_KEY = os.getenv('CRYPTO_KEY', DEFAULT_CRYPTO_JWT)
@@ -137,6 +155,9 @@ PAGES_FOLDER = os.getenv('PAGES_FOLDER', DEFAULT_PAGES_FOLDER)
 
 EMAIL_CONFIRMATION_PAGE = os.getenv('EMAIL_CONFIRMATION_PAGE', DEFAULT_EMAIL_CONFIRMATION_PAGE)
 EMAIL_CONFIRMED_PAGE = os.getenv('EMAIL_CONFIRMED_PAGE', DEFAULT_EMAIL_CONFIRMED_PAGE)
+EMAIL_CANCELLED_PAGE = os.getenv('EMAIL_CANCELLED_PAGE', DEFAULT_EMAIL_CANCELLED_PAGE)
+EMAIL_UPDATED_PAGE = os.getenv('EMAIL_UPDATED_PAGE', DEFAULT_EMAIL_UPDATED_PAGE)
+
 KEYWORDS_PAGES = os.getenv('KEYWORDS_PAGES', None)
 if KEYWORDS_PAGES:
     KEYWORDS_PAGES = {key.split('"')[1].strip(): value.split('"')[1].strip() for key, value in [keyword.split('":') for keyword in KEYWORDS_PAGES.split(',')]}
@@ -147,6 +168,30 @@ JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', DEFAULT_JWT_ALGORITHM)
 
 ADMIN_TOKEN = os.getenv('ADMIN_TOKEN')
 
+RETRY_SEND_EMAIL = int(os.getenv('RETRY_SEND_EMAIL', DEFAULT_RETRY_SEND_EMAIL))
+
 CERT_SSL = os.getenv('CERT_SSL', None)
 KEY_SSL = os.getenv('KEY_SSL', None)
 
+FQDN_CACHE = None
+
+def update_fqdn_cache():
+    global FQDN_CACHE
+    FQDN_CACHE = socket.getfqdn()
+
+def get_fqdn_cache():
+    global FQDN_CACHE
+    if not FQDN_CACHE:
+        update_fqdn_cache()
+    return FQDN_CACHE
+
+def is_email_test_mode():
+    if DEBUG:
+        load_dotenv()
+        return os.getenv('EMAIL_TEST_MODE', 'False') == 'True'
+
+class EmailType():
+    CONFIRM_EMAIL = 0
+    CONFIRMED_EMAIL = 1
+    CANCELLED_EMAIL = 2
+    UPDATED_EMAIL = 3

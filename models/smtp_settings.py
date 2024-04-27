@@ -5,7 +5,7 @@ class SmtpSettingsModel(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     local_settings_id = db.Column(db.Integer, db.ForeignKey('local_settings.id', ondelete='CASCADE'), nullable=False)
-    name = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), unique=False, nullable=False)
     host = db.Column(db.String(100), unique=False, nullable=False)
     port = db.Column(db.Integer, unique=False, nullable=False)
     user = db.Column(db.String(100), unique=False, nullable=False)
@@ -26,7 +26,7 @@ class SmtpSettingsModel(db.Model):
         back_populates='smtp_settings'
     )
     
-    __table_args__ = (db.UniqueConstraint('local_settings_id', 'priority', name='priority'),)
+    __table_args__ = (db.UniqueConstraint('local_settings_id', 'priority', name='priority'), db.UniqueConstraint('local_settings_id', 'priority', name='name'))
     
     
     

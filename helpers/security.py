@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
 
 from db import db, addAndCommit
+from helpers.DatetimeHelper import now
 from models.session_token import SessionTokenModel
 from models.user_session import UserSessionModel
 
@@ -52,6 +53,9 @@ def generateTokens(identity, localId, access_token = False, refresh_token = True
         return token_fresh, token_refresh
 
     return token_fresh if token_fresh else token_refresh
+ 
+def getTokenId(token):
+    return decode_token(token)['token']
  
 def decodeToken(token):
     return decode_token(token)
