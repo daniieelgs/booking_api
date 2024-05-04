@@ -26,18 +26,6 @@ services:
       - db-data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    ports:
-      - "4403:80"
-    depends_on:
-      - database
-    environment:
-      PMA_HOST: database
-      PMA_PORT: 3306
-
-
   worker:
     build: .
     command: celery -A make_celery.celery worker --loglevel=info -Q priority,default
