@@ -80,18 +80,12 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
         modify_month = False
         
         if max_day:
-            
-            print(f"max_day: {max_day} - send_per_day: {smtp.send_per_day}")
-            
+                        
             date_reset = naiveToAware(smtp.reset_send_per_day, location_local)
-            
-            print(f"date_reset: {date_reset}, date_now: {date_now}")
-            print(f"date_reset <= date_now: {date_reset <= date_now}")
             
             if date_reset <= date_now:
                 smtp.send_per_day = 0
                 smtp.reset_send_per_day = datetime.datetime.combine(date_now.date() + datetime.timedelta(days=1), date_reset.time())
-                print(f"reset_send_per_day: {smtp.reset_send_per_day}")
                 
             if smtp.send_per_day >= max_day: continue
             
@@ -99,13 +93,8 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
             modify_day = True
                 
         if max_month:
-            
-            print(f"max_month: {max_month} - send_per_month: {smtp.send_per_month}")
-            
+                        
             date_reset = naiveToAware(smtp.reset_send_per_month, location_local)
-            
-            print(f"date_reset: {date_reset}, date_now: {date_now}")
-            print(f"date_reset <= date_now: {date_reset <= date_now}")
             
             if date_reset <= date_now:
                 smtp.send_per_month = 0

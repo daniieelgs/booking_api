@@ -70,7 +70,6 @@ class TestService(TestCase):
         
         self.data['work_group'] = self.wg1['id']
         response = self.client.post(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, data=json.dumps(self.data), content_type='application/json')
-        print(response.json)
         self.assertEqual(response.status_code, 201)
         self.service_post = dict(response.json)
 

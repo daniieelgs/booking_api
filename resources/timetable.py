@@ -126,7 +126,6 @@ class Timetable(MethodView):
             deleteAndFlush(*old_timetables)
             flush()
             addAndFlush(*timetables)
-            print("CHECKING TIMETABLES")
             validateTimetable(local.id)
             checkTimetableBookings(local.id)
             commit()

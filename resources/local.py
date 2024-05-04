@@ -96,7 +96,6 @@ def set_local_settings(settings_data, local: LocalModel, local_settings: LocalSe
                             smtp_setting.pop('new_name')
                         
                         for key, value in smtp_setting.items():
-                            print(f"Actualizando [{name}]: [{key}] -> [{value}]")
                             setattr(smtp_setting_model, key, value)
                         
                         for smtp_model in smtp_settings_models:
@@ -301,9 +300,7 @@ class Local(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the local.')
 
         if show_password: local.password_generated = local_data['password']
-        
-        print(local)
-        
+                
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local, 'warnings': warnings}
     
     @blp.arguments(LocalSchema)

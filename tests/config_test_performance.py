@@ -104,7 +104,6 @@ class ConfigTestPerformance(DefaultConfig):
         
         print("Configuring database tests...")
         db = db or default_db
-        print(db)
 
         if OVERWRITE_DATABASE_PERFORMANCE:
             

@@ -122,7 +122,6 @@ class ConfigTest(DefaultConfig):
         
         print("Configuring database tests...")
         db = db or default_db
-        print(db)
         
         self.insertUserSession(db)
         self.insertStatus(db)
