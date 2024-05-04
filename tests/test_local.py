@@ -45,8 +45,6 @@ class TestLocal(TestCase):
     def print_all_locals(self):
         all_locals = self.client.get(getUrl('admin', 'local', 'all'),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         
-        print("ALL LOCALS:\n", all_locals.json)
-
     def create_local(self):
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
         self.assertEqual(response_post.status_code, 401)
@@ -264,9 +262,6 @@ class TestLocal(TestCase):
         
             # Local 1
         response_post = self.post_local(data)
-                
-        print("data:\n", data['local_settings']['smtp_settings'])
-        print("response_post:\n", response_post.json)
                 
         self.assertEqual(response_post.status_code, 201)
         
@@ -597,9 +592,7 @@ class TestLocal(TestCase):
         }
         
         response_patch = self.patch_local(patch, self.local['access_token'])
-        
-        print("response_patch:\n", response_patch.json)
-        
+                
         self.assertEqual(response_patch.status_code, 200)
         
         self.local_patch = dict(response_patch.json)

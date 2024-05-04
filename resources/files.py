@@ -106,7 +106,6 @@ class LogosImages(MethodView):
         """
         Devuelve todas las imágenes de logos.
         """
-        print(os.path.join(IMAGES_FOLDER, IMAGE_TYPE_LOGOS).replace("\\", "/") + '%')
         images = FileModel.query.filter_by(local_id = local_id).filter(FileModel.path.ilike(os.path.join(IMAGES_FOLDER, IMAGE_TYPE_LOGOS).replace("\\", "/") + '%')).all()
         return [generateURLImage(local_id, IMAGE_TYPE_LOGOS, image.name) for image in images]
     

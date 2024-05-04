@@ -309,9 +309,7 @@ def calculateExpireBookingToken(datetime_end: datetime, location):
     datetime_end = datetime_end.replace(tzinfo=now().tzinfo)
                            
     diff = datetime_end - now(location)
-            
-    print("now:", now(location), "datetime_end:", datetime_end, "diff:", diff)
-            
+                        
     return diff
 
 def checkTimetableBookings(local_id):

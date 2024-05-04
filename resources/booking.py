@@ -301,9 +301,7 @@ class Booking(MethodView):
         """
         Crea una nueva reserva.
         """
-        
-        print("CREANDO RESERVA")
-        
+                
         local = LocalModel.query.get_or_404(local_id)
         
         try:
@@ -311,21 +309,15 @@ class Booking(MethodView):
             booking = createOrUpdateBooking(new_booking, local=local, commit=False)
                         
             exp:timedelta = calculateExpireBookingToken(booking.datetime_init, local.location)
-            
-            print("Expire:", exp)
-            
+                        
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                         
             booking.email_confirm = True
                         
             commit()
-            
-            print("ENVIANDO EMAIL")
-            
+                        
             email_confirm = send_confirm_booking_mail(local, booking, token)
-            
-            print("EMAIL ENVIADO:", email_confirm)
-            
+                        
             timeout = None
             
             if email_confirm:
@@ -333,13 +325,10 @@ class Booking(MethodView):
                 timeout = start_waiter_booking_status(booking.id, timeout=timeout_local)
             else:
                 booking.email_confirm = False
-                
-                # if timeout_local is not None and timeout_local > 0: confirmBooking(booking)
-                # else: addAndCommit(booking)
                     
                 confirmBooking(booking)
                     
-                send_confirmed_mail_async(local_id, booking.id) #TODO: check
+                send_confirmed_mail_async(local_id, booking.id)
                     
                 addAndCommit(booking)
                     
