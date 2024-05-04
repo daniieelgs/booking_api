@@ -12,6 +12,12 @@ def make_celery(app):
     )
     
     celery.config_from_object(app.config["CELERY"])
+    
+    celery.conf.update(
+        broker_connection_retry=True,
+        broker_connection_retry_on_startup=True
+    )
+    
     celery.set_default()
     app.extensions['celery'] = celery
             
