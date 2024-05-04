@@ -78,3 +78,4 @@ def encrypt_str(txt, key = CRYPTO_KEY):
 def decrypt_str(txt, key = CRYPTO_KEY):
     cipher_suite = Fernet(key)
     return cipher_suite.decrypt(txt).decode()
+

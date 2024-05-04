@@ -7,7 +7,7 @@ db = SQLAlchemy()
 
 def exists(model):
     if not model.id: return False
-
+    
     instance = db.session.query(model.__class__).get(model.id)
     return instance is not None
 

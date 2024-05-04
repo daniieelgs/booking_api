@@ -24,3 +24,6 @@ class Config:
         
     def config(selg, *args, **kwargs):
         pass
+    
+    def drop(self, *args, **kwargs):
+        pass
