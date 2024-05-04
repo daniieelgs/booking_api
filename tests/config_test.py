@@ -118,7 +118,7 @@ class ConfigTest(DefaultConfig):
     def config(self, *args, **kwargs):
         super().config(*args, **kwargs)
         
-        db = kwargs['db']
+        db = kwargs['db'] if 'db' in kwargs else None
         
         print("Configuring database tests...")
         db = db or default_db

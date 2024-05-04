@@ -4,6 +4,8 @@ WORKDIR /app
 
 RUN apk add --no-cache gcc musl-dev linux-headers
 
+RUN apk add --no-cache mariadb-client
+
 RUN mkdir ./logs
 
 COPY requirements.txt requirements.txt

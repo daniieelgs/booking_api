@@ -7,6 +7,8 @@ __pycache__
 instance
 *.db
 test/public
+tests/public
+tests/performance
 dockerfile-dev
 docker-compose-dev.yml
 celerybeat-schedule
