@@ -23,3 +23,4 @@ class DefaultConfig(Config):
             celery_result_backend=CELERY_RESULT_BACKEND,
             email_test_mode=False
         )
+        

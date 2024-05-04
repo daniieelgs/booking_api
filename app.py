@@ -15,10 +15,11 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import DEBUG, CERT_SSL, KEY_SSL
+from globals import API_PREFIX, DEBUG, CERT_SSL, KEY_SSL, TEST_PERFORMANCE
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
+from resources.unavaliable_api import generate_unavaliable_api
 from resources.work_group import blp as WorkGroupBlueprint
 from resources.worker import blp as WorkerBlueprint
 from resources.service import blp as ServiceBlueprint
@@ -33,6 +34,10 @@ from resources.test import blp as TestBlueprint
 from celery_app import celery_config
 
 from celery.schedules import crontab
+
+from tests.config_test_performance import ConfigTestPerformance
+
+import atexit
 
 #TODO desarrollas sistema de LOGs
 
@@ -184,6 +189,24 @@ def create_app(config: Config = DefaultConfig()):
     
     ##Routes
     
+    if TEST_PERFORMANCE:
+        
+        @app.get(getApiPrefix('end'))
+        def end_test():
+            config.drop()
+            return jsonify({"message": "Test finished."})
+        
+        @app.get(getApiPrefix('start'))
+        def start_test():
+            config.config()
+            return jsonify({"message": "Test started."})
+        
+        n_resources = 5
+        
+        for i in range(n_resources):
+            unaviable_blueprint = generate_unavaliable_api(i)
+            api.register_blueprint(unaviable_blueprint, url_prefix='/' + API_PREFIX)
+            
     api.register_blueprint(LocalBlueprint, url_prefix=getApiPrefix('local'))
     api.register_blueprint(WorkGroupBlueprint, url_prefix=getApiPrefix('work_group'))
     api.register_blueprint(WorkerBlueprint, url_prefix=getApiPrefix('worker'))
@@ -205,7 +228,18 @@ def create_app(config: Config = DefaultConfig()):
                                         
     return app
 
-app = create_app()
+if TEST_PERFORMANCE:
+    
+    config_test_performance = ConfigTestPerformance()
+    
+    config_test_performance.config()
+    
+    app = create_app(config_test_performance)
+    
+    atexit.register(config_test_performance.drop)
+    
+else:
+    app = create_app()
 
 if __name__ == '__main__':
     
