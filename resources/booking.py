@@ -334,7 +334,7 @@ class Booking(MethodView):
                     
                 addAndCommit(booking, session)
               
-            session.close()
+            if session is not None: session.close()
                     
             return {
                 "booking": booking,
@@ -353,7 +353,7 @@ class Booking(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
              
 
@@ -422,7 +422,7 @@ class BookingAdmin(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if not session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
     
     @blp.arguments(UpdateParams, location='query')
@@ -472,7 +472,7 @@ class BookingAdmin(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if not session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')  
     
     @blp.response(404, description='La reserva no existe.')
@@ -560,7 +560,7 @@ class BookingSession(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if not session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
             
     @blp.arguments(BookingSessionParams, location='query')
@@ -599,7 +599,7 @@ class BookingSession(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if not session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
     
     @blp.arguments(BookingSessionParams, location='query')
@@ -675,7 +675,7 @@ class BookingSession(MethodView):
         except Exception as e:
             traceback.print_exc()
             rollback(session)
-            if not session: session.close()
+            if session is not None: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
         
 @blp.route('confirm')
