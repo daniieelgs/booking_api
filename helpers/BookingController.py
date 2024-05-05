@@ -181,7 +181,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     try:
         with db.session.begin_nested():
             # session.begin()
-        
+                
             new_booking['services_ids'] = list(set(new_booking['services_ids']))
             new_booking['client_name'] = new_booking['client_name'].strip().title()
             
@@ -292,11 +292,11 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
                 
                     if bookingModel.status_id != status.id:
                         if status.status == CONFIRMED_STATUS:
-                            confirmBooking(booking, session = session)
+                            confirmBooking(booking, session = session, commit=False)
                         elif status.status == CANCELLED_STATUS:
-                            cancelBooking(booking, session = session)
+                            cancelBooking(booking, session = session, commit=False)
                         elif status.status == PENDING_STATUS:
-                            pendingBooking(booking, session = session)
+                            pendingBooking(booking, session = session, commit=False)
                     
                     for key, value in new_booking.items():
                         setattr(booking, key, value)
@@ -341,16 +341,16 @@ def checkTimetableBookings(local_id):
     
     return True
 
-def cancelBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
-    return changeBookingStatus(booking, CANCELLED_STATUS, comment, session = session)
+def cancelBooking(booking: BookingModel, comment = None, session = None, commit = True) -> BookingModel:
+    return changeBookingStatus(booking, CANCELLED_STATUS, comment, session = session, commit = commit)
         
-def confirmBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
-    return changeBookingStatus(booking, CONFIRMED_STATUS, comment, session = session)
+def confirmBooking(booking: BookingModel, comment = None, session = None, commit = True) -> BookingModel:
+    return changeBookingStatus(booking, CONFIRMED_STATUS, comment, session = session, commit = commit)
 
-def pendingBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
-    return changeBookingStatus(booking, PENDING_STATUS, comment, session = session)
+def pendingBooking(booking: BookingModel, comment = None, session = None, commit = True) -> BookingModel:
+    return changeBookingStatus(booking, PENDING_STATUS, comment, session = session, commit = commit)
 
-def changeBookingStatus(booking, status_name, comment = None, session = None) -> BookingModel:
+def changeBookingStatus(booking, status_name, comment = None, session = None, commit = True) -> BookingModel:
     try:
         status = StatusModel.query.filter_by(status=status_name).first().id
         
@@ -359,7 +359,7 @@ def changeBookingStatus(booking, status_name, comment = None, session = None) ->
         
         booking.status_id = status
         if comment: booking.comment = comment
-        addAndCommit(booking, session = session)
+        addAndCommit(booking, session = session) if commit else addAndFlush(booking, session = session)
         return booking
     except SQLAlchemyError as e:
         rollback()
