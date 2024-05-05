@@ -13,12 +13,12 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
 
+COPY . .
+
 RUN chmod -R 777 /app
 RUN chown -R apiuser:apiuser /app
 
 USER apiuser
-
-COPY . .
 
 CMD ["sh", "-c", "if [ \"$FLASK_ENV\" = 'production' ]; then \
                     exec gunicorn --bind $FLASK_RUN_HOST:$FLASK_RUN_PORT --certfile=/etc/ssl/certs/fullchain.pem --keyfile=/etc/ssl/private/privkey.pem --workers $FLASK_RUN_WORKERS --timeout $FLASK_RUN_TIMEOUT --access-logfile '-' --error-logfile '-' app:app; \
