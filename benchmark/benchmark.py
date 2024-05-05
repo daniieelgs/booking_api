@@ -16,6 +16,10 @@ DEFAULT_AVERAGE_TIME = True
 DEFAULT_AVERAGE_ENDPOINT = True
 DEFAULT_AVERAGE_METHOD = True
 DEFAULT_CALL_TIME = True
+
+DEFAULT_ALERT_TIME = 4
+DEFAULT_CHART_SECONDS = -1
+DEFAULT_CHART = True
     
 SEQUENCE = "sequence"
 PARALLEL = "parallel"
@@ -26,6 +30,9 @@ BODY = "body"
 HEADERS = "headers"
 RESPONSE = "response"
 EXPECTED_STATUS = "expected_status"
+START = "start"
+END = "end"
+N = "n"
    
 ADMIN_TOKEN = "admin_token"
 
@@ -56,6 +63,8 @@ def make_test_call(test):
         responses[test[RESPONSE]] = response
         
     register_benchmark(test[ENDPOINT], test[METHOD], duration, status, test[EXPECTED_STATUS])    
+    
+    print(f"{test[METHOD]} {test[ENDPOINT]} - {status} ... {duration} seconds. Expected: {test[EXPECTED_STATUS] if test[EXPECTED_STATUS] else '-'}")
     
     return response, status, duration
     
@@ -118,7 +127,7 @@ def get_data_call(host, admin_token: str, test):
     
 def sequence(host: str, admin_token: str, tests: list):
     for t in tests:
-        test(host, t)
+        test(host, admin_token, t)
 
 def parallel(host: str, admin_token: str, tests: dict):
     with ThreadPoolExecutor() as executor:
@@ -127,16 +136,22 @@ def parallel(host: str, admin_token: str, tests: dict):
     for future in futures:
         future.result()
     
-def test(host: str, admin_token: str, test: dict):
+def test(host: str, admin_token: str, test_conf: dict):
     
-    if SEQUENCE in test: sequence(host, admin_token, test[SEQUENCE])
-    if PARALLEL in test: parallel(host, admin_token, test[PARALLEL])
-    if ENDPOINT in test:
+    n = test_conf[N] if N in test_conf else 1
+    
+    for _ in range(n):
+        if START in test_conf: test(test_conf[START])
         
-        test = get_data_call(host, admin_token, test)
-        make_test_call(test)
+        if SEQUENCE in test_conf: sequence(host, admin_token, test_conf[SEQUENCE])
+        if PARALLEL in test_conf: parallel(host, admin_token, test_conf[PARALLEL])
+        if ENDPOINT in test_conf:
+            test_conf = get_data_call(host, admin_token, test_conf)
+            make_test_call(test_conf)
+            
+        if END in test_conf: test(test_conf[END])
     
-def benchmark(host: str, admin_token: str, results_path: str, tests: dict, register_average_time: bool, register_average_endpoint: bool, register_average_method: bool, register_call_time: bool):
+def benchmark(host: str, admin_token: str, results_path: str, tests: dict, register_average_time: bool, register_average_endpoint: bool, register_average_method: bool, register_call_time: bool, alert_time: int, chart: bool, chart_seconds: int):
     
     test(host, admin_token, tests)
     
@@ -150,6 +165,9 @@ def main():
     parser.add_argument('--results', default=DEFAULT_RESULTS, type=str, help='Results folder.')
     parser.add_argument('--test-file', required=True, type=str, help='Test file to run.')
     parser.add_argument('--admin-token', default=DEFAULT_ADMIN_TOKEN, type=str, help='Admin token to access the API.')
+    parser.add_argument('--alert-time', default=DEFAULT_CHART, type=int, help='Alert time in seconds. If a call takes more than this time, an alert will be shown.')
+    parser.add_argument('--chart', default=DEFAULT_AVERAGE_TIME, type=bool, help='Show chart with results.')
+    parser.add_argument('--chart-seconds', default=DEFAULT_CHART_SECONDS, type=int, help='Seconds to show in the chart.')
     parser.add_argument('--register-average-time', default=DEFAULT_AVERAGE_TIME, type=bool, help='Average time of test.')
     parser.add_argument('--register-average-endpoint', default=DEFAULT_AVERAGE_ENDPOINT, type=bool, help='Average time of each endpoint.')
     parser.add_argument('--register-average-method', default=DEFAULT_AVERAGE_METHOD, type=bool, help='Average time of each method.')
@@ -170,9 +188,11 @@ def main():
             return
         
     check_and_create_folder(args.results)
+    
+    chart_seconds = args.chart_seconds if args.chart_seconds > 0 else args.alert_time
         
     print("Starting benchmark...\n")
-    benchmark(args.host + args.prefix, args.admin_token, args.results, content_json, args.register_average_time, args.register_average_endpoint, args.register_average_method, args.register_call_time)
+    benchmark(args.host + args.prefix, args.admin_token, args.results, content_json, args.register_average_time, args.register_average_endpoint, args.register_average_method, args.register_call_time, args.alert_time, args.chart, chart_seconds)
     print("\nBenchmark finished.")
 
 if __name__ == '__main__':
