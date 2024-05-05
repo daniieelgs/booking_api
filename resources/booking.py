@@ -304,9 +304,11 @@ class Booking(MethodView):
                 
         local = LocalModel.query.get_or_404(local_id)
         
+        session = None
+        
         try:
             
-            booking = createOrUpdateBooking(new_booking, local=local, commit=False)
+            booking, session = createOrUpdateBooking(new_booking, local=local, commit=False)
                         
             exp:timedelta = calculateExpireBookingToken(booking.datetime_init, local.location)
                         
@@ -314,7 +316,7 @@ class Booking(MethodView):
                         
             booking.email_confirm = True
                         
-            commit()
+            commit(session)
                         
             email_confirm = send_confirm_booking_mail(local, booking, token)
                         
@@ -326,11 +328,13 @@ class Booking(MethodView):
             else:
                 booking.email_confirm = False
                     
-                confirmBooking(booking)
+                confirmBooking(booking, session=session)
                     
                 send_confirmed_mail_async(local_id, booking.id)
                     
-                addAndCommit(booking)
+                addAndCommit(booking, session)
+              
+            session.close()
                     
             return {
                 "booking": booking,
@@ -348,7 +352,8 @@ class Booking(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
              
 
@@ -397,9 +402,11 @@ class BookingAdmin(MethodView):
             abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
             
         booking_data['status'] = booking_data.pop('new_status')
+            
+        session = None
                 
         try:
-            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -414,7 +421,8 @@ class BookingAdmin(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if not session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
     
     @blp.arguments(UpdateParams, location='query')
@@ -444,9 +452,11 @@ class BookingAdmin(MethodView):
         if 'new_status' in booking_data: booking_data['status'] = booking_data.pop('new_status')
                 
         booking_data = patchBooking(booking, booking_data, admin = True)
+              
+        session = None
                 
         try:
-            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -461,7 +471,8 @@ class BookingAdmin(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if not session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')  
     
     @blp.response(404, description='La reserva no existe.')
@@ -532,8 +543,10 @@ class BookingSession(MethodView):
         if booking.status.status == CANCELLED_STATUS or booking.status.status == DONE_STATUS:
             abort(409, message = f"The booking is '{booking.status.name}'.")
 
+        session = None
+
         try:
-            booking = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             send_updated_mail_async(booking.local_id, booking.id)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -546,7 +559,8 @@ class BookingSession(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if not session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
             
     @blp.arguments(BookingSessionParams, location='query')
@@ -569,8 +583,11 @@ class BookingSession(MethodView):
                 
         booking_data = patchBooking(booking, booking_data)
 
+        session = None
+
         try:
-            return createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
         except ModelNotFoundException as e:
@@ -581,7 +598,8 @@ class BookingSession(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if not session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')   
     
     @blp.arguments(BookingSessionParams, location='query')
@@ -629,15 +647,17 @@ class BookingSession(MethodView):
         force = 'force' in params and params['force']
         notify = 'notify' in params and params['notify']
         
+        session = None
+        
         try:
             
             local_id = get_jwt_identity()
             
             new_booking['status'] = CONFIRMED_STATUS
             
-            booking = createOrUpdateBooking(new_booking, local_id, commit=False, force=force)
+            booking, session = createOrUpdateBooking(new_booking, local_id, commit=False, force=force)
             
-            commit()
+            commit(session)
             
             if notify:
                 send_confirmed_mail_async(booking.local_id, booking.id)
@@ -654,7 +674,8 @@ class BookingSession(MethodView):
             abort(409, message = str(e))
         except Exception as e:
             traceback.print_exc()
-            rollback()
+            rollback(session)
+            if not session: session.close()
             abort(500, message = str(e) if DEBUG else 'Could not create the booking.')
         
 @blp.route('confirm')
