@@ -14,7 +14,7 @@ def exists(model):
 def addDateTimes(model):
     
     try:    
-        model.datetime_updated = datetime.utcnow()
+        model.datetime_updated = datetime.utcnow() #TODO check
         
         if not exists(model): model.datetime_created = model.datetime_updated
     except:
@@ -83,6 +83,9 @@ def addAndFlush(*models, session = None):
         raise e
 
     return True
+
+def beginSession():
+    return db.session.begin()
 
 def rollback(session = None):
     db.session.rollback() if session is None else session.rollback()

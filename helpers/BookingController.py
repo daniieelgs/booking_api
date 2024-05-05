@@ -2,7 +2,7 @@
 
 from operator import or_
 import random
-from db import addAndCommit, addAndFlush, deleteAndCommit, rollback
+from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, rollback
 from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
@@ -279,20 +279,22 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     
     try:
         
-        if bookingModel:
-        
-            if bookingModel.status_id != status.id:
-                if status.status == CONFIRMED_STATUS:
-                    confirmBooking(booking)
-                elif status.status == CANCELLED_STATUS:
-                    cancelBooking(booking)
-                elif status.status == PENDING_STATUS:
-                    pendingBooking(booking)
+        with beginSession():
             
-            for key, value in new_booking.items():
-                setattr(booking, key, value)
-        
-        addAndCommit(booking) if commit else addAndFlush(booking)
+            if bookingModel:
+            
+                if bookingModel.status_id != status.id:
+                    if status.status == CONFIRMED_STATUS:
+                        confirmBooking(booking)
+                    elif status.status == CANCELLED_STATUS:
+                        cancelBooking(booking)
+                    elif status.status == PENDING_STATUS:
+                        pendingBooking(booking)
+                
+                for key, value in new_booking.items():
+                    setattr(booking, key, value)
+            
+            addAndCommit(booking) if commit else addAndFlush(booking)
     except SQLAlchemyError as e:
         rollback()
         raise e
