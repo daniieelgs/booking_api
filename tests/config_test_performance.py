@@ -106,6 +106,10 @@ class ConfigTestPerformance(DefaultConfig):
         db = db or default_db
         print(db)
 
+        self.public_folder = os.path.join(TEST_PERFORMANCE_FOLDER, 'public')
+
+        checkAndCreatePath(TEST_PERFORMANCE_FOLDER, 'public')
+
         if OVERWRITE_DATABASE_PERFORMANCE:
             
             self.db_name_original = DATABASE_NAME
@@ -122,10 +126,6 @@ class ConfigTestPerformance(DefaultConfig):
             except:
                 traceback.print_exc()
                 db.session.rollback()
-                    
-        checkAndCreatePath(TEST_PERFORMANCE_FOLDER, 'public')
-                    
-        self.public_folder = os.path.join(TEST_PERFORMANCE_FOLDER, 'public')
                     
         os.environ['PUBLIC_FOLDER'] = self.public_folder
     

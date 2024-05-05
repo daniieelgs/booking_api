@@ -15,6 +15,9 @@ RUN pip install gunicorn
 
 COPY . .
 
+RUN chmod -R 777 /app
+RUN chown -R apiuser:apiuser /app
+
 CMD ["sh", "-c", "if [ \"$FLASK_ENV\" = 'production' ]; then \
                     exec gunicorn --bind $FLASK_RUN_HOST:$FLASK_RUN_PORT --workers $FLASK_RUN_WORKERS --timeout $FLASK_RUN_TIMEOUT --access-logfile '-' --error-logfile '-' app:app; \
                  else \
