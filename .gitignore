@@ -1,5 +1,6 @@
 .env
 .env.docker
+.env.test
 public
 migrations
 __pycache__
@@ -18,3 +19,4 @@ celerybeat-schedule
 mock
 benchmark/results
 benchmark/test.json
+package.json
