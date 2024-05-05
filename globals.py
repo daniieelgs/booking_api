@@ -231,6 +231,16 @@ def is_email_test_mode():
     
 #-------------------------------
 
+app = None
+
+def setApp(_app):
+    global app
+    app = _app
+    
+def getApp():
+    global app
+    return app
+
 class EmailType():
     CONFIRM_EMAIL = 0
     CONFIRMED_EMAIL = 1

@@ -1,5 +1,7 @@
 import traceback
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import create_engine
 
 from datetime import datetime
 
@@ -22,7 +24,7 @@ def addDateTimes(model):
     
     return model
 
-def addAndCommit(*models):
+def addAndCommit(*models, session = None):
     
     if len(models) == 0: return False
     
@@ -30,14 +32,14 @@ def addAndCommit(*models):
         for model in models:
             if model:db.session.add(addDateTimes(model))
             
-        db.session.commit()
+        db.session.commit() if session is None else session.commit()
     except Exception as e:
         rollback()
         raise e
     
     return True
 
-def deleteAndCommit(*models):
+def deleteAndCommit(*models, session = None):
     
     if len(models) == 0: return False
     try:
@@ -45,7 +47,7 @@ def deleteAndCommit(*models):
             if model:
                 db.session.refresh(model)
                 db.session.delete(model)
-        db.session.commit()
+        db.session.commit() if session is None else session.commit()
     except Exception as e:
         rollback()
         raise e
@@ -75,7 +77,7 @@ def addAndFlush(*models, session = None):
     try:
         for model in models:
             model = addDateTimes(model)
-            if model:db.session.add(model) if session is None else session.add(model)
+            if model: db.session.add(model) if session is None else session.add(model)
 
         db.session.flush()
     except Exception as e:
@@ -83,6 +85,10 @@ def addAndFlush(*models, session = None):
         raise e
 
     return True
+
+def new_session(engine):
+    Session = sessionmaker(bind=engine)
+    return Session()
 
 def beginSession():
     return db.session.begin()
@@ -93,5 +99,5 @@ def rollback(session = None):
 def commit(session = None):
     db.session.commit() if session is None else session.commit()
     
-def flush():
-    db.session.flush()
+def flush(session = None):
+    db.session.flush() if session is None else session.flush()
