@@ -16,3 +16,5 @@ docker-compose.override.yml
 logs
 celerybeat-schedule
 mock
+benchmark/results
+benchmark/test.json
