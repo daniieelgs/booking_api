@@ -51,7 +51,7 @@ def main():
         passwd = generar_solo_numeros(args.len)
     elif args.complex:
         passwd = generar_compleja(args.len)
-    elif args.help:
+    elif hasattr(args, 'help') and args.help:
         showHelp()
         return
     else:
