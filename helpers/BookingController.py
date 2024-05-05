@@ -2,8 +2,8 @@
 
 from operator import or_
 import random
-from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS
+from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback, db
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
@@ -175,130 +175,141 @@ def deserializeBooking(booking):
 
 def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None, force = False):
     
-    new_booking['services_ids'] = list(set(new_booking['services_ids']))
-    new_booking['client_name'] = new_booking['client_name'].strip().title()
+    # with getApp().app_context():
     
-    if bookingModel:
-        if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
-            new_booking['worker_id'] = bookingModel.worker_id
-    
-    if not local_id:
-        if not local:
-            raise LocalNotFoundException()
-        local_id = local.id
-    else:
-        local = LocalModel.query.get(local_id)
-        if not local:
-            raise LocalNotFoundException(id = local_id)
-    
-    worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
-    
+    session = None
     try:
-        datetime_init = naiveToAware(new_booking['datetime_init'])
-    except ValueError:
-        raise ValueError('Invalid date format.')
-    
-    if not force and datetime_init < now(local.location):
-        raise PastDateException()
-    
-    total_duration = 0
-    services = []
-            
-    for service_id in new_booking['services_ids']:
-        service = ServiceModel.query.get(service_id)
-        if not service or service.work_group.local_id != local_id:
-            raise ServiceNotFoundException(id = service_id)
-        total_duration += service.duration
+        with db.session.begin_nested():
+            # session.begin()
         
-        if len(services) > 0 and service.work_group_id != services[0].work_group_id:
-            raise WrongServiceWorkGroupException()
-            
-        services.append(service)
-        
-    if not services:
-        raise ServiceNotFoundException(id = 0)
-    
-    new_booking.pop('services_ids')
-    
-    datetime_end = datetime_init + timedelta(minutes=total_duration)
-        
-    new_booking['datetime_end'] = datetime_end
-            
-    week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[datetime_init.weekday()]).first()
-    
-    if not week_day:
-        raise WeekdayNotFoundException()
-    
-    if not force and not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
-        raise LocalUnavailableException()
-    
-    if worker_id:
-        worker = WorkerModel.query.get(worker_id)
-        if not worker or worker.work_groups.first().local_id != local_id:
-            raise WorkerNotFoundException(id = worker_id)
-        
-        if not force and services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
-            raise WrongWorkerWorkGroupException()
-          
-          
-        if not force:
-            
-            bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id)
-                
-            if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id):
-                raise WorkerUnavailableException()
-             
-    else: 
-                
-        workers = list(services[0].work_group.workers.all())
-        
-        worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None)
-        
-        if not worker_id:
-            if not force:
-                raise AlredyBookingExceptionException()
-                        
-            workers = list(workers)
-            
-            random.shuffle(workers)
-            
-            worker_id = workers[0].id
-    
-    new_status = new_booking.pop('status') if 'status' in new_booking else (PENDING_STATUS if bookingModel is None else bookingModel.status.status)
-    
-    status = StatusModel.query.filter_by(status=new_status).first()
-    
-    if not status:
-        raise StatusNotFoundException()
-    
-    new_booking['status_id'] = status.id
-    new_booking['worker_id'] = worker_id
-    
-    booking = bookingModel or BookingModel(**new_booking)
-    booking.services = services
-    
-    try:
-        
-        with beginSession():
+            new_booking['services_ids'] = list(set(new_booking['services_ids']))
+            new_booking['client_name'] = new_booking['client_name'].strip().title()
             
             if bookingModel:
+                if [service.id for service in bookingModel.services] == new_booking['services_ids'] and 'worker_id' not in new_booking:
+                    new_booking['worker_id'] = bookingModel.worker_id
             
-                if bookingModel.status_id != status.id:
-                    if status.status == CONFIRMED_STATUS:
-                        confirmBooking(booking)
-                    elif status.status == CANCELLED_STATUS:
-                        cancelBooking(booking)
-                    elif status.status == PENDING_STATUS:
-                        pendingBooking(booking)
+            if not local_id:
+                if not local:
+                    raise LocalNotFoundException()
+                local_id = local.id
+            else:
+                local = LocalModel.query.get(local_id)
+                if not local:
+                    raise LocalNotFoundException(id = local_id)
+            
+            worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
+            
+            try:
+                datetime_init = naiveToAware(new_booking['datetime_init'])
+            except ValueError:
+                raise ValueError('Invalid date format.')
+            
+            if not force and datetime_init < now(local.location):
+                raise PastDateException()
+            
+            total_duration = 0
+            services = []
+                    
+            for service_id in new_booking['services_ids']:
+                service = ServiceModel.query.get(service_id)
+                if not service or service.work_group.local_id != local_id:
+                    raise ServiceNotFoundException(id = service_id)
+                total_duration += service.duration
                 
-                for key, value in new_booking.items():
-                    setattr(booking, key, value)
+                if len(services) > 0 and service.work_group_id != services[0].work_group_id:
+                    raise WrongServiceWorkGroupException()
+                    
+                services.append(service)
+                
+            if not services:
+                raise ServiceNotFoundException(id = 0)
             
-            addAndCommit(booking) if commit else addAndFlush(booking)
+            new_booking.pop('services_ids')
+            
+            datetime_end = datetime_init + timedelta(minutes=total_duration)
+                
+            new_booking['datetime_end'] = datetime_end
+                    
+            week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[datetime_init.weekday()]).first()
+            
+            if not week_day:
+                raise WeekdayNotFoundException()
+            
+            if not force and not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
+                raise LocalUnavailableException()
+            
+            if worker_id:
+                worker = WorkerModel.query.get(worker_id)
+                if not worker or worker.work_groups.first().local_id != local_id:
+                    raise WorkerNotFoundException(id = worker_id)
+                
+                if not force and services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
+                    raise WrongWorkerWorkGroupException()
+                
+                
+                if not force:
+                    
+                    bookings = getBookings(local_id, datetime_init, datetime_end, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker_id)
+                        
+                    if bookings and (bookingModel is None or len(bookings) > 1 or bookings[0].id != bookingModel.id):
+                        raise WorkerUnavailableException()
+                    
+            else: 
+                        
+                workers = list(services[0].work_group.workers.all())
+                
+                worker_id = searchWorkerBookings(local_id, datetime_init, datetime_end, workers, bookingModel.id if bookingModel else None)
+                
+                if not worker_id:
+                    if not force:
+                        raise AlredyBookingExceptionException()
+                                
+                    workers = list(workers)
+                    
+                    random.shuffle(workers)
+                    
+                    worker_id = workers[0].id
+            
+            new_status = new_booking.pop('status') if 'status' in new_booking else (PENDING_STATUS if bookingModel is None else bookingModel.status.status)
+            
+            status = StatusModel.query.filter_by(status=new_status).first()
+            
+            if not status:
+                raise StatusNotFoundException()
+            
+            new_booking['status_id'] = status.id
+            new_booking['worker_id'] = worker_id
+            
+            booking = bookingModel or BookingModel(**new_booking)
+            booking.services = services
+            
+
+                
+            try:
+                
+                if bookingModel:
+                
+                    if bookingModel.status_id != status.id:
+                        if status.status == CONFIRMED_STATUS:
+                            confirmBooking(booking, session = session)
+                        elif status.status == CANCELLED_STATUS:
+                            cancelBooking(booking, session = session)
+                        elif status.status == PENDING_STATUS:
+                            pendingBooking(booking, session = session)
+                    
+                    for key, value in new_booking.items():
+                        setattr(booking, key, value)
+                addAndCommit(booking, session) if commit else addAndFlush(booking, session)
+            except SQLAlchemyError as e:
+                raise e
+            
     except SQLAlchemyError as e:
-        rollback()
+        rollback(session)
+        if session is not None: session.close()
         raise e
-    return booking
+    
+    return booking, session
 
 def calculatEndTimeBooking(booking):
     total_duration = sum(service.duration for service in booking.services)
@@ -330,16 +341,16 @@ def checkTimetableBookings(local_id):
     
     return True
 
-def cancelBooking(booking: BookingModel, comment = None) -> BookingModel:
-    return changeBookingStatus(booking, CANCELLED_STATUS, comment)
+def cancelBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
+    return changeBookingStatus(booking, CANCELLED_STATUS, comment, session = session)
         
-def confirmBooking(booking: BookingModel, comment = None) -> BookingModel:
-    return changeBookingStatus(booking, CONFIRMED_STATUS, comment)
+def confirmBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
+    return changeBookingStatus(booking, CONFIRMED_STATUS, comment, session = session)
 
-def pendingBooking(booking: BookingModel, comment = None) -> BookingModel:
-    return changeBookingStatus(booking, PENDING_STATUS, comment)
+def pendingBooking(booking: BookingModel, comment = None, session = None) -> BookingModel:
+    return changeBookingStatus(booking, PENDING_STATUS, comment, session = session)
 
-def changeBookingStatus(booking, status_name, comment = None) -> BookingModel:
+def changeBookingStatus(booking, status_name, comment = None, session = None) -> BookingModel:
     try:
         status = StatusModel.query.filter_by(status=status_name).first().id
         
@@ -348,7 +359,7 @@ def changeBookingStatus(booking, status_name, comment = None) -> BookingModel:
         
         booking.status_id = status
         if comment: booking.comment = comment
-        addAndCommit(booking)
+        addAndCommit(booking, session = session)
         return booking
     except SQLAlchemyError as e:
         rollback()
