@@ -228,6 +228,8 @@ def create_app(config: Config = DefaultConfig()):
 
 if TEST_PERFORMANCE:
     
+    print("PERFORMANCE TEST MODE ACTIVATED.")
+    
     config_test_performance = ConfigTestPerformance()
     
     config_test_performance.config()

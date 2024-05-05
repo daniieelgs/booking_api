@@ -13,6 +13,7 @@ services:
     volumes:
       - ${SSL_CERT_PATH}:/etc/ssl/certs/fullchain.pem:ro
       - ${SSL_KEY_PATH}:/etc/ssl/private/privkey.pem:ro
+      - .:/app
     depends_on:
       - database
 
