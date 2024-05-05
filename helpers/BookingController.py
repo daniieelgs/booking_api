@@ -291,12 +291,13 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
                 if bookingModel:
                 
                     if bookingModel.status_id != status.id:
+                        do_commit = True
                         if status.status == CONFIRMED_STATUS:
-                            confirmBooking(booking, session = session, commit=False)
+                            confirmBooking(booking, session = session, commit=do_commit)
                         elif status.status == CANCELLED_STATUS:
-                            cancelBooking(booking, session = session, commit=False)
+                            cancelBooking(booking, session = session, commit=do_commit)
                         elif status.status == PENDING_STATUS:
-                            pendingBooking(booking, session = session, commit=False)
+                            pendingBooking(booking, session = session, commit=do_commit)
                     
                     for key, value in new_booking.items():
                         setattr(booking, key, value)
