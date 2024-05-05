@@ -2,9 +2,9 @@ FROM python:3.11.9-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev linux-headers
+RUN apk add --no-cache gcc musl-dev linux-headers mariadb-client
 
-RUN apk add --no-cache mariadb-client
+RUN adduser --disabled-password --gecos '' apiuser
 
 RUN mkdir ./logs
 
@@ -16,7 +16,6 @@ RUN pip install gunicorn
 RUN chmod -R 777 /app
 RUN chown -R apiuser:apiuser /app
 
-RUN adduser --disabled-password --gecos '' apiuser
 USER apiuser
 
 COPY . .
