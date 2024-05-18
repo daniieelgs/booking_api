@@ -11,11 +11,12 @@ from models.weekday import WeekdayModel
 
 class ConfigTest(DefaultConfig):
     
-    def __init__(self, database_uri = TEST_DATABASE_URI, waiter_booking_status = None, email_test_mode = True) -> None:
+    def __init__(self, database_uri = TEST_DATABASE_URI, waiter_booking_status = None, email_test_mode = True, redis_test_mode = True) -> None:
         super().__init__()
         self.database_uri = database_uri
         self.waiter_booking_status = waiter_booking_status
         self.email_test_mode = email_test_mode
+        self.redis_test_mode = redis_test_mode
        
     def insertUserSession(self, db):
         

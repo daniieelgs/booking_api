@@ -1,7 +1,11 @@
+from datetime import time
 import subprocess
 import os
 import mysql.connector
 from mysql.connector.cursor import MySQLCursor
+import redis
+
+from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, is_redis_test_mode
 
 class DatabaseConnection():
     
@@ -11,6 +15,9 @@ class DatabaseConnection():
         self.host = db_host
         self.port = db_port
         self.password = db_passwd
+
+cache_memory = {}
+cache_expiry_time = {}
 
 def export_database(db: DatabaseConnection, output_file):
     os.environ['MYSQL_PWD'] = db.password
@@ -74,3 +81,45 @@ def remove_database(db: DatabaseConnection):
     cursor = cnx.cursor()
     
     cursor.execute(f"DROP DATABASE {db.name};")
+
+def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT) -> redis.Redis:
+    
+    if is_redis_test_mode():
+        return None
+    
+    return redis.Redis(host=host, port=port, db=0)
+
+def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = create_redis_connection()):
+    
+    if not redis_connection:
+        cache_memory[key] = value
+        cache_expiry_time[key] = time.time() + exp
+        return
+    
+    with redis_connection.pipeline() as pipe:
+        pipe.setex(key, value, exp)
+        
+def get_key_value_cache(key, redis_connection = create_redis_connection()):
+    
+    if not redis_connection:
+        
+        exp = cache_expiry_time.get(key, None)
+        if exp and exp < time.time():
+            cache_memory.pop(key, None)
+            cache_expiry_time.pop(key, None)
+            return None
+        
+        return cache_memory.get(key, None)
+    
+    with redis_connection.pipeline() as pipe:
+        return pipe.get(key)
+    
+def delete_key_value_cache(key, redis_connection = create_redis_connection()):
+    
+    if not redis_connection:
+        cache_memory.pop(key, None)
+        cache_expiry_time.pop(key, None)
+        return
+    
+    with redis_connection.pipeline() as pipe:
+        pipe.delete(key)

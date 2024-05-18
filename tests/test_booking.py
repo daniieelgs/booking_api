@@ -102,6 +102,7 @@ class TestBooking(TestCase):
         #Falta de datos: servicios
         booking['services_ids'] = []
         r = self.post_booking(booking)
+        print("Response: ", r.json)
         self.assertEqual(r.status_code, 404)
     
     def outOfTimetable(self, _booking):

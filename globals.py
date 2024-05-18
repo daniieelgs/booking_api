@@ -17,6 +17,9 @@ DEFAULT_EXPIRE_ACCESS = 5
 DEFAULT_CELERY_BROKER_URL = 'redis://localhost:6379/0'
 DEFAULT_CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
+DEFAULT_REDIS_HOST = 'localhost'
+DEFAULT_REDIS_PORT = 6379
+
 DEFAULT_ADMIN_IDENTITY = '744656b1e8a24f998685134efabe2f3f'
 DEFAULT_JWT_ALGORITHM = 'HS256'
 
@@ -92,6 +95,8 @@ DEFAULT_MIN_TIMEOUT_CONFIRM_BOOKING = 5
 
 DEFAULT_RETRY_SEND_EMAIL = 120
 
+DEFAULT_MAX_TIMEOUT_WAIT_BOOKING = 5
+
 #---- TEST CONFIG --------------
 
 DEFAULT_TEST_DATABASE_URI = 'sqlite:///data_test.db'
@@ -125,6 +130,9 @@ DATABASE_URI = os.getenv("DATABASE_URI", getDatabaseUri())
 
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', DEFAULT_CELERY_BROKER_URL)
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', DEFAULT_CELERY_RESULT_BACKEND)
+
+REDIS_HOST = os.getenv('REDIS_HOST', DEFAULT_REDIS_HOST)
+REDIS_PORT = os.getenv('REDIS_PORT', DEFAULT_REDIS_PORT)
 
 SECRET_JWT = os.getenv('SECRET_JWT', DEFAULT_SECRET_JWT)
 CRYPTO_KEY = os.getenv('CRYPTO_KEY', DEFAULT_CRYPTO_JWT)
@@ -182,6 +190,8 @@ ADMIN_TOKEN = os.getenv('ADMIN_TOKEN')
 
 RETRY_SEND_EMAIL = int(os.getenv('RETRY_SEND_EMAIL', DEFAULT_RETRY_SEND_EMAIL))
 
+MAX_TIMEOUT_WAIT_BOOKING = int(os.getenv('MAX_TIMEOUT_WAIT_BOOKING', DEFAULT_MAX_TIMEOUT_WAIT_BOOKING))
+
 CERT_SSL = os.getenv('CERT_SSL', None)
 KEY_SSL = os.getenv('KEY_SSL', None)
 
@@ -228,6 +238,14 @@ def is_email_test_mode():
         email_test_mode = os.getenv('EMAIL_TEST_MODE', 'False')
         
         return email_test_mode == 'True' or email_test_mode == '1'
+    
+def is_redis_test_mode():
+    if DEBUG:
+        load_dotenv()
+        
+        redis_test_mode = os.getenv('REDIS_TEST_MODE', 'False')
+        
+        return redis_test_mode == 'True' or redis_test_mode == '1'
     
 #-------------------------------
 
