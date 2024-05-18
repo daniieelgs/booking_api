@@ -220,8 +220,7 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
     uuid = generateUUID() if not uuid else uuid
     
-    if not redis_connection:
-        redis_connection = create_redis_connection()
+    redis_connection = create_redis_connection()
     
     time_init = datetime.now()
     
