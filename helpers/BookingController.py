@@ -207,7 +207,7 @@ def perform_atomic_booking(redis_connection, local_id, date, exp = MAX_TIMEOUT_W
             pipe.unwatch()
             return False
 
-def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.1):
+def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.5):
     redis_connection = create_redis_connection()
     uuid = uuid or generateUUID()
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting for booking for local {local_id} on date {date}.")
@@ -224,9 +224,7 @@ def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING,
     raise LocalOverloadedException(message=f"Local {local_id} is overloaded. Please try again later.")
     
 def unregisterBooking(local_id, date, uuid = None):
-        
-    time.sleep(0.5)
-        
+                
     print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}]  [{uuid}] Unregistering booking for local {local_id} on date {date}.')
         
     value = get_key_value_cache(local_id)
