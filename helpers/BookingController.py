@@ -29,7 +29,7 @@ from helpers.error.ServiceError.ServiceNotFoundException import ServiceNotFoundE
 from helpers.error.StatusError.StatusNotFoundException import StatusNotFoundException
 from helpers.error.WeekdayError.WeekdayNotFoundException import WeekdayNotFoundException
 from helpers.error.WorkerError.WorkerNotFoundException import WorkerNotFoundException
-from helpers.security import decodeToken
+from helpers.security import decodeToken, generateUUID
 from models.booking import BookingModel
 from models.local import LocalModel
 from models.service import ServiceModel
@@ -177,19 +177,24 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2):
+def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None):
     time_init = datetime.now()
+    
+    print(f'[{uuid}] Waiting booking for local {local_id} on date {date}.')
     
     while True:
         
         time_end = datetime.now()
         
         if (time_end - time_init).seconds > MAX_TIMEOUT:
+            print(f'[{uuid}] Timeout waiting booking for local {local_id} on date {date}.')
             raise LocalOverloadedException(message='The local is overloaded. Try again later.')
         
         value = get_key_value_cache(local_id)
+        print(f'[{uuid}] get_key_value_cache: {value}')
         
         if not value:
+            
             return value
         
         try:
@@ -199,26 +204,40 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
         
         dates = value.split('|')
         
+        print(f'[{uuid}] Dates: {dates}')
+        
         if str(date) in dates:
+            print(f'[{uuid}] Booking found for local {local_id} on date {date}. Waiting')
             time.sleep(sleep_time)
         else:
+            print(f'[{uuid}] Booking not found for local {local_id} on date {date}.')
             return value
     
     
-def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING):
+def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, uuid = None):
     
-    value = waitBooking(local_id, date)
+    uuid = generateUUID() if not uuid else uuid
+    
+    value = waitBooking(local_id, date, uuid=uuid)
     
     if not value:
         value = "" 
     
     value += f"|{str(date)}"
     
+    print(f'[{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+    
     register_key_value_cache(local_id, date)
     
-def unregisterBooking(local_id, date):
+    return uuid
+    
+def unregisterBooking(local_id, date, uuid = None):
+        
+    print(f'[{uuid}] Unregistering booking for local {local_id} on date {date}.')
         
     value = get_key_value_cache(local_id)
+    
+    print(f'[{uuid}] get_key_value_cache: {value}')
     
     if not value:
         return value
@@ -233,11 +252,15 @@ def unregisterBooking(local_id, date):
     if str(date) in dates:
         dates.remove(str(date))
         
+        print(f'[{uuid}] Dates: {dates}')
+        
         if not dates:
             pass
         else:
         
             value = '|'.join(dates)
+            
+            print(f'[{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
             
             register_key_value_cache(local_id, value)
         
@@ -278,8 +301,10 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
             
     date = datetime_init.date()
     
+    uuid = None
+    
     try:
-        waitAndRegisterBooking(local_id, date)
+        uuid = waitAndRegisterBooking(local_id, date)
                     
         for service_id in new_booking['services_ids']:
             service = ServiceModel.query.get(service_id)
@@ -384,13 +409,13 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         except SQLAlchemyError as e:
             raise e
         
-        unregisterBooking(local_id, date)
+        unregisterBooking(local_id, date, uuid=uuid)
         
         return booking, session
     
     except Exception as e:
         
-        unregisterBooking(local_id, date)
+        unregisterBooking(local_id, date, uuid=uuid)
         
         raise e
 

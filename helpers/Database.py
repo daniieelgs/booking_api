@@ -85,6 +85,7 @@ def remove_database(db: DatabaseConnection):
 def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT) -> redis.Redis:
     
     if is_redis_test_mode():
+        print("Redis test mode activated.")
         return None
     
     return redis.Redis(host=host, port=port, db=0)
