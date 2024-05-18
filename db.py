@@ -16,9 +16,12 @@ def exists(model):
 def addDateTimes(model):
     
     try:    
-        model.datetime_updated = datetime.utcnow() #TODO check
         
-        if not exists(model): model.datetime_created = model.datetime_updated
+        if model:
+            
+            model.datetime_updated = datetime.utcnow() #TODO check
+            
+            if not exists(model): model.datetime_created = model.datetime_updated
     except:
         traceback.print_exc()
     
