@@ -95,32 +95,16 @@ def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_c
     if not redis_connection:
         cache_memory[key] = value
         cache_expiry_time[key] = time.time() + exp
-        return True
+        return
     
     if pipeline:
         pipeline.setex(key, exp, value)
         return
     
     with redis_connection.pipeline() as pipe:
-        try:
-            pipe.watch(key)
-            pipe.multi()
-            
-            if pre_value is not False:
-                current_value = pipe.get(key)
-                current_value = current_value.decode('utf-8') if current_value else None
-                
-                if current_value != pre_value:
-                    pipe.unwatch()
-                    return False
-            
-            pipe.setex(key, exp, value)
-            pipe.execute()
-            pipe.unwatch()
-            return True
-        except:
-            pipe.unwatch()
-        return False
+        pipe.multi()            
+        pipe.setex(key, exp, value)
+        pipe.execute()
         
 def get_key_value_cache(key, redis_connection = create_redis_connection(), pipeline = None):
     
