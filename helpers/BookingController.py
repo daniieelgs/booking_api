@@ -216,26 +216,36 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
             return value
     
     
-def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, uuid = None):
-    
+def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT=MAX_TIMEOUT_WAIT_BOOKING, uuid=None):
     uuid = generateUUID() if not uuid else uuid
-        
+    redis_connection = create_redis_connection()
+
     time_init = datetime.now()
     
     while (datetime.now() - time_init).seconds < MAX_TIMEOUT:
-        
-        pre_value = waitBooking(local_id, date, uuid=uuid, MAX_TIMEOUT=MAX_TIMEOUT)
-        
-        value = pre_value + f"|{str(date)}" if pre_value else str(date)
-        
-        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
-                        
-        if register_key_value_cache(local_id, value, pre_value=pre_value):
-            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Booking registered for local {local_id} on date {date}.')
-            return uuid
-        
-        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Value change. Retrying registering booking for local {local_id} on date {date}.')
-                
+
+        with redis_connection.pipeline() as pipe:
+            try:
+
+                pipe.watch(local_id)
+
+                value = waitBooking(local_id, date, MAX_TIMEOUT, uuid=uuid, redis_connection=redis_connection)
+
+                if value:
+                    new_value = value + f"|{str(date)}"
+                else:
+                    new_value = str(date)
+
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {new_value}')
+
+                pipe.multi()
+                pipe.setex(local_id, MAX_TIMEOUT, new_value)
+                pipe.execute()
+                pipe.unwatch()
+                return uuid
+            finally:
+                pipe.unwatch()
+
     raise LocalOverloadedException(message='The local is overloaded. Try again later.')
     
 def unregisterBooking(local_id, date, uuid = None):
