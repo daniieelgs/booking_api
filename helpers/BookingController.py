@@ -4,9 +4,11 @@ from operator import or_
 import random
 from sqlite3 import OperationalError
 import time
+
+import redis
 from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback, db
 from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp
-from helpers.Database import delete_key_value_cache, get_key_value_cache, register_key_value_cache
+from helpers.Database import create_redis_connection, delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
@@ -177,7 +179,7 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None):
+def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None, pipeline = None):
     time_init = datetime.now()
     
     print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Waiting booking for local {local_id} on date {date}.')
@@ -190,7 +192,7 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
             print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Timeout waiting booking for local {local_id} on date {date}.')
             raise LocalOverloadedException(message='The local is overloaded. Try again later.')
         
-        value = get_key_value_cache(local_id)
+        value = get_key_value_cache(local_id, pipeline=pipeline)
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] get_key_value_cache: {value}')
         
         if not value:
@@ -218,15 +220,40 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
     uuid = generateUUID() if not uuid else uuid
     
-    value = waitBooking(local_id, date, uuid=uuid)
+    if not redis_connection:
+        redis_connection = create_redis_connection()
     
-    value = value + f"|{str(date)}" if value else str(date)
+    time_init = datetime.now()
     
-    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
-    
-    register_key_value_cache(local_id, value)
-    
-    return uuid
+    while (datetime.now() - time_init).seconds < MAX_TIMEOUT:
+        
+        with redis_connection.pipeline() as pipe:
+        
+            try:
+        
+                pipe.watch(local_id)
+        
+                value = waitBooking(local_id, date, uuid=uuid, pipeline=pipe, MAX_TIMEOUT=MAX_TIMEOUT)
+                
+                value = value + f"|{str(date)}" if value else str(date)
+                
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+                
+                pipe.multi()
+                
+                register_key_value_cache(local_id, value, pipeline=pipe)
+                
+                pipe.execute()
+                
+                return uuid
+            
+            except redis.WatchError:
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Watch error. Retrying...')
+                continue      
+            finally:
+                pipe.unwatch()
+                
+    raise LocalOverloadedException(message='The local is overloaded. Try again later.')
     
 def unregisterBooking(local_id, date, uuid = None):
         
