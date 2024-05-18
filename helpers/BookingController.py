@@ -180,18 +180,18 @@ def deserializeBooking(booking):
 def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None):
     time_init = datetime.now()
     
-    print(f'[{uuid}] Waiting booking for local {local_id} on date {date}.')
+    print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting booking for local {local_id} on date {date}.')
     
     while True:
         
         time_end = datetime.now()
         
         if (time_end - time_init).seconds > MAX_TIMEOUT:
-            print(f'[{uuid}] Timeout waiting booking for local {local_id} on date {date}.')
+            print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Timeout waiting booking for local {local_id} on date {date}.')
             raise LocalOverloadedException(message='The local is overloaded. Try again later.')
         
         value = get_key_value_cache(local_id)
-        print(f'[{uuid}] get_key_value_cache: {value}')
+        print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] get_key_value_cache: {value}')
         
         if not value:
             
@@ -204,13 +204,13 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
         
         dates = value.split('|')
         
-        print(f'[{uuid}] Dates: {dates}')
+        print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Dates: {dates}')
         
         if str(date) in dates:
-            print(f'[{uuid}] Booking found for local {local_id} on date {date}. Waiting')
+            print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Booking found for local {local_id} on date {date}. Waiting')
             time.sleep(sleep_time)
         else:
-            print(f'[{uuid}] Booking not found for local {local_id} on date {date}.')
+            print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Booking not found for local {local_id} on date {date}.')
             return value
     
     
@@ -225,7 +225,7 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
     value += f"|{str(date)}"
     
-    print(f'[{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+    print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
     
     register_key_value_cache(local_id, value)
     
@@ -233,11 +233,11 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
 def unregisterBooking(local_id, date, uuid = None):
         
-    print(f'[{uuid}] Unregistering booking for local {local_id} on date {date}.')
+    print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}]  [{uuid}] Unregistering booking for local {local_id} on date {date}.')
         
     value = get_key_value_cache(local_id)
     
-    print(f'[{uuid}] get_key_value_cache: {value}')
+    print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}]  [{uuid}] get_key_value_cache: {value}')
     
     if not value:
         return value
@@ -252,7 +252,7 @@ def unregisterBooking(local_id, date, uuid = None):
     if str(date) in dates:
         dates.remove(str(date))
         
-        print(f'[{uuid}] Dates: {dates}')
+        print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Dates: {dates}')
         
         if not dates:
             pass
@@ -260,7 +260,7 @@ def unregisterBooking(local_id, date, uuid = None):
         
             value = '|'.join(dates)
             
-            print(f'[{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+            print(f'[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
             
             register_key_value_cache(local_id, value)
         
