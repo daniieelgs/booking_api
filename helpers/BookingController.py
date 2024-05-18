@@ -277,16 +277,12 @@ def unregisterBooking(local_id, date, uuid = None):
         dates.remove(str(date))
         
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Dates: {dates}')
+
+        value = '|'.join(dates)
         
-        if not dates:
-            delete_key_value_cache(local_id)
-        else:
+        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
         
-            value = '|'.join(dates)
-            
-            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
-            
-            register_key_value_cache(local_id, value)
+        register_key_value_cache(local_id, value)
         
     return value
 
