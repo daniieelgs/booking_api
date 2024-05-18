@@ -6,7 +6,7 @@ from sqlite3 import OperationalError
 import time
 from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback, db
 from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp
-from helpers.Database import get_key_value_cache, register_key_value_cache
+from helpers.Database import delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
 from sqlalchemy import and_
@@ -255,7 +255,7 @@ def unregisterBooking(local_id, date, uuid = None):
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Dates: {dates}')
         
         if not dates:
-            pass
+            delete_key_value_cache(local_id)
         else:
         
             value = '|'.join(dates)
