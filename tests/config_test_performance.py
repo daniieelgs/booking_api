@@ -15,11 +15,12 @@ from models.weekday import WeekdayModel
 
 class ConfigTestPerformance(DefaultConfig):
     
-    def __init__(self, database_uri = TEST_PERFORMANCE_DATABASE_URI, waiter_booking_status = BOOKING_TIMEOUT_PERFORMANCE, email_test_mode = True) -> None:
+    def __init__(self, database_uri = TEST_PERFORMANCE_DATABASE_URI, waiter_booking_status = BOOKING_TIMEOUT_PERFORMANCE, email_test_mode = True, redis_test_mode = False) -> None:
         super().__init__()
         self.database_uri = database_uri
         self.waiter_booking_status = waiter_booking_status
         self.email_test_mode = email_test_mode
+        self.redis_test_mode = redis_test_mode
         self.api_prefix = API_PREFIX_PERFORMANCE
         self.database_uri = TEST_PERFORMANCE_DATABASE_URI
         

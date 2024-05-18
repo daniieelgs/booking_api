@@ -53,6 +53,7 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
     os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else -1)
     os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
+    os.environ['REDIS_TEST_MODE'] = str(config.redis_test_mode)
     
     load_dotenv()
             

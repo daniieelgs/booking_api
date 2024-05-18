@@ -24,7 +24,7 @@ def addDateTimes(model):
     
     return model
 
-def addAndCommit(*models, session = None):
+def addAndCommit(*models, session = None, rollback = True):
     
     if len(models) == 0: return False
     
@@ -34,12 +34,13 @@ def addAndCommit(*models, session = None):
             
         db.session.commit() if session is None else session.commit()
     except Exception as e:
-        rollback()
+        active_session = session if session is not None else db.session
+        if rollback: active_session.rollback()
         raise e
     
     return True
 
-def deleteAndCommit(*models, session = None):
+def deleteAndCommit(*models, session = None, rollback = True):
     
     if len(models) == 0: return False
     try:
@@ -49,13 +50,14 @@ def deleteAndCommit(*models, session = None):
                 db.session.delete(model)
         db.session.commit() if session is None else session.commit()
     except Exception as e:
-        rollback()
+        active_session = session if session is not None else db.session
+        if rollback: active_session.rollback()
         raise e
         
 
     return True
 
-def deleteAndFlush(*models, session = None):
+def deleteAndFlush(*models, session = None, rollback = True):
     
     if len(models) == 0: return False
     
@@ -65,15 +67,16 @@ def deleteAndFlush(*models, session = None):
 
         db.session.flush()
     except Exception as e:
-        rollback()
+        active_session = session if session is not None else db.session
+        if rollback: active_session.rollback()
         raise e
     
     return True
 
-def addAndFlush(*models, session = None):
+def addAndFlush(*models, session = None, rollback = True):
     
     if len(models) == 0: return False
-    
+        
     try:
         for model in models:
             model = addDateTimes(model)
@@ -81,7 +84,8 @@ def addAndFlush(*models, session = None):
 
         db.session.flush()
     except Exception as e:
-        rollback()
+        active_session = session if session is not None else db.session
+        if rollback: active_session.rollback()
         raise e
 
     return True

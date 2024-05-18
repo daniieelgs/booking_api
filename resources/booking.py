@@ -17,6 +17,7 @@ from helpers.error.BookingError.WrongServiceWorkGroupException import WrongServi
 from helpers.error.BookingError.WrongWorkerWorkGroupException import WrongWorkerWorkGroupException
 from helpers.error.DataError.UnspecifedDateException import UnspecifedDateException
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
+from helpers.error.LocalError.LocalOverloadedException import LocalOverloadedException
 from helpers.error.ModelNotFoundException import ModelNotFoundException
 from helpers.error.SecurityError.InvalidTokenException import InvalidTokenException
 from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvidedException
@@ -344,6 +345,8 @@ class Booking(MethodView):
             }
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
@@ -413,6 +416,8 @@ class BookingAdmin(MethodView):
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
@@ -463,6 +468,8 @@ class BookingAdmin(MethodView):
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
@@ -551,6 +558,8 @@ class BookingSession(MethodView):
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
@@ -590,6 +599,8 @@ class BookingSession(MethodView):
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
@@ -666,6 +677,8 @@ class BookingSession(MethodView):
         
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
+        except LocalOverloadedException as e:
+            abort(503, message = str(e))
         except (ModelNotFoundException, LocalNotFoundException) as e:
             abort(404, message = str(e))
         except ValueError as e:
