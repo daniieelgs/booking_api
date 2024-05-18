@@ -179,7 +179,7 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None, pipeline = None):
+def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_time = 0.2, uuid = None, pipeline = None, redis_connection = None):
     time_init = datetime.now()
     
     print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Waiting booking for local {local_id} on date {date}.')
@@ -192,7 +192,7 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
             print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Timeout waiting booking for local {local_id} on date {date}.')
             raise LocalOverloadedException(message='The local is overloaded. Try again later.')
         
-        value = get_key_value_cache(local_id, pipeline=pipeline)
+        value = get_key_value_cache(local_id, pipeline=pipeline, redis_connection=redis_connection)
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] get_key_value_cache: {value}')
         
         if not value:
