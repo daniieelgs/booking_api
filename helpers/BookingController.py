@@ -210,7 +210,6 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT=MAX_TIMEOUT_WAIT_BOOKING,
                 
                 register_key_value_cache(local_id, new_value, redis_connection=redis_connection, pipeline=pipe)
                 
-                
                 print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Booking registered for local {local_id} on date {date}.')
                 
                 return uuid
@@ -248,15 +247,11 @@ def unregisterBooking(local_id, date, uuid = None):
         
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Dates: {dates}')
         
-        if not dates:
-            delete_key_value_cache(local_id)
-        else:
+        value = '|'.join(dates)
         
-            value = '|'.join(dates)
-            
-            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
-            
-            register_key_value_cache(local_id, value)
+        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+        
+        register_key_value_cache(local_id, value)
         
     return value
 
