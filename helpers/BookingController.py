@@ -219,39 +219,21 @@ def waitBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, sleep_ti
 def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKING, uuid = None):
     
     uuid = generateUUID() if not uuid else uuid
-    
-    redis_connection = create_redis_connection()
-    
+        
     time_init = datetime.now()
     
     while (datetime.now() - time_init).seconds < MAX_TIMEOUT:
         
-        with redis_connection.pipeline() as pipe:
+        pre_value = waitBooking(local_id, date, uuid=uuid, MAX_TIMEOUT=MAX_TIMEOUT)
         
-            try:
+        value = pre_value + f"|{str(date)}" if pre_value else str(date)
         
-                pipe.watch(local_id)
+        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+                        
+        if register_key_value_cache(local_id, value, pre_value=pre_value):
+            return uuid
         
-                pre_value = waitBooking(local_id, date, uuid=uuid, MAX_TIMEOUT=MAX_TIMEOUT)
-                
-                value = pre_value + f"|{str(date)}" if pre_value else str(date)
-                
-                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
-                
-                pipe.multi()
-                
-                register_key_value_cache(local_id, value, pipeline=pipe)
-                
-                pipe.execute()
-                                
-                pipe.unwatch()
-                
-                return uuid
-            
-            except redis.WatchError:
-                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Watch error. Retrying...')
-            finally:
-                pipe.unwatch()
+        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Value change. Retrying registering booking for local {local_id} on date {date}.')
                 
     raise LocalOverloadedException(message='The local is overloaded. Try again later.')
     
@@ -277,12 +259,16 @@ def unregisterBooking(local_id, date, uuid = None):
         dates.remove(str(date))
         
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Dates: {dates}')
-
-        value = '|'.join(dates)
         
-        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+        if not dates:
+            delete_key_value_cache(local_id)
+        else:
         
-        register_key_value_cache(local_id, value)
+            value = '|'.join(dates)
+            
+            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+            
+            register_key_value_cache(local_id, value)
         
     return value
 

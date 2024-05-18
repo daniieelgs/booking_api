@@ -90,21 +90,36 @@ def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT) -> redis.Redis
     
     return redis.Redis(host=host, port=port, db=0)
 
-def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = create_redis_connection(), pipeline = None):
+def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = create_redis_connection(), pipeline = None, pre_value = None):
     
     if not redis_connection:
         cache_memory[key] = value
         cache_expiry_time[key] = time.time() + exp
-        return
+        return True
     
     if pipeline:
         pipeline.setex(key, exp, value)
         return
     
     with redis_connection.pipeline() as pipe:
-        pipe.multi()
-        pipe.setex(key, exp, value)
-        pipe.execute()
+        pipe.watch(key)
+        try:
+            pipe.multi()
+            
+            if pre_value:
+                current_value = pipe.get(key)
+                if current_value != pre_value:
+                    pipe.unwatch()
+                    return False
+            
+            pipe.setex(key, exp, value)
+            pipe.execute()
+            pipe.unwatch()
+            return True
+        except:
+            pipe.unwatch()
+
+    return False
         
 def get_key_value_cache(key, redis_connection = create_redis_connection(), pipeline = None):
     
