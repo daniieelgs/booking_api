@@ -98,7 +98,7 @@ def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_c
         return
     
     with redis_connection.pipeline() as pipe:
-        pipe.setex(key, value, exp)
+        pipe.setex(key, exp, value)
         pipe.execute()
         
 def get_key_value_cache(key, redis_connection = create_redis_connection()):
