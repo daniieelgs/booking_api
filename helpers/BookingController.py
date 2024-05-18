@@ -248,7 +248,6 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
             
             except redis.WatchError:
                 print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Watch error. Retrying...')
-                continue      
             finally:
                 pipe.unwatch()
                 
