@@ -179,9 +179,11 @@ def deserializeBooking(booking):
         'status': booking.status.status
     }
 
-def perform_atomic_booking(redis_connection, local_id, date, uuid = None):
-    try:
-        with redis_connection.pipeline() as pipe:
+def perform_atomic_booking(redis_connection, local_id, date, exp = MAX_TIMEOUT_WAIT_BOOKING, uuid = None):
+    
+    with redis_connection.pipeline() as pipe:
+
+        try:
             pipe.watch(local_id)
             current_value = pipe.get(local_id)
             current_value = current_value.decode('utf-8') if current_value else ""
@@ -196,20 +198,22 @@ def perform_atomic_booking(redis_connection, local_id, date, uuid = None):
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registering booking for local {local_id} on date {date}.")
             new_value = f"{current_value}|{str(date)}" if current_value else str(date)
             pipe.multi()
-            pipe.set(local_id, new_value)
+            pipe.setex(local_id, exp, new_value)
             pipe.execute()
+            pipe.unwatch()
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registered booking for local {local_id} on date {date}.")
             return True
-    except redis.WatchError:
-        return False
+        except redis.WatchError:
+            pipe.unwatch()
+            return False
 
-def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT=5, uuid=None, sleep_time=0.1):
+def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.1):
     redis_connection = create_redis_connection()
     uuid = uuid or generateUUID()
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting for booking for local {local_id} on date {date}.")
     time_init = datetime.now()
 
-    while (datetime.now() - time_init).seconds < MAX_TIMEOUT:
+    while (datetime.now() - time_init).seconds < max_timeout:
         success = perform_atomic_booking(redis_connection, local_id, date, uuid=uuid)
         if success:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Local {local_id} registered booking for date {date}.")
