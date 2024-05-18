@@ -243,8 +243,10 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT=MAX_TIMEOUT_WAIT_BOOKING,
                 pipe.execute()
                 pipe.unwatch()
                 return uuid
-            finally:
-                pipe.unwatch()
+            except redis.WatchError:
+                pass
+
+            pipe.unwatch()
 
     raise LocalOverloadedException(message='The local is overloaded. Try again later.')
     
