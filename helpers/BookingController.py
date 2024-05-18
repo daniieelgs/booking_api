@@ -304,7 +304,10 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     uuid = None
     
     try:
-        uuid = waitAndRegisterBooking(local_id, date)
+        
+        client_name = new_booking['client_name']
+        
+        uuid = waitAndRegisterBooking(local_id, date, uuid=client_name)
                     
         for service_id in new_booking['services_ids']:
             service = ServiceModel.query.get(service_id)
