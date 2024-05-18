@@ -20,6 +20,7 @@ DEFAULT_CALL_TIME = True
 
 DEFAULT_ALERT_TIME = 4
 DEFAULT_CHART_SECONDS = -1
+DEFAULT_CHART_TOP_ENDPOINTS = 4
 DEFAULT_CHART = True
     
 SEQUENCE = "sequence"
@@ -28,6 +29,7 @@ ENDPOINT = "endpoint"
 HOST = "host"
 METHOD = "method"
 TITLE = "debug_comment"
+ENABLED = "enabled"
 BODY = "body"
 HEADERS = "headers"
 RESPONSE = "response"
@@ -220,6 +222,8 @@ def parallel(tests: dict):
     
 def test(test_conf: dict):
     
+    if ENABLED in test_conf and not test_conf[ENABLED]: return
+    
     n = test_conf[N] if N in test_conf else 1
     
     for _ in range(n):
@@ -250,6 +254,7 @@ def main():
     parser.add_argument('--alert-time', default=DEFAULT_CHART, type=int, help='Alert time in seconds. If a call takes more than this time, an alert will be shown.')
     parser.add_argument('--chart', default=DEFAULT_AVERAGE_TIME, type=bool, help='Show chart with results.')
     parser.add_argument('--chart-seconds', default=DEFAULT_CHART_SECONDS, type=int, help='Seconds to show in the chart.')
+    parser.add_argument('--chart-top-endpoints', default=DEFAULT_CHART_TOP_ENDPOINTS, type=bool, help='Show top endpoints in the chart.')
     parser.add_argument('--register-average-time', default=DEFAULT_AVERAGE_TIME, type=bool, help='Average time of test.')
     parser.add_argument('--register-average-endpoint', default=DEFAULT_AVERAGE_ENDPOINT, type=bool, help='Average time of each endpoint.')
     parser.add_argument('--register-average-method', default=DEFAULT_AVERAGE_METHOD, type=bool, help='Average time of each method.')
