@@ -7,7 +7,7 @@ import time
 
 import redis
 from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback, db
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp, is_redis_test_mode
 from helpers.Database import create_redis_connection, delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
@@ -90,7 +90,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     if work_group_id:
         return [booking for booking in bookings_query.all() if booking.work_group_id == work_group_id]
 
-    bookings = list(bookings_query.all())
+    bookings = list(bookings_query.with_for_update().all())
     
     done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
@@ -207,8 +207,9 @@ def perform_atomic_booking(redis_connection, local_id, date, exp = MAX_TIMEOUT_W
             pipe.unwatch()
             return False
 
-def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.5):
+def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.1):
     redis_connection = create_redis_connection()
+    if is_redis_test_mode(): return
     uuid = uuid or generateUUID()
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting for booking for local {local_id} on date {date}.")
     time_init = datetime.now()
@@ -296,6 +297,8 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         client_name = new_booking['client_name']
         
         uuid = waitAndRegisterBooking(local_id, date, uuid=client_name)
+        
+        
                     
         for service_id in new_booking['services_ids']:
             service = ServiceModel.query.get(service_id)
