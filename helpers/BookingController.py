@@ -232,9 +232,9 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
         
                 pipe.watch(local_id)
         
-                value = waitBooking(local_id, date, uuid=uuid, pipeline=pipe, MAX_TIMEOUT=MAX_TIMEOUT)
+                pre_value = waitBooking(local_id, date, uuid=uuid, MAX_TIMEOUT=MAX_TIMEOUT)
                 
-                value = value + f"|{str(date)}" if value else str(date)
+                value = pre_value + f"|{str(date)}" if pre_value else str(date)
                 
                 print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
                 
@@ -243,13 +243,15 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
                 register_key_value_cache(local_id, value, pipeline=pipe)
                 
                 pipe.execute()
+                                
+                pipe.unwatch()
+                
+                return uuid
             
             except redis.WatchError:
                 print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Watch error. Retrying...')
             finally:
                 pipe.unwatch()
-                
-            return uuid
                 
     raise LocalOverloadedException(message='The local is overloaded. Try again later.')
     
