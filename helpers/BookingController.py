@@ -220,10 +220,7 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
     value = waitBooking(local_id, date, uuid=uuid)
     
-    if not value:
-        value = "" 
-    
-    value += f"|{str(date)}"
+    value = value + f"|{str(date)}" if value else str(date)
     
     print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
     
@@ -412,9 +409,20 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         except SQLAlchemyError as e:
             raise e
         
-        unregisterBooking(local_id, date, uuid=uuid)
+        if commit:
+            unregisterBooking(local_id, date, uuid=uuid)
         
-        return booking, session
+        def once(func):
+            func.__called__ = False
+            def wrapper(*args, **kwargs):
+                if not func.__called__:
+                    func.__called__ = True
+                    return func(*args, **kwargs)
+            return wrapper
+        
+        unregister_once_callback = once(lambda: unregisterBooking(local_id, date, uuid=uuid))
+        
+        return booking, unregister_once_callback
     
     except Exception as e:
         

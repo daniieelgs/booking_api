@@ -3,7 +3,7 @@ from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from jwt import ExpiredSignatureError
-from helpers.BookingController import calculatEndTimeBooking, calculateExpireBookingToken, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper
+from helpers.BookingController import calculatEndTimeBooking, calculateExpireBookingToken, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper, unregisterBooking
 from helpers.BookingEmailController import send_cancelled_mail_async, send_confirmed_mail_async, send_updated_mail_async, start_waiter_booking_status
 from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekDataRequest
 from helpers.DatetimeHelper import now
@@ -309,15 +309,21 @@ class Booking(MethodView):
         
         try:
             
-            booking, session = createOrUpdateBooking(new_booking, local=local, commit=False)
+            booking, unregisterFromCache = createOrUpdateBooking(new_booking, local=local, commit=False)
                         
             exp:timedelta = calculateExpireBookingToken(booking.datetime_init, local.location)
                         
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                         
             booking.email_confirm = True
-                        
-            commit(session)
+            
+            try:            
+                commit(session)
+            except SQLAlchemyError as e:
+                unregisterFromCache()
+                raise e
+            
+            unregisterFromCache()
                         
             email_confirm = send_confirm_booking_mail(local, booking, token)
                         
@@ -409,7 +415,7 @@ class BookingAdmin(MethodView):
         session = None
                 
         try:
-            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -461,7 +467,7 @@ class BookingAdmin(MethodView):
         session = None
                 
         try:
-            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -553,7 +559,7 @@ class BookingSession(MethodView):
         session = None
 
         try:
-            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             send_updated_mail_async(booking.local_id, booking.id)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -595,7 +601,7 @@ class BookingSession(MethodView):
         session = None
 
         try:
-            booking, session = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
@@ -666,9 +672,15 @@ class BookingSession(MethodView):
             
             new_booking['status'] = CONFIRMED_STATUS
             
-            booking, session = createOrUpdateBooking(new_booking, local_id, commit=False, force=force)
+            booking, unregisterFromCache = createOrUpdateBooking(new_booking, local_id, commit=False, force=force)
             
-            commit(session)
+            try:            
+                commit(session)
+            except SQLAlchemyError as e:
+                unregisterFromCache()
+                raise e
+            
+            unregisterFromCache()
             
             if notify:
                 send_confirmed_mail_async(booking.local_id, booking.id)
