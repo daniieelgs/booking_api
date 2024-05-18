@@ -231,6 +231,7 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
                         
         if register_key_value_cache(local_id, value, pre_value=pre_value):
+            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Booking registered for local {local_id} on date {date}.')
             return uuid
         
         print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Value change. Retrying registering booking for local {local_id} on date {date}.')

@@ -102,8 +102,8 @@ def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_c
         return
     
     with redis_connection.pipeline() as pipe:
-        pipe.watch(key)
         try:
+            pipe.watch(key)
             pipe.multi()
             
             if pre_value:
