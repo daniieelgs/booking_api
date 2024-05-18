@@ -227,7 +227,7 @@ def waitAndRegisterBooking(local_id, date, MAX_TIMEOUT = MAX_TIMEOUT_WAIT_BOOKIN
     
     print(f'[{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
     
-    register_key_value_cache(local_id, date)
+    register_key_value_cache(local_id, value)
     
     return uuid
     
