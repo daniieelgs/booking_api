@@ -225,6 +225,8 @@ def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING,
     
 def unregisterBooking(local_id, date, uuid = None):
         
+    time.sleep(0.5)
+        
     print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}]  [{uuid}] Unregistering booking for local {local_id} on date {date}.')
         
     value = get_key_value_cache(local_id)
@@ -414,7 +416,8 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         unregister_once_callback = once(lambda: unregisterBooking(local_id, date, uuid=uuid))
         
         return booking, unregister_once_callback
-    
+    except LocalOverloadedException as e:
+        raise e
     except Exception as e:
         
         unregisterBooking(local_id, date, uuid=uuid)
