@@ -14,6 +14,11 @@ services:
       - ${SSL_CERT_PATH}:/etc/ssl/certs/fullchain.pem:ro
       - ${SSL_KEY_PATH}:/etc/ssl/private/privkey.pem:ro
       - .:/app
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
     depends_on:
       - database
 
@@ -26,6 +31,11 @@ services:
     volumes:
       - db-data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
 
   worker:
     build: .
@@ -35,6 +45,11 @@ services:
     depends_on:
       - redis
       - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
 
   beat:
     build: .
@@ -44,6 +59,11 @@ services:
     depends_on:
       - redis
       - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
 
   redis:
     image: redis:alpine
@@ -51,6 +71,11 @@ services:
       - "6379:6379"
     depends_on:
       - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
     volumes:
       - redis-data:/data
 
