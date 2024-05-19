@@ -798,7 +798,7 @@ def compile_string(string: str|dict|list, value_parser=None):
             
             value = get_value(response, vars[1:]) if len(vars) > 1 else response
         
-        string_result = string_result.replace(f"{{{var}}}", value)
+        string_result = string_result.replace(f"{{{var}}}", str(value))
     
     return string_result
     
@@ -815,8 +815,22 @@ def get_data_call(test):
     if RESPONSE not in test: test[RESPONSE] = None
     if EXPECTED_STATUS not in test: test[EXPECTED_STATUS] = None
     
-    for key in test[BODY]:
-        test[BODY][key] = compile_string(test[BODY][key])
+    if type(test[BODY]) is list:
+        
+        body = []
+        
+        for b in test[BODY]:
+            
+            if type(b) is dict:
+                body.append({key: compile_string(b[key]) for key in b})
+            else:
+                body.append(compile_string(b))
+                
+        test[BODY] = body
+        
+    else:
+        for key in test[BODY]:
+            test[BODY][key] = compile_string(test[BODY][key])
         
     for key in test[HEADERS]:
         test[HEADERS][key] = compile_string(test[HEADERS][key])

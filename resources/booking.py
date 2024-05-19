@@ -415,7 +415,7 @@ class BookingAdmin(MethodView):
         session = None
                 
         try:
-            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -467,7 +467,7 @@ class BookingAdmin(MethodView):
         session = None
                 
         try:
-            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
+            booking, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking, force=force)
             
             if notify: send_updated_mail_async(booking.local_id, booking.id)
             
@@ -559,7 +559,7 @@ class BookingSession(MethodView):
         session = None
 
         try:
-            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             send_updated_mail_async(booking.local_id, booking.id)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
@@ -569,6 +569,7 @@ class BookingSession(MethodView):
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
+            traceback.print_exc()
             abort(400, message = str(e))
         except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             abort(409, message = str(e))
@@ -601,7 +602,7 @@ class BookingSession(MethodView):
         session = None
 
         try:
-            booking, _, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
+            booking, _ = createOrUpdateBooking(booking_data, booking.local_id, bookingModel=booking)
             return booking
         except (StatusNotFoundException, WeekdayNotFoundException) as e:
             abort(500, message = str(e))
