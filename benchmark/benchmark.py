@@ -45,6 +45,8 @@ HOST = "HOST"
 
 METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
+JSON_FILE_NAME = "results.json"
+
 DEFAULT_HEADERS = {
     "Content-Type": "application/json",
 }
@@ -58,6 +60,80 @@ benchmark_results = {}
 admin_token_value = None
 host_value = None
  
+def save_results_json(results_path, results):
+    with open(results_path, 'w') as file:
+        json.dump(results, file, indent=4)
+ 
+def process_results(results_path):
+    
+    average_results = {}
+    
+    for endpoint in benchmark_results:
+        total_time = 0.0
+        total_calls = 0
+        
+        total_correct_status = 0
+        total_incorrect_status = 0
+        total_checked_status = 0
+        
+        results_method = {}
+        
+        for result in benchmark_results[endpoint]:
+            total_time += result["time"]
+            total_calls += 1
+            
+            results_method[result["method"]] = {
+                "total_time": results_method[result["method"]]["total_time"] + result["time"] if result["method"] in results_method else result["time"],
+                "total_calls": results_method[result["method"]]["total_calls"] + 1 if result["method"] in results_method else 1
+            }
+            
+            if result["status_expected"] != "-":
+                total_checked_status += 1
+                
+                results_method[result["method"]]["total_checked_status"] = results_method[result["method"]]["total_checked_status"] + 1 if result["method"] in results_method else 1
+                
+                if result["ok"]:
+                    total_correct_status += 1
+                    results_method[result["method"]]["total_correct_status"] = results_method[result["method"]]["total_correct_status"] + 1 if result["method"] in results_method else 1
+
+                else:
+                    total_incorrect_status += 1
+                    results_method[result["method"]]["total_incorrect_status"] = results_method[result["method"]]["total_incorrect_status"] + 1 if result["method"] in results_method else 1
+                
+        average_time = float(total_time) / total_calls
+        percent_correct_status = (float(total_correct_status) / total_checked_status) * 100 if total_checked_status > 0 else 100
+        percent_incorrect_status = (float(total_incorrect_status) / total_checked_status) * 100 if total_checked_status > 0 else 0
+        
+        average_method = {}
+        
+        for method in results_method:
+            average_method[method] = {
+                "average_time": float(results_method[method]["total_time"]) / results_method[method]["total_calls"],
+                "percent_correct_status": (float(results_method[method]["total_correct_status"]) / results_method[method]["total_checked_status"]) * 100 if results_method[method]["total_checked_status"] > 0 else 100,
+                "percent_incorrect_status": (float(results_method[method]["total_incorrect_status"]) / results_method[method]["total_checked_status"]) * 100 if results_method[method]["total_checked_status"] > 0 else 0,
+                "total_calls": results_method[method]["total_calls"],
+                "total_checked_status": results_method[method]["total_checked_status"],
+                "total_correct_status": results_method[method]["total_correct_status"],
+                "total_incorrect_status": results_method[method]["total_incorrect_status"]
+            }
+            
+        average_results[endpoint] = {
+            "average_time": average_time,
+            "percent_correct_status": percent_correct_status,
+            "percent_incorrect_status": percent_incorrect_status,
+            "total_calls": total_calls,
+            "total_checked_status": total_checked_status,
+            "total_correct_status": total_correct_status,
+            "total_incorrect_status": total_incorrect_status,
+            "average_method": average_method
+        }
+        
+    file_name = JSON_FILE_NAME
+    
+    results_path = os.path.join(results_path, file_name)
+        
+    save_results_json(results_path, average_results)
+ 
 def register_benchmark(endpoint, method, time, status, status_expected):
     
     if endpoint not in benchmark_results:
@@ -65,7 +141,7 @@ def register_benchmark(endpoint, method, time, status, status_expected):
     
     benchmark_results[endpoint].append({"method": method, "time": time, "status": status, "status_expected": status_expected if status_expected else "-", "ok": (status == status_expected) if status_expected else True})
     
-def make_request(method, endpoint, body, headers, retries=3):
+def make_request(method, endpoint, body, headers, retries=5):
     
     for i in range(retries):
         try:
@@ -172,7 +248,7 @@ def compile_string(string: str|dict|list):
             
             value = get_value(response, vars[1:]) if len(vars) > 1 else response
         
-        string_result = string_result.replace(f"{{{var}}}", value)
+        string_result = string_result.replace(f"{{{var}}}", str(value))
     
     return string_result
     
@@ -188,8 +264,22 @@ def get_data_call(test):
     if RESPONSE not in test: test[RESPONSE] = None
     if EXPECTED_STATUS not in test: test[EXPECTED_STATUS] = None
     
-    for key in test[BODY]:
-        test[BODY][key] = compile_string(test[BODY][key])
+    if type(test[BODY]) is list:
+        
+        body = []
+        
+        for b in test[BODY]:
+            
+            if type(b) is dict:
+                body.append({key: compile_string(b[key]) for key in b})
+            else:
+                body.append(compile_string(b))
+                
+        test[BODY] = body
+        
+    else:
+        for key in test[BODY]:
+            test[BODY][key] = compile_string(test[BODY][key])
         
     for key in test[HEADERS]:
         test[HEADERS][key] = compile_string(test[HEADERS][key])
@@ -241,6 +331,9 @@ def benchmark(results_path: str, tests: dict, register_average_time: bool, regis
     
     test(tests)
     
+    print("\nProcessing results...")
+    
+    process_results(results_path)
 
 def main():
     

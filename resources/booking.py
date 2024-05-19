@@ -569,6 +569,7 @@ class BookingSession(MethodView):
         except ModelNotFoundException as e:
             abort(404, message = str(e))
         except ValueError as e:
+            traceback.print_exc()
             abort(400, message = str(e))
         except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             abort(409, message = str(e))
