@@ -1,6 +1,7 @@
 from enum import Enum
 import socket
 from dotenv import load_dotenv
+import logging
 import os
 
 load_dotenv(verbose=True, override=True)
@@ -96,6 +97,24 @@ DEFAULT_MIN_TIMEOUT_CONFIRM_BOOKING = 5
 DEFAULT_RETRY_SEND_EMAIL = 120
 
 DEFAULT_MAX_TIMEOUT_WAIT_BOOKING = 5
+
+#---- LOGGING CONFIG --------------
+
+LOGGING_LEVELS = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL
+}
+
+DEFAULT_FILENAME_LOG = 'private/app.log'
+DEFAULT_ROTATING_LOG_WHEN = 'midnight'
+DEFAULT_MAX_BYTES_LOG = 1024 * 1024 * 10 # 10MB
+DEFAULT_BACKUP_COUNT_LOG = 3
+DEFAULT_LOGGING_LEVEL = 'INFO'
+
+#----------------------------------
 
 #---- TEST CONFIG --------------
 
@@ -206,6 +225,19 @@ def get_fqdn_cache():
     if not FQDN_CACHE:
         update_fqdn_cache()
     return FQDN_CACHE
+
+#---- LOGGING CONFIG --------------
+
+MAX_BYTES_LOG = int(os.getenv('MAX_BYTES_LOG', DEFAULT_MAX_BYTES_LOG))
+BACKUP_COUNT_LOG = int(os.getenv('BACKUP_COUNT_LOG', DEFAULT_BACKUP_COUNT_LOG))
+
+FILENAME_LOG = os.getenv('FILENAME_LOG', DEFAULT_FILENAME_LOG)
+ROTATING_LOG_WHEN = os.getenv('ROTATING_LOG_WHEN', DEFAULT_ROTATING_LOG_WHEN)
+
+_LOGGING_LEVEL = os.getenv('LOGGING_LEVEL', DEFAULT_LOGGING_LEVEL)
+LOGGING_LEVEL = LOGGING_LEVELS[_LOGGING_LEVEL] if _LOGGING_LEVEL in LOGGING_LEVELS else LOGGING_LEVELS[DEFAULT_LOGGING_LEVEL]
+
+#---------------------------------
 
 #---- TEST CONFIG --------------
 

@@ -15,7 +15,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import API_PREFIX, DEBUG, CERT_SSL, KEY_SSL, TEST_PERFORMANCE, setApp
+from globals import API_PREFIX, BACKUP_COUNT_LOG, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOGGING_LEVEL, MAX_BYTES_LOG, TEST_PERFORMANCE, setApp
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -39,6 +39,9 @@ from tests.config_test_performance import ConfigTestPerformance
 
 import atexit
 
+import logging
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+
 #TODO desarrollas sistema de LOGs
 
 #TODO cambiar datetime.now() por hora actual del location del local
@@ -52,8 +55,10 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['PUBLIC_FOLDER'] = config.public_folder
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
     os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else -1)
-    os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
-    os.environ['REDIS_TEST_MODE'] = str(config.redis_test_mode)
+    if os.getenv('EMAIL_TEST_MODE') is None:
+        os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
+    if os.getenv('REDIS_TEST_MODE') is None:
+        os.environ['REDIS_TEST_MODE'] = str(config.redis_test_mode)
     
     load_dotenv()
             
@@ -224,7 +229,27 @@ def create_app(config: Config = DefaultConfig()):
     # @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
     # def public(resource):
     #     return app.send_static_file(resource)
-             
+    
+    # Logging Configuration
+    # handler = RotatingFileHandler(FILENAME_LOG, maxBytes=MAX_BYTES_LOG, backupCount=BACKUP_COUNT_LOG)
+    # handler.setLevel(LOGGING_LEVEL)
+    # formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(name)s : %(message)s')
+    # handler.setFormatter(formatter)
+    # app.logger.addHandler(handler)
+    
+    # Configura el logger
+    logger = logging.getLogger('MyLogger')
+    logger.setLevel(logging.INFO)
+
+    # Configura TimedRotatingFileHandler para rotar cada 24 horas
+    handler = TimedRotatingFileHandler(FILENAME_LOG, when='midnight', interval=1, backupCount=BACKUP_COUNT_LOG)
+    formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(name)s : %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Usa el logger en tu aplicación
+    logger.info("Inicio de la aplicación.")
+              
     setApp(app)
                                         
     return app
