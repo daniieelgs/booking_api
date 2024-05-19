@@ -208,8 +208,8 @@ def perform_atomic_booking(redis_connection, local_id, date, exp = MAX_TIMEOUT_W
             return False
 
 def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING, uuid=None, sleep_time=0.1):
-    redis_connection = create_redis_connection()
     if is_redis_test_mode(): return
+    redis_connection = create_redis_connection()
     uuid = uuid or generateUUID()
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting for booking for local {local_id} on date {date}.")
     time_init = datetime.now()
