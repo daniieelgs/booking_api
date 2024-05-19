@@ -1,1 +1,309 @@
-{}
+{
+    "vars":{
+        "ADMIN_TOKEN": "ABC00000000000000000",
+        "HOST": "https://booking-api.es/api/test",
+        "data": "2024-10-09"
+    },
+
+    "sequence": [
+        
+        {
+            "debug_comment": "Get all locals",
+            "method": "GET",
+            "endpoint": "/admin/local/all",
+            "headers": {
+                "Authorization": "Bearer {ADMIN_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            "response": "response_all_locals",
+            "expected_status": 200
+        },
+        {
+            "vars": {
+                "local_id": "{response_all_locals.locals.0.id}"
+            }
+        },
+        {
+            "debug_comment": "Get local tokens",
+            "method": "POST",
+            "endpoint": "/admin/tokens/local/{local_id}",
+            "headers": {  
+                "Authorization": "Bearer {ADMIN_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            "response": "local_tokens",
+            "expected_status": 200
+        },
+        {
+            "vars": {
+                "access_token": "{local_tokens.access_token}",
+                "refresh_token": "{local_tokens.refresh_token}"
+            }
+        },
+
+
+        {
+            "debug_comment": "Create booking",
+            "method": "POST",
+            "endpoint": "/booking/local/{local_id}",
+            "body": {
+                "datetime_init": "{__concat({data}, 10:00:00)}",
+                "client_name": "Test",
+                "client_tlf": "123456789",
+                "client_email": "test@example.es",
+                "services_ids": [1]
+            },
+            "response": "response_booking1",
+            "expected_status": 201
+        },
+
+
+        {
+            "debug_comment": "Cancel booking",
+            "method": "DELETE",
+            "endpoint": "/booking?session={response_booking1.session_token}",
+            "expected_status": 204
+        },
+
+        {
+            "parallel": [
+                {
+                    "debug_comment" : "Create Booking 1 [DUAL BOOKING SAME LOCAL]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:00:00)}",
+                        "client_name": "Booking 1 Dual",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking1"
+                },
+                {
+                    "debug_comment" : "Create Booking 2 [DUAL BOOKING SAME LOCAL]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:00:00)}",
+                        "client_name": "Booking 2 Dual",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking2"
+                }
+            ]
+        },
+
+        {
+            "debug_comment": "Cancel booking 1 [DUAL BOOKING SAME LOCAL]",
+            "method": "DELETE",
+            "endpoint": "/booking?session={response_booking1.session_token}"
+        },
+
+        {
+            "debug_comment": "Cancel booking 2 [DUAL BOOKING SAME LOCAL]",
+            "method": "DELETE",
+            "endpoint": "/booking?session={response_booking2.session_token}"
+        },
+
+
+        {
+            "sequence": [
+                {
+                    "debug_comment" : "Create Booking 1 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:00:00)}",
+                        "client_name": "Booking 1 Quint Seq",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking1",
+                    "expected_status": 201
+                },
+                {
+                    "debug_comment" : "Create Booking 2 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:30:00)}",
+                        "client_name": "Booking 2 Quint Seq",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking2",
+                    "expected_status": 201
+                },
+                {
+                    "debug_comment" : "Create Booking 3 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 11:00:00)}",
+                        "client_name": "Booking 3 Quint Seq",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking3",
+                    "expected_status": 201
+                },
+                {
+                    "debug_comment" : "Create Booking 4 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 11:30:00)}",
+                        "client_name": "Booking 4 Quint Seq",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking4",
+                    "expected_status": 201
+                },
+                {
+                    "debug_comment" : "Create Booking 5 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "POST",
+                    "endpoint": "/booking/local/{local_id}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 12:00:00)}",
+                        "client_name": "Booking 5 Quint Seq",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "response": "response_booking5",
+                    "expected_status": 201
+                }
+            ]
+        },
+
+        
+        {
+            "sequence": [
+                {
+                    "debug_comment": "Update booking 1 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking1.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:00:00)}",
+                        "client_name": "Booking 1 Quint Par Updated",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 200
+                },
+                {
+                    "debug_comment": "Update booking 2 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking2.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:30:00)}",
+                        "client_name": "Booking 2 Quint Par Updated",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 200
+                },
+                {
+                    "debug_comment": "Update booking 3 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking3.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 11:00:00)}",
+                        "client_name": "Booking 3 Quint Par Updated",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 200
+                },
+                {
+                    "debug_comment": "Update booking 4 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking4.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 11:30:00)}",
+                        "client_name": "Booking 4 Quint Par Updated",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 200
+                },
+                {
+                    "debug_comment": "Update booking 5 [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking5.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 12:30:00)}",
+                        "client_name": "Booking 5 Quint Par Updated",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 200
+                },
+
+                {
+                    "debug_comment": "Update booking 5 Conflict [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking5.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 10:30:00)}",
+                        "client_name": "Booking 5 Quint Par Updated Conflict",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 409
+                },
+
+                {
+                    "debug_comment": "Update booking 2 Conflict [QUINTUPLE BOOKING DIFERENT DATAS - SEQUENCE]",
+                    "method": "PUT",
+                    "endpoint": "/booking?session={response_booking2.session_token}",
+                    "body": {
+                        "datetime_init": "{__concat({data}, 12:30:00)}",
+                        "client_name": "Booking 2 Quint Par Updated Conflict",
+                        "client_tlf": "123456789",
+                        "client_email": "test@example.es",
+                        "services_ids": [1]
+                    },
+                    "expected_status": 409
+                }
+            ],
+            "n": 4
+        },
+
+        {
+            "parallel": [
+                {},
+                {}
+            ]
+        },
+
+        {
+            "sequence": [
+                {},
+                {}
+            ]
+        }
+
+    ],
+    "n": 1,
+    "end": {
+        "debug_comment": "The last action"
+    },
+    "start": {
+        "debug_comment": "The first action"
+    }
+}
