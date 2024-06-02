@@ -15,7 +15,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import API_PREFIX, BACKUP_COUNT_LOG, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOG_NAME, LOGGING_FORMAT, LOGGING_LEVEL, MAX_BYTES_LOG, ROTATING_LOG_WHEN, TEST_PERFORMANCE, log, setApp, setLogger
+from globals import API_PREFIX, BACKUP_COUNT_LOG, DAILY_HOUR, DAILY_MINUTE, DB_BACKUP_FOLDER, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOG_NAME, LOGGING_FORMAT, LOGGING_LEVEL, MAX_BYTES_LOG, ROTATING_LOG_WHEN, TEST_PERFORMANCE, TIMEZONE, log, setApp, setLogger
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -39,6 +39,8 @@ from tests.config_test_performance import ConfigTestPerformance
 
 import atexit
 
+from pytz import timezone
+
 import logging
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
@@ -55,6 +57,15 @@ def create_app(config: Config = DefaultConfig()):
     # formatter = logging.Formatter(LOGGING_FORMAT)
     # handler.setFormatter(formatter)
     # logger.addHandler(handler)
+
+    FOLDER_LOG = FILENAME_LOG[:FILENAME_LOG.rfind('/')]
+    DB_FOLDER = DB_BACKUP_FOLDER[:config.database_uri.rfind('/')]
+    
+    if not os.path.exists(FOLDER_LOG):
+        os.makedirs(FOLDER_LOG)
+
+    if not os.path.exists(DB_FOLDER):
+        os.makedirs(DB_FOLDER)
 
     setLogger()
 
@@ -117,15 +128,16 @@ def create_app(config: Config = DefaultConfig()):
             result_backend=config.celery_result_backend,
             imports="celery_app.tasks",
             task_ignore_result=True,
+            timezone=TIMEZONE,
             beat_schedule={
-                # 'notify-every-5-seconds': {
-                #     'task': 'celery_app.tasks.notify_hello',
-                #     'schedule': timedelta(seconds=5),
-                #     "options": {"queue": "priority"}
-                # },
+                'notify-every-5-seconds': {
+                    'task': 'celery_app.tasks.daily_worker',
+                    'schedule': crontab(hour=DAILY_HOUR, minute=DAILY_MINUTE),
+                    "options": {"queue": "priority"}
+                },
                 # 'execute-daily-at-specific-time': {
-                #     'task': 'nombre_del_modulo.execute_daily_at_specific_time',
-                #     'schedule': crontab(hour=H, minute=M),  # Reemplaza H con la hora y M con los minutos
+                #     'task': 'celery_app.tasks.test_celery',
+                #     'schedule': crontab(hour=13, minute=46),  # Reemplaza H con la hora y M con los minutos
                 # },
             }    
         ),

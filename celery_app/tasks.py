@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import DEBUG
 import os
 import time
@@ -6,12 +7,13 @@ from celery import current_task
 from dotenv import load_dotenv
 import sqlalchemy
 from db import addAndCommit, rollback
+from helpers.Backup import backup_all
 from helpers.EmailController import send_cancelled_booking_mail, send_confirmed_booking_mail, send_updated_booking_mail
 from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundException
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
-from helpers.security import generateTokens
+from helpers.security import generateTokens, generateUUID
 from models.booking import BookingModel
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, FILENAME_LOG, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
 from helpers.BookingController import calculateExpireBookingToken, cancelBooking
@@ -113,3 +115,15 @@ def send_mail_task(self, local_id, booking_id, email_type: int, _uuid = None):
         #self.default_retry_delay
         log(f"Error sending email. Retrying in {self.default_retry_delay} seconds.", uuid=_uuid, error=exc, level="ERROR", save_cache=True)
         self.retry(exc=exc)
+        
+#execue at especific time
+@shared_task(queue='default')
+def daily_worker():
+    uuid = generateUUID()
+    log('Daily worker executed at:', time.strftime('%X'), _uuid=uuid)
+    
+    backup_all(_uuid_log=uuid)
+    
+    log('Daily worker finished at:', time.strftime('%X'), _uuid=uuid, save_cache=True)
+    
+    #TODO: Add more tasks. Crear vistas en la base datos y eliminar reservas antiguas.

@@ -5,7 +5,7 @@ import mysql.connector
 from mysql.connector.cursor import MySQLCursor
 import redis
 
-from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, is_redis_test_mode
+from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, is_redis_test_mode, log
 
 class DatabaseConnection():
     
@@ -19,7 +19,7 @@ class DatabaseConnection():
 cache_memory = {}
 cache_expiry_time = {}
 
-def export_database(db: DatabaseConnection, output_file):
+def export_database(db: DatabaseConnection, output_file, _uuid_log = None):
     os.environ['MYSQL_PWD'] = db.password
     
     try:
@@ -30,8 +30,10 @@ def export_database(db: DatabaseConnection, output_file):
             shell=True,
             text=True,
         )
+        log(f"Database {db.name} exported to {output_file}", uuid=_uuid_log)
         print("La base de datos ha sido exportada exitosamente.")
     except subprocess.CalledProcessError as e:
+        log(f"Error exporting database", uuid=_uuid_log, level='ERROR', error=e)
         print("Error al exportar la base de datos:", e)
     finally:
         del os.environ['MYSQL_PWD']
