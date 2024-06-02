@@ -15,7 +15,7 @@ from config import Config
 from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
-from globals import API_PREFIX, BACKUP_COUNT_LOG, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOGGING_LEVEL, MAX_BYTES_LOG, TEST_PERFORMANCE, setApp
+from globals import API_PREFIX, BACKUP_COUNT_LOG, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOG_NAME, LOGGING_FORMAT, LOGGING_LEVEL, MAX_BYTES_LOG, ROTATING_LOG_WHEN, TEST_PERFORMANCE, log, setApp, setLogger
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -47,6 +47,21 @@ from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 #TODO cambiar datetime.now() por hora actual del location del local
 def create_app(config: Config = DefaultConfig()):
 
+    # Logging Configuration
+    # logger = logging.getLogger(LOG_NAME)
+    # logger.setLevel(LOGGING_LEVEL)
+
+    # handler = TimedRotatingFileHandler(FILENAME_LOG, when=ROTATING_LOG_WHEN, interval=1, backupCount=BACKUP_COUNT_LOG)
+    # formatter = logging.Formatter(LOGGING_FORMAT)
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
+
+    setLogger()
+
+    UUID = 'APP'
+
+    log('Starting the application.', uuid=UUID)
+
     TEMPLATE_FOLDER = config.template_folder
     PUBLIC_FOLDER_URL = config.public_folder_url
 
@@ -55,12 +70,19 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['PUBLIC_FOLDER'] = config.public_folder
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
     os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else -1)
+    
     if os.getenv('EMAIL_TEST_MODE') is None:
         os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
+        log(f"EMAIL_TEST_MODE: {config.email_test_mode}", uuid=UUID)
     if os.getenv('REDIS_TEST_MODE') is None:
         os.environ['REDIS_TEST_MODE'] = str(config.redis_test_mode)
+        log(f"REDIS_TEST_MODE: {config.redis_test_mode}", uuid=UUID)
+    
+    log(f"DEBUG: {DEBUG}", uuid=UUID)
     
     load_dotenv()
+    
+    log(f"Building app...", uuid=UUID)
             
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER)
     CORS(app)
@@ -76,6 +98,7 @@ def create_app(config: Config = DefaultConfig()):
     app.config['OPENAPI_SWAGGER_UI_URL'] = config.openapi_swagger_ui_url
 
     ##BBDD
+    log(f'Configuring DB', uuid=UUID)
     app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri
     
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -86,6 +109,7 @@ def create_app(config: Config = DefaultConfig()):
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
     ##Celery
+    log(f'Configuring Celery', uuid=UUID)
     
     app.config.from_mapping(
         CELERY=dict(
@@ -116,7 +140,6 @@ def create_app(config: Config = DefaultConfig()):
     Migrate(app, db)
     
     api = Api(app)
-    
     
     api.spec.components.security_scheme(
         'jwt', {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT', 'x-bearerInfoFunc': 'app.decode_token'}
@@ -195,6 +218,8 @@ def create_app(config: Config = DefaultConfig()):
     
     if TEST_PERFORMANCE:
         
+        log("PERFORMANCE TEST MODE ACTIVATED.", uuid=UUID)
+        
         @app.get(getApiPrefix('end'))
         def end_test():
             config.drop()
@@ -221,42 +246,23 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(PublicFilesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}')
     api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     
-    if DEBUG:
-        api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
+    if DEBUG: api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
     
     ##Loal Routes
     
     # @app.get(f'/{PUBLIC_FOLDER_URL}/<string:resource>')
     # def public(resource):
     #     return app.send_static_file(resource)
-    
-    # Logging Configuration
-    # handler = RotatingFileHandler(FILENAME_LOG, maxBytes=MAX_BYTES_LOG, backupCount=BACKUP_COUNT_LOG)
-    # handler.setLevel(LOGGING_LEVEL)
-    # formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(name)s : %(message)s')
-    # handler.setFormatter(formatter)
-    # app.logger.addHandler(handler)
-    
-    # Configura el logger
-    logger = logging.getLogger('MyLogger')
-    logger.setLevel(logging.INFO)
-
-    # Configura TimedRotatingFileHandler para rotar cada 24 horas
-    handler = TimedRotatingFileHandler(FILENAME_LOG, when='midnight', interval=1, backupCount=BACKUP_COUNT_LOG)
-    formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(name)s : %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    # Usa el logger en tu aplicación
-    logger.info("Inicio de la aplicación.")
-              
+                            
     setApp(app)
+              
+    log('App built.', uuid=UUID, save_cache=True)
                                         
     return app
 
 if TEST_PERFORMANCE:
     
-    print("PERFORMANCE TEST MODE ACTIVATED.")
+    log("Configuring the application for performance test.")
     
     config_test_performance = ConfigTestPerformance()
     

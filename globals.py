@@ -1,8 +1,16 @@
+from datetime import datetime
 from enum import Enum
+import json
+from logging.handlers import TimedRotatingFileHandler
 import socket
+import threading
+import traceback
+import uuid
 from dotenv import load_dotenv
 import logging
 import os
+
+from flask import Request, Response
 
 load_dotenv(verbose=True, override=True)
 
@@ -113,6 +121,8 @@ DEFAULT_ROTATING_LOG_WHEN = 'midnight'
 DEFAULT_MAX_BYTES_LOG = 1024 * 1024 * 10 # 10MB
 DEFAULT_BACKUP_COUNT_LOG = 3
 DEFAULT_LOGGING_LEVEL = 'INFO'
+DEFAULT_LOGGING_FORMAT = "[%(asctime)s] [%(levelname)s] - %(message)s"
+DEFAULT_LOG_NAME = 'booking_app'
 
 #----------------------------------
 
@@ -234,6 +244,10 @@ BACKUP_COUNT_LOG = int(os.getenv('BACKUP_COUNT_LOG', DEFAULT_BACKUP_COUNT_LOG))
 FILENAME_LOG = os.getenv('FILENAME_LOG', DEFAULT_FILENAME_LOG)
 ROTATING_LOG_WHEN = os.getenv('ROTATING_LOG_WHEN', DEFAULT_ROTATING_LOG_WHEN)
 
+LOGGING_FORMAT = os.getenv('LOGGING_FORMAT', DEFAULT_LOGGING_FORMAT)
+
+LOG_NAME = os.getenv('LOG_NAME', DEFAULT_LOG_NAME)
+
 _LOGGING_LEVEL = os.getenv('LOGGING_LEVEL', DEFAULT_LOGGING_LEVEL)
 LOGGING_LEVEL = LOGGING_LEVELS[_LOGGING_LEVEL] if _LOGGING_LEVEL in LOGGING_LEVELS else LOGGING_LEVELS[DEFAULT_LOGGING_LEVEL]
 
@@ -283,6 +297,8 @@ def is_redis_test_mode():
 
 app = None
 
+logger = None
+
 def setApp(_app):
     global app
     app = _app
@@ -290,6 +306,120 @@ def setApp(_app):
 def getApp():
     global app
     return app
+
+def setLogger(_logger = None):
+    global logger
+    
+    if not _logger:
+        _logger = logging.getLogger(LOG_NAME)
+        _logger.setLevel(LOGGING_LEVEL)
+        
+        handler = TimedRotatingFileHandler(FILENAME_LOG, when=ROTATING_LOG_WHEN, interval=1, backupCount=BACKUP_COUNT_LOG)
+        formatter = logging.Formatter(LOGGING_FORMAT)
+        handler.setFormatter(formatter)
+        _logger.addHandler(handler)
+    
+    logger = _logger
+    
+def getLogger():
+    global logger
+    return logger
+
+cache_log = {}
+
+def log_parallel(logs:dict):
+    logger = getLogger()
+    
+    for log in logs:
+        
+        level = log.get('level', 'INFO')
+        message = log.get('message', '')
+        
+        error = log.get('error', None)
+        
+        time = log.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        
+        level = level.upper()
+        
+        if logger:
+            if level == 'DEBUG':
+                logger.debug(message)
+            elif level == 'INFO':
+                logger.info(message)
+            elif level == 'WARNING':
+                logger.warning(message)
+                if error: logger.warning(str(error))
+            elif level == 'ERROR':
+                logger.error(message)
+                if error: logger.error(error, exc_info=True, stack_info=True)
+            
+        # time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{time}] [{level}] - {message}")
+
+    
+
+def log(message, level='INFO', uuid=uuid.uuid4().hex, request:Request = None, response:Response = None, error:Exception=None, save_cache=False):
+        
+    try:
+        if request and response:
+            response_data = {
+                'uuid': uuid,
+                'headers': {
+                    'Content-Length': response.content_length,
+                    'Content-Type': request.content_type,
+                    'Host': request.host,
+                },
+                'data': response.json if response.is_json else response.get_data(as_text=True)
+            }
+            
+            message = f'RESPONSE | < [{request.remote_addr}] - \'[{request.method}] {request.path}\' => {response.status_code} - {message}:\n\tDATA : {json.dumps(response_data)} >'
+
+        elif request:
+            
+            data_info = {
+                'headers': {
+                    'Authorization': request.headers.get('Authorization', 'None'),
+                    'Content-Type': request.content_type,
+                    'Host': request.host,
+                },    
+                'json': request.json if request.is_json else {},
+                'form': request.form,
+                'files': request.files,
+                'args': request.args
+            }
+            
+            json_data = {
+                'uuid': uuid,
+                'data': data_info
+            }
+            
+            message = f'REQUEST | < [{request.remote_addr}] - \'[{request.method}] {request.path}\' - {message}:\n\tDATA : {json.dumps(json_data)} >'
+
+        
+        if uuid:
+            message = f"[{uuid}]: {message}"
+            
+            log_uuid = {"level": level, "message": message, "error": str(error) if error else None, "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            
+            if uuid not in cache_log:
+                cache_log[uuid] = [log_uuid]
+            else:
+                cache_log[uuid].append(log_uuid)
+            
+            if not save_cache: return uuid
+                    
+        logs = cache_log.get(uuid, [])
+        
+        thread = threading.Thread(target=log_parallel, args=(logs,))
+        
+        thread.start()
+    
+    except Exception as e:
+        print(f"Error logging: {e}")
+        traceback.print_exc()
+    
+    return uuid
+
 
 class EmailType():
     CONFIRM_EMAIL = 0
