@@ -97,7 +97,7 @@ CREATE TABLE local_settings (
     email_support VARCHAR(70),
     confirmation_link VARCHAR(500),
     cancel_link VARCHAR(500),
-    `update_link` VARCHAR(500),
+    update_link VARCHAR(500),
     booking_timeout INT,
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL,

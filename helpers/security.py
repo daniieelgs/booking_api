@@ -10,13 +10,17 @@ import jwt
 from cryptography.fernet import Fernet
 
 
-from globals import CRYPTO_KEY, DEFAULT_CRYPTO_JWT, JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, CRYPTO_KEY, DEFAULT_CRYPTO_JWT, JWT_ALGORITHM, LOCAL_ROLE, PASSWORD_SIZE, EXPIRE_TOKEN, EXPIRE_ACCESS, SECRET_JWT
 
 from sqlalchemy.exc import SQLAlchemyError
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
 
 from db import db, addAndCommit
 from helpers.DatetimeHelper import now
+from helpers.error.SecurityError.AdminTokenRoleException import AdminTokenRoleException
+from helpers.error.SecurityError.AdminTokenIdentityException import AdminTokenIdentityException
+from helpers.error.SecurityError.NoTokenProvidedException import NoTokenProvidedException
+from helpers.error.SecurityError.TokenNotFound import TokenNotFoundException
 from models.session_token import SessionTokenModel
 from models.user_session import UserSessionModel
 
@@ -78,4 +82,38 @@ def encrypt_str(txt, key = CRYPTO_KEY):
 def decrypt_str(txt, key = CRYPTO_KEY):
     cipher_suite = Fernet(key)
     return cipher_suite.decrypt(txt).decode()
+
+def check_admin_token(token):
+    try:
+        jwt_decoded = decodeJWT(token)
+        
+        identity = jwt_decoded['sub']
+        id = jwt_decoded['token']
+        
+        if identity != ADMIN_IDENTITY:
+            # abort(403, message = 'You are not allowed to create a local.')
+            raise AdminTokenIdentityException()
+        
+        token = SessionTokenModel.query.get(id)
+        
+        if not token:
+            raise TokenNotFoundException('The token does not exist.')
+        
+        if token.user_session.user != ADMIN_ROLE:
+            # abort(403, message = 'You are not allowed to create a local.')
+            raise AdminTokenRoleException()
+        
+        return id, identity
+    
+    except Exception as e:
+        traceback.print_exc()
+        raise e
+    
+def check_admin_request(request):
+    token_header = request.headers.get('Authorization')
+
+    if not token_header or not token_header.startswith('Bearer '):
+        raise NoTokenProvidedException('Missing Authorization Header.')
+    
+    return check_admin_token(token_header.split(' ')[1])
 

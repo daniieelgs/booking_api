@@ -21,3 +21,4 @@ benchmark/results
 benchmark/test.json
 package.json
 app.log
+app.log.*

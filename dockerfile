@@ -4,9 +4,16 @@ WORKDIR /app
 
 RUN apk add --no-cache gcc musl-dev linux-headers mariadb-client
 
+#Set date and time Madrid/Europe
+ENV TZ=Europe/Madrid
+
+RUN apk add --no-cache tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 RUN adduser --disabled-password --gecos '' apiuser
 
-RUN mkdir ./logs
+RUN mkdir ./private
+RUN mkdir ./private/logs
 
 COPY requirements.txt requirements.txt
 
