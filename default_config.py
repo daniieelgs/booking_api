@@ -4,7 +4,7 @@ from globals import CELERY_BROKER_URL, CELERY_RESULT_BACKEND, DATABASE_URI, SECR
 
 class DefaultConfig(Config):
     
-    def __init__(self) -> None:
+    def __init__(self, email_test_mode = False, redis_test_mode = False) -> None:
         super().__init__(
             template_folder='templates',
             public_folder='public',
@@ -21,7 +21,7 @@ class DefaultConfig(Config):
             waiter_booking_status=TIMEOUT_CONFIRM_BOOKING,
             celery_broker_url=CELERY_BROKER_URL,
             celery_result_backend=CELERY_RESULT_BACKEND,
-            email_test_mode=False,
-            redis_test_mode=False
+            email_test_mode=email_test_mode,
+            redis_test_mode=redis_test_mode
         )
         

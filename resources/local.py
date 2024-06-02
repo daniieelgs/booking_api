@@ -276,7 +276,7 @@ class Local(MethodView):
         try:
             deleteAndCommit(local)
             log('Local removed', uuid=_uuid)
-            p = removePath(get_jwt_identity())
+            p = removePath(local_id)
             log(f"'{p}' removed.", uuid=_uuid)
         except Exception as e:
             traceback.print_exc()
@@ -388,12 +388,13 @@ class Local(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(200, LocalWarningSchema)
     @jwt_required(fresh=True)
-    def patch(self, local_data):
+    def patch(self, local_data, _uuid = None):
         f"""
         Actualiza los datos indicados del local. Requiere token de acceso.
         Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
         """
-        return update_local(local_data, get_jwt_identity(), patch=True)
+        log('Patching local', uuid=_uuid)
+        return update_local(local_data, get_jwt_identity(), patch=True, _uuid=_uuid)
         
     
 @blp.route('/login')

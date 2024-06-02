@@ -28,8 +28,8 @@ def generate_message_id(domain):
 
 def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subject, domain, content, type, name = None, _uuid = None) -> bool:
 
-    log(f"Sending mail to {to}...", _uuid=_uuid)
-    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Pass: {smtp_passwd}. Subject: {subject}", _uuid=_uuid)
+    log(f"Sending mail to {to}...", uuid=_uuid)
+    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Pass: {smtp_passwd}. Subject: {subject}", uuid=_uuid)
 
     email = MIMEMultipart()
     email["From"] = f'{name} <{smtp_mail}>' if name else smtp_mail
@@ -42,7 +42,7 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
     if DEBUG:
         load_dotenv()
         if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
-            log("Email test mode activated.", _uuid=_uuid)
+            log("Email test mode activated.", uuid=_uuid)
             return True
 
     # print("Email test mode not activated.")
@@ -55,10 +55,10 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
         server.login(smtp_user, smtp_passwd)
         server.sendmail(smtp_mail, to, email.as_string())
         server.quit()
-        log(f"Mail sent to {to}.", _uuid=_uuid)
+        log(f"Mail sent to {to}.", uuid=_uuid)
         return True
     except Exception as e:
-        log(f"FATAL ERROR. Mail not sent to {to}.", _uuid=_uuid, level="ERROR", error=e)
+        log(f"FATAL ERROR. Mail not sent to {to}.", uuid=_uuid, level="ERROR", error=e)
         return False
 
 

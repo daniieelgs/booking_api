@@ -1,4 +1,4 @@
-# python -m unittest .\tests\test_booking.py
+# python -m unittest .\tests\test_email.py
 
 import datetime
 import json
@@ -186,7 +186,7 @@ class TestEmail(TestCase):
 
     def check_email(self):
         post_booking = self.post_booking(self.booking)
-                
+        
         self.assertEqual(post_booking.status_code, 201)
         
         response = post_booking.json
