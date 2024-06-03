@@ -96,7 +96,8 @@ DEFAULT_KEYWORDS_PAGES = {
     "EMAIL_CONTACT": "{email_contact}",
     "WHATSAPP_LINK": "{whatsapp_link}",
     "WEBSITE": "{website}",
-    "COMMENT": "{comment}"
+    "COMMENT": "{comment}",
+    "UUID_LOG": "{uuid_log}"
 }
 
 DEFAULT_TIMEOUT_CONFIRM_BOOKING = 60

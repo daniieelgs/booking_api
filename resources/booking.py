@@ -10,6 +10,7 @@ from helpers.DataController import getDataRequest, getMonthDataRequest, getWeekD
 from helpers.DatetimeHelper import now
 from helpers.EmailController import send_confirm_booking_mail
 from helpers.LoggingMiddleware import log_route
+from helpers.TimetableController import getTimetable
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
 from helpers.error.BookingError.BookingNotFoundError import BookingNotFoundException
 from helpers.error.BookingError.LocalUnavailableException import LocalUnavailableException
@@ -39,6 +40,7 @@ from models.service import ServiceModel
 from models.service_booking import ServiceBookingModel
 from models.session_token import SessionTokenModel
 from models.status import StatusModel
+from models.timetable import TimetableModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
 from schema import BookingAdminListSchema, BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, NotifyParams, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
@@ -91,7 +93,7 @@ class SeePublicBooking(MethodView):
     @blp.response(422, description='Fecha no especificada.')
     @blp.response(204, description='El local no tiene reservas para la fecha indicada.')
     @blp.response(200, PublicBookingListSchema)
-    def get(self, _, local_id, _uuid = None):
+    def get(self, params, local_id, _uuid = None):
         """
         Devuelve las reservas públicas de una fecha específica.
         """      
@@ -114,6 +116,17 @@ class SeePublicBooking(MethodView):
         except UnspecifedDateException as e:
             log(f"Date not specified.", uuid=_uuid, level='WARNING', error=e)
             abort(422, message=str(e))    
+                
+        free = params['free'] if 'free' in params else False
+                
+        if free:
+            week_day = WeekdayModel.query.filter_by(weekday=WEEK_DAYS[datetime_init.weekday()]).first()
+            timetable_init = getTimetable(local_id, week_day.id, datetime_init)
+            timetable_end = getTimetable(local_id, week_day.id, datetime_end)
+            init = timetable_init[0].opening_time if timetable_init else None
+            end = timetable_end[-1].closing_time if timetable_end else None
+            print("Timetables: ", init, end)
+            
                 
         return {"bookings": bookings, "total": len(bookings)}
     
@@ -343,6 +356,7 @@ class Booking(MethodView):
         local = LocalModel.query.get_or_404(local_id)
         
         log(f"Creating a new booking for local '{local.name}'.", uuid=_uuid)
+        log(f"<| Last UUID Log: [NULL] |>")
         
         session = None
         
@@ -358,6 +372,8 @@ class Booking(MethodView):
             token = generateTokens(booking.id, booking.local_id, refresh_token=True, expire_refresh=exp, user_role=USER_ROLE)
                         
             booking.email_confirm = True
+            
+            booking.uuid_log = _uuid
             
             try:
                 log(f"Commiting booking for local '{local.name}'.", uuid=_uuid)            
@@ -440,7 +456,7 @@ class BookingAdmin(MethodView):
         log(f"Getting booking '{booking_id}'.", uuid=_uuid)
         
         booking = BookingModel.query.get_or_404(booking_id)
-        
+                
         if not booking.local_id == get_jwt_identity():
             log(f"Getting booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
             abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
@@ -462,7 +478,7 @@ class BookingAdmin(MethodView):
         Actualiza una reserva. Por parte del local.
         """
         
-        log(f"Updating booking '{booking_id}'.", uuid=_uuid)
+        log(f"Updating booking '{booking_id}' by local.", uuid=_uuid)
         
         booking = BookingModel.query.get(booking_id)
         
@@ -472,6 +488,10 @@ class BookingAdmin(MethodView):
         if not booking:
             log(f"Booking '{booking_id}' not found.", uuid=_uuid, level='WARNING')
             abort(404, message = f'The booking [{booking_id}] was not found.')
+                
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        
+        booking.uuid_log = _uuid
                 
         if booking.local_id != get_jwt_identity():
             log
@@ -527,12 +547,15 @@ class BookingAdmin(MethodView):
         Actualiza una reserva indicando los campos a modificar. Por parte del local.
         """
 
-        log(f"Updating booking '{booking_id}'.", uuid=_uuid)
+        log(f"Updating booking '{booking_id}' by local.", uuid=_uuid)
         
         notify = 'notify' in params and params['notify']
         force = 'force' in params and params['force']
         
         booking = BookingModel.query.get(booking_id)
+
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
 
         if not booking:
             log(f"Booking '{booking_id}' not found.", uuid=_uuid, level='WARNING')
@@ -593,6 +616,9 @@ class BookingAdmin(MethodView):
         log(f"Deleting booking '{booking_id}'.", uuid=_uuid)
         
         booking = BookingModel.query.get_or_404(booking_id)
+        
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
         
         if not booking.local_id == get_jwt_identity():
             log(f"Unauthorized to delete booking '{booking_id}'.", uuid=_uuid, level='WARNING')
@@ -660,6 +686,9 @@ class BookingSession(MethodView):
 
         log(f"Updating booking '{booking.id}' by session.", uuid=_uuid)
 
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
+
         status = booking.status.status
 
         if status == CANCELLED_STATUS or status == DONE_STATUS:
@@ -714,6 +743,9 @@ class BookingSession(MethodView):
 
         log(f"Updating booking '{booking.id}' by session.", uuid=_uuid)
         
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
+        
         status = booking.status.status
 
         if status == CANCELLED_STATUS or status == DONE_STATUS:
@@ -766,6 +798,9 @@ class BookingSession(MethodView):
         
         log(f"Deleting booking '{booking.id}' by session.", uuid=_uuid)
         
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
+        
         status = booking.status.status
         
         if status == DONE_STATUS or status == CANCELLED_STATUS:
@@ -813,9 +848,13 @@ class BookingSession(MethodView):
             
             log(f"Creating a new booking by local. Local: '{local_id}'.", uuid=_uuid)
             
+            log(f"<| Last UUID Log: [NULL] |>")
+            
             new_booking['status'] = CONFIRMED_STATUS
             
             booking, unregisterFromCache = createOrUpdateBooking(new_booking, local_id, commit=False, force=force, _uuid = _uuid)
+            
+            booking.uuid_log = _uuid
             
             log(f"Booking created by local. Local: '{local_id}'.", uuid=_uuid)
             
@@ -877,6 +916,9 @@ class BookingConfirm(MethodView):
         
         log(f"Confirming booking '{booking.id}' by session.", uuid=_uuid)
         
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
+        
         if not booking.status.status == PENDING_STATUS:
             log(f"Booking '{booking.id}' is not pending. Status: {booking.status.status}", uuid=_uuid)
             status = StatusModel.query.get(booking.status_id)
@@ -912,7 +954,10 @@ class BookingConfirmId(MethodView):
         
         booking = BookingModel.query.get_or_404(booking_id)
         
-        log(f"Confirming booking '{booking.id}'.", uuid=_uuid)
+        log(f"Confirming booking '{booking.id}' by local.", uuid=_uuid)
+        
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
         
         local = LocalModel.query.get(get_jwt_identity())
         
@@ -959,7 +1004,10 @@ class BookingCancelId(MethodView):
         """
         booking = BookingModel.query.get_or_404(booking_id)
         
-        log(f"Cancelling booking '{booking.id}'.", uuid=_uuid)
+        log(f"Cancelling booking '{booking.id}' by local.", uuid=_uuid)
+        
+        log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
+        booking.uuid_log = _uuid
         
         local = LocalModel.query.get(get_jwt_identity())
         

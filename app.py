@@ -59,7 +59,7 @@ def create_app(config: Config = DefaultConfig()):
     # logger.addHandler(handler)
 
     FOLDER_LOG = FILENAME_LOG[:FILENAME_LOG.rfind('/')]
-    DB_FOLDER = DB_BACKUP_FOLDER[:config.database_uri.rfind('/')]
+    DB_FOLDER = DB_BACKUP_FOLDER[:DB_BACKUP_FOLDER.rfind('/')]
     
     if not os.path.exists(FOLDER_LOG):
         os.makedirs(FOLDER_LOG)
@@ -82,10 +82,10 @@ def create_app(config: Config = DefaultConfig()):
     os.environ['PUBLIC_FOLDER_URL'] = PUBLIC_FOLDER_URL
     os.environ['TIMEOUT_CONFIRM_BOOKING'] = str(config.waiter_booking_status if config.waiter_booking_status else -1)
     
-    if os.getenv('EMAIL_TEST_MODE') is None:
+    if DEBUG or os.getenv('EMAIL_TEST_MODE') is None:
         os.environ['EMAIL_TEST_MODE'] = str(config.email_test_mode)
         log(f"EMAIL_TEST_MODE: {config.email_test_mode}", uuid=UUID)
-    if os.getenv('REDIS_TEST_MODE') is None:
+    if DEBUG or os.getenv('REDIS_TEST_MODE') is None:
         os.environ['REDIS_TEST_MODE'] = str(config.redis_test_mode)
         log(f"REDIS_TEST_MODE: {config.redis_test_mode}", uuid=UUID)
     

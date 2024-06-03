@@ -14,6 +14,7 @@ class LocalModel(db.Model):
     province = db.Column(db.String(45), unique=False, nullable=True)
     location = db.Column(db.String(30), unique=False, nullable=False)
     password = db.Column(db.String(200), unique=False, nullable=False)
+    uuid_log = db.Column(db.String(36), nullable=True)
     datetime_created = db.Column(db.DateTime, unique=False, nullable=True)
     datetime_updated = db.Column(db.DateTime, unique=False, nullable=True)
     

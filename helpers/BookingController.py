@@ -94,6 +94,8 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     
     done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
+    remove_bookings = []
+    
     for booking in bookings:
         if naiveToAware(booking.datetime_end) < now(local.location) and booking.status != done_status:
             
@@ -107,7 +109,10 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
                 raise e
             
             if status_ids and done_status.id not in status_ids:
-                bookings.remove(booking)
+                remove_bookings.append(booking)
+                
+    for booking in remove_bookings:
+        bookings.remove(booking)
     
     return bookings
 
@@ -375,6 +380,8 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         
         booking = bookingModel or BookingModel(**new_booking)
         booking.services = services
+        
+        booking.uuid_log = uuid
         
         try:
             

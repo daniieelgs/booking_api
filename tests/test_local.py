@@ -36,14 +36,15 @@ class TestLocal(TestCase):
     def post_local(self, local):
         return self.client.post(getUrl(ENDPOINT), data=json.dumps(local), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
 
-    def del_local(self, token):
-        return self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {token}"}, content_type='application/json')
+    def del_local(self, id):
+        return self.client.delete(getUrl(ENDPOINT, id), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
 
     def get_local_api(self, token):
         return self.client.get(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {token}"}, content_type='application/json')
 
     def print_all_locals(self):
         all_locals = self.client.get(getUrl('admin', 'local', 'all'),  headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
+        print(all_locals.json)
         
     def create_local(self):
         response_post = self.client.post(getUrl(ENDPOINT), data=json.dumps(self.data), content_type='application/json')
@@ -89,7 +90,9 @@ class TestLocal(TestCase):
         local_put = dict(response_put.json)
         self.assertNotEqual(local_put['local']['datetime_updated'], self.local_get['datetime_updated'])
         local_put['local'].pop('datetime_updated', None)
+        local_put['local'].pop('uuid_log', None)
         self.local_get.pop('datetime_updated', None)
+        self.local_get.pop('uuid_log', None)
         self.assertEqual(local_put['local'], self.local_get)
 
     def delete_local(self):
@@ -97,10 +100,14 @@ class TestLocal(TestCase):
         
         self.refresh_token = response.json['refresh_token']
         self.access_token = response.json['access_token']
-
-        response_delete = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
-        self.assertEqual(response_delete.status_code, 401)
-        response_delete = self.client.delete(getUrl(ENDPOINT), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        local_id = response.json['local']['id']
+        
+        response_delete = self.client.delete(getUrl(ENDPOINT, local_id), headers={'Authorization': f"Bearer {self.refresh_token}"}, content_type='application/json')
+        self.assertEqual(response_delete.status_code, 403)
+        response_delete = self.client.delete(getUrl(ENDPOINT, local_id), headers={'Authorization': f"Bearer {self.access_token}"}, content_type='application/json')
+        self.assertEqual(response_delete.status_code, 403)
+        
+        response_delete = self.client.delete(getUrl(ENDPOINT, local_id), headers={'Authorization': f"Bearer {self.admin_token}"}, content_type='application/json')
         self.assertEqual(response_delete.status_code, 204)
         
         
@@ -161,7 +168,7 @@ class TestLocal(TestCase):
 
         self.assertEqual(len(self.local['warnings']), 1)
 
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
 
         #Test booking_tiemout
@@ -178,7 +185,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 2)
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
         #   2. Desactivado
@@ -193,7 +200,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 2)
 
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
 
         #   3. Valor por defecto
@@ -210,7 +217,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 1)
 
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
 
         #SMTP Settings
@@ -234,7 +241,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 0)
 
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
         #Test conflictos
@@ -314,13 +321,13 @@ class TestLocal(TestCase):
         
         self.local3 = dict(response_post.json)
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
-        r = self.del_local(self.local2['access_token'])
+        r = self.del_local(self.local2['local']['id'])
         self.assertEqual(r.status_code, 204)
         
-        r = self.del_local(self.local3['access_token'])
+        r = self.del_local(self.local3['local']['id'])
         self.assertEqual(r.status_code, 204)
 
         #Warning por dominio:
@@ -336,7 +343,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 1)
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
         
@@ -351,7 +358,7 @@ class TestLocal(TestCase):
         
         self.assertEqual(len(self.local['warnings']), 0)
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
         #  3. Cambiar el dominio del local
@@ -365,7 +372,7 @@ class TestLocal(TestCase):
                 
         self.assertEqual(len(self.local['warnings']), len(data['local_settings']['smtp_settings']))
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
         data['local_settings']['domain'] = 'local.com'
@@ -418,7 +425,7 @@ class TestLocal(TestCase):
         
         self.local = dict(response_post.json)
         
-        r = self.del_local(self.local['access_token'])
+        r = self.del_local(self.local['local']['id'])
         self.assertEqual(r.status_code, 204)
         
           
@@ -542,7 +549,9 @@ class TestLocal(TestCase):
         self.local_patch = dict(response_patch.json)
         
         self.local_update['local'].pop('datetime_updated')
+        self.local_update['local'].pop('uuid_log')
         self.local_patch['local'].pop('datetime_updated')
+        self.local_patch['local'].pop('uuid_log')
         
         self.assertEqual(self.local_patch, self.local_update)
         

@@ -194,6 +194,9 @@ def update_local(local_data, local_id, patch = False, _uuid = None):
     
     log(f'Updating local {local_id}', uuid=_uuid)
     
+    log(f"<| Last UUID Log: [{local.uuid_log}] |>")
+    local.uuid_log = _uuid
+    
     try:
         
         settings_data = local_data.pop('local_settings') if 'local_settings' in local_data else None
@@ -273,10 +276,13 @@ class Local(MethodView):
         
         local = LocalModel.query.get_or_404(local_id)
         
+        log(f"<| Last UUID Log: [{local.uuid_log}] |>")
+        local.uuid_log = _uuid
+        
         try:
             deleteAndCommit(local)
             log('Local removed', uuid=_uuid)
-            p = removePath(get_jwt_identity())
+            p = removePath(local_id)
             log(f"'{p}' removed.", uuid=_uuid)
         except Exception as e:
             traceback.print_exc()
@@ -325,6 +331,8 @@ class Local(MethodView):
         
         log(f'Token decoded. Creating local. [Identiy={identity}. Id={id}]', uuid=_uuid)
         
+        log("<| Last UUID Log: [NULL] |>")
+        
         show_password = 'password' not in local_data
         
         if show_password: local_data['password'] = generatePassword()
@@ -344,6 +352,8 @@ class Local(MethodView):
             local = LocalModel(**local_data)
         
             local.password = pbkdf2_sha256.hash(local.password)
+        
+            local.uuid_log = _uuid
             
             addAndFlush(local)
             
@@ -388,12 +398,12 @@ class Local(MethodView):
     @blp.response(404, description='El local no existe.')
     @blp.response(200, LocalWarningSchema)
     @jwt_required(fresh=True)
-    def patch(self, local_data):
+    def patch(self, local_data, _uuid = None):
         f"""
         Actualiza los datos indicados del local. Requiere token de acceso.
         Valor minimo de timeout_confirm_booking: {MIN_TIMEOUT_CONFIRM_BOOKING} minutos, o -1 para desactivar.
         """
-        return update_local(local_data, get_jwt_identity(), patch=True)
+        return update_local(local_data, get_jwt_identity(), patch=True, _uuid=_uuid)
         
     
 @blp.route('/login')
