@@ -6,8 +6,8 @@ from sqlite3 import OperationalError
 import time
 
 import redis
-from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback, db
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, getApp, is_redis_test_mode
+from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, is_redis_test_mode, log
 from helpers.Database import create_redis_connection, delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
@@ -59,7 +59,7 @@ def getBookingsQuery(local_id, datetime_init = None, datetime_end = None):
     
     return query
 
-def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None, client_filter = None):
+def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id = None, service_id = None, work_group_id = None, client_filter = None, _uuid = None):
 
     local = LocalModel.query.get(local_id)
     
@@ -94,8 +94,13 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     
     done_status = StatusModel.query.filter_by(status=DONE_STATUS).first()
     
+    remove_bookings = []
+    
     for booking in bookings:
         if naiveToAware(booking.datetime_end) < now(local.location) and booking.status != done_status:
+            
+            log(f"Setting done status booking '{booking.id}'", uuid=_uuid)
+            
             booking.status = done_status
             try:
                 addAndCommit(booking)
@@ -104,7 +109,10 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
                 raise e
             
             if status_ids and done_status.id not in status_ids:
-                bookings.remove(booking)
+                remove_bookings.append(booking)
+                
+    for booking in remove_bookings:
+        bookings.remove(booking)
     
     return bookings
 
@@ -188,20 +196,20 @@ def perform_atomic_booking(redis_connection, local_id, date, exp = MAX_TIMEOUT_W
             current_value = pipe.get(local_id)
             current_value = current_value.decode('utf-8') if current_value else ""
             
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Current value: {current_value}")
+            log(f"Current value: {current_value}", uuid=uuid)
             
             if str(date) in current_value:
                 pipe.unwatch()
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Date {date} already booked.")
+                log(f"Date {date} already booked.", uuid=uuid)
                 return False
             
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registering booking for local {local_id} on date {date}.")
+            log(f"Registering booking for local {local_id} on date {date}.", uuid=uuid)
             new_value = f"{current_value}|{str(date)}" if current_value else str(date)
             pipe.multi()
             pipe.setex(local_id, exp, new_value)
             pipe.execute()
             pipe.unwatch()
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Registered booking for local {local_id} on date {date}.")
+            log(f"Registered booking for local {local_id} on date {date}.", uuid=uuid)
             return True
         except redis.WatchError:
             pipe.unwatch()
@@ -211,26 +219,26 @@ def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING,
     if is_redis_test_mode(): return
     redis_connection = create_redis_connection()
     uuid = uuid or generateUUID()
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Waiting for booking for local {local_id} on date {date}.")
+    log(f"Waiting for booking for local {local_id} on date {date}.", uuid=uuid)
     time_init = datetime.now()
 
     while (datetime.now() - time_init).seconds < max_timeout:
         success = perform_atomic_booking(redis_connection, local_id, date, uuid=uuid)
         if success:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Local {local_id} registered booking for date {date}.")
+            log(f"Local {local_id} registered booking for date {date}.", uuid=uuid)
             return uuid
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}] [{uuid}] Local {local_id} is overloaded. Retrying in {sleep_time} seconds.")
+        log(f"Local {local_id} is overloaded. Retrying in {sleep_time} seconds.", uuid=uuid)
         time.sleep(sleep_time)
 
     raise LocalOverloadedException(message=f"Local {local_id} is overloaded. Please try again later.")
     
 def unregisterBooking(local_id, date, uuid = None):
                 
-    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}]  [{uuid}] Unregistering booking for local {local_id} on date {date}.')
+    log(f'Unregistering booking for local {local_id} on date {date}.', uuid=uuid)
         
     value = get_key_value_cache(local_id)
     
-    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}]  [{uuid}] get_key_value_cache: {value}')
+    log(f'get_key_value_cache: {value}', uuid=uuid)
     
     if not value:
         return value
@@ -245,17 +253,17 @@ def unregisterBooking(local_id, date, uuid = None):
     if str(date) in dates:
         dates.remove(str(date))
         
-        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Dates: {dates}')
+        log(f'Dates: {dates}', uuid=uuid)
         
         value = '|'.join(dates)
         
-        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}] [{uuid}] Registering booking for local {local_id} on date {date}. Value: {value}')
+        log(f'Registering booking for local {local_id} on date {date}. Value: {value}', uuid=uuid)
         
         register_key_value_cache(local_id, value)
         
     return value
 
-def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None, force = False):
+def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: BookingModel = None, commit = True, local:LocalModel = None, force = False, _uuid = None):
     
     session = None    
             
@@ -294,9 +302,9 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     
     try:
         
-        client_name = new_booking['client_name']
+        # client_name = new_booking['client_name']
         
-        uuid = waitAndRegisterBooking(local_id, date, uuid=client_name)
+        uuid = waitAndRegisterBooking(local_id, date, uuid=_uuid)
         
         
                     
@@ -372,6 +380,8 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         
         booking = bookingModel or BookingModel(**new_booking)
         booking.services = services
+        
+        booking.uuid_log = uuid
         
         try:
             

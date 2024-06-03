@@ -105,6 +105,7 @@ class LocalSchema(PublicLocalSchema):
     password = fields.Str(required=False, load_only=True)
     password_generated = fields.Str(required=False, dump_only=True)
     local_settings = fields.Nested(LocalSettingsSchema, required=False)
+    uuid_log = fields.Str(required=False, dump_only=True)
     datetime_created = fields.DateTime(required=True, dump_only=True)
     datetime_updated = fields.DateTime(required=True, dump_only=True)
     
@@ -142,7 +143,6 @@ class LocalTokensSchema(Schema):
 class LoginLocalSchema(Schema):
     email = fields.Str(required=True)
     password = fields.Str(required=True)
-    
     
 class ServiceSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
@@ -255,7 +255,7 @@ class BookingSchema(PublicBookingSchema):
     status = fields.Nested(StatusSchema(), dump_only=True)
     total_price = fields.Float(required=True, dump_only=True)
     services = fields.Nested(ServiceSchema(), many=True, dump_only=True)
-    
+    uuid_log = fields.Str(required=False, dump_only=True)
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
         
@@ -308,6 +308,7 @@ class BookingParams(Schema):
     format = fields.Str(required=False, description='Espefica el formato de la fecha y hora. Default: %Y-%m-%d %H:%M:%S')
     worker_id = fields.Int(required=False, description='ID del trabajador para filtrar las reservas.')
     work_group_id = fields.Int(required=False, description='ID del grupo de trabajo para filtrar las reservas.')
+    free = fields.Bool(required=False, description='Muestra las reservas libres.')
     
 class BookingWeekParams(BookingParams):
     days = fields.Int(required=False, description='Espefica el número de días de la semana a visualizar. Default: 7.')

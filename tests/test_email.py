@@ -1,4 +1,4 @@
-# python -m unittest .\tests\test_booking.py
+# python -m unittest .\tests\test_email.py
 
 import datetime
 import json

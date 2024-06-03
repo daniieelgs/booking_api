@@ -330,7 +330,9 @@ class TestBooking(TestCase):
         response = dict(r.json)
         self.assertNotEqual(response_booking['datetime_updated'], response['datetime_updated'])
         du = response.pop('datetime_updated')
+        response.pop('uuid_log')
         response_booking.pop('datetime_updated')
+        response_booking.pop('uuid_log')
         self.assertEqual(response_booking, response)
         
         #Actualizar con datos justos
@@ -746,6 +748,7 @@ class TestBooking(TestCase):
             booking.pop('email_confirmed')
             booking.pop('email_cancelled')
             booking.pop('email_updated')
+            booking.pop('uuid_log')
             r = self.update_booking_admin(id, booking)
             self.assertEqual(r.status_code, 200)
             

@@ -6,7 +6,7 @@ import time
 from dotenv import load_dotenv
 from db import deleteAndCommit, rollback
 
-from globals import TIMEOUT_CONFIRM_BOOKING, DEBUG, USER_ROLE, EmailType, is_email_test_mode
+from globals import TIMEOUT_CONFIRM_BOOKING, DEBUG, USER_ROLE, EmailType, is_email_test_mode, log
 
 from celery_app.tasks import check_booking_status, send_mail_task, set_email_sent
 from helpers.BookingController import calculateExpireBookingToken
@@ -46,20 +46,20 @@ def start_waiter_booking_status(booking_id, timeout=None):
     return timeout
 
     
-def send_confirmed_mail_async(local_id, booking_id):
+def send_confirmed_mail_async(local_id, booking_id, _uuid = None):
     if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.CONFIRMED_EMAIL))
-
-    return send_mail_task.delay(local_id, booking_id, int(EmailType.CONFIRMED_EMAIL))   
+    log("Sending confirmed email async...", uuid=_uuid)
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.CONFIRMED_EMAIL), _uuid = _uuid)   
     
-def send_cancelled_mail_async(local_id, booking_id):
+def send_cancelled_mail_async(local_id, booking_id, _uuid = None):
     if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.CANCELLED_EMAIL))
+    log("Sending cancelled email async...", uuid=_uuid)
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.CANCELLED_EMAIL), _uuid = _uuid)   
 
-    return send_mail_task.delay(local_id, booking_id, int(EmailType.CANCELLED_EMAIL))   
-
-def send_updated_mail_async(local_id, booking_id):
+def send_updated_mail_async(local_id, booking_id, _uuid = None):
     if is_email_test_mode(): return send_mail_task(local_id, booking_id, int(EmailType.UPDATED_EMAIL))
-
-    return send_mail_task.delay(local_id, booking_id, int(EmailType.UPDATED_EMAIL))
+    log("Sending updated email async...", uuid=_uuid)
+    return send_mail_task.delay(local_id, booking_id, int(EmailType.UPDATED_EMAIL), _uuid = _uuid)
 
 
 def send_email_debug(local_id, booking_id, email_type: int):

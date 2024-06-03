@@ -75,6 +75,7 @@ CREATE TABLE local (
     province VARCHAR(45),
     location VARCHAR(30) NOT NULL,
     password VARCHAR(200) NOT NULL,
+    uuid_log CHAR(32) NOT NULL,
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL
 );
@@ -97,7 +98,7 @@ CREATE TABLE local_settings (
     email_support VARCHAR(70),
     confirmation_link VARCHAR(500),
     cancel_link VARCHAR(500),
-    `update_link` VARCHAR(500),
+    update_link VARCHAR(500),
     booking_timeout INT,
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL,
@@ -247,6 +248,7 @@ CREATE TABLE booking (
     email_confirmed BOOLEAN NOT NULL DEFAULT 0,
     email_cancelled BOOLEAN NOT NULL DEFAULT 0,
     email_updated BOOLEAN NOT NULL DEFAULT 0,
+    uuid_log CHAR(32) NOT NULL,
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL,
     FOREIGN KEY (status_id) REFERENCES status(id),
