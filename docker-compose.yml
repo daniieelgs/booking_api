@@ -26,6 +26,8 @@ services:
     image: mariadb:10.5.19
     ports:
       - "3307:3306"
+    environment:
+      - TZ=Europe/Madrid
     env_file:
       - ./db/.env
     volumes:
@@ -69,6 +71,8 @@ services:
     image: redis:alpine
     ports:
       - "6379:6379"
+    environment:
+      - TZ=Europe/Madrid
     depends_on:
       - web
     logging:
