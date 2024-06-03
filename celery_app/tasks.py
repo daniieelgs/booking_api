@@ -120,10 +120,10 @@ def send_mail_task(self, local_id, booking_id, email_type: int, _uuid = None):
 @shared_task(queue='default')
 def daily_worker():
     uuid = generateUUID()
-    log('Daily worker executed at:', time.strftime('%X'), _uuid=uuid)
+    log('Daily worker executed at:', time.strftime('%X'), uuid=uuid)
     
     backup_all(_uuid_log=uuid)
     
-    log('Daily worker finished at:', time.strftime('%X'), _uuid=uuid, save_cache=True)
+    log('Daily worker finished at:', time.strftime('%X'), uuid=uuid, save_cache=True)
     
     #TODO: Add more tasks. Crear vistas en la base datos y eliminar reservas antiguas.

@@ -445,6 +445,8 @@ def log(message, level='INFO', uuid=uuid.uuid4().hex, request:Request = None, re
         thread = threading.Thread(target=log_parallel, args=(logs,))
         
         thread.start()
+        
+        cache_log.pop(uuid, None)
     
     except Exception as e:
         print(f"Error logging: {e}")

@@ -25,21 +25,21 @@ def backup_database(_uuid_log = None):
     export_database(databse_connection, DB_BACKUP_FOLDER, _uuid_log = _uuid_log)
     upload_file(DB_BACKUP_FOLDER, DB_BACKUP_ENDPOINT, _uuid_log = _uuid_log)
 
-def backup_logs(file_path, _uuid_log = None):
-    log('Backuping logs', _uuid_log)
+def backup_logs(_uuid_log = None):
+    log('Backuping logs', uuid=_uuid_log)
     yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
     log_file = f'{FILENAME_LOG}.{yesterday.strftime("%Y-%m-%d")}'
     
-    log('Log file:', log_file, _uuid=_uuid_log)
-    log('Backuping log file', _uuid=_uuid_log)
-    upload_file(log_file, LOG_BACKUP_ENDPOINT, _uuid_log)
+    log('Log file:', log_file, uuid=_uuid_log)
+    log('Backuping log file', uuid=_uuid_log)
+    upload_file(log_file, LOG_BACKUP_ENDPOINT, _uuid_log = _uuid_log)
 
 def backup_all(_uuid_log = None):
     
-    log('Backuping', _uuid=_uuid_log)
+    log('Backuping', uuid=_uuid_log)
     backup_logs(_uuid_log)
     
-    log('Backuping database', _uuid=_uuid_log)
+    log('Backuping database', uuid=_uuid_log)
     backup_database(_uuid_log)
     
-    log('Backuping finished', _uuid=_uuid_log)
+    log('Backuping finished', uuid=_uuid_log)
