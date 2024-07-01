@@ -166,8 +166,6 @@ def getDatabaseUri():
     else:
         return DEFAULT_DATABASE_URI
 
-
-
 DATABASE_URI = os.getenv("DATABASE_URI", getDatabaseUri())
 
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', DEFAULT_CELERY_BROKER_URL)
@@ -383,7 +381,11 @@ def log_parallel(logs:dict):
                 if error: logger.warning(str(error))
             elif level == 'ERROR':
                 logger.error(message)
-                if error: logger.error(error, exc_info=True, stack_info=True)
+                if error:
+                    try:
+                        logger.error(error, exc_info=True, stack_info=True)
+                    except Exception as e:
+                        logger.error(str(error))
             
         # time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"[{time}] [{level}] - {message}")
