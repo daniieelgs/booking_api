@@ -367,8 +367,6 @@ def log_parallel(logs:dict):
         
         error = log.get('error', None)
         
-        time = log.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        
         level = level.upper()
         
         if logger:
@@ -388,7 +386,7 @@ def log_parallel(logs:dict):
                         logger.error(str(error))
             
         # time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{time}] [{level}] - {message}")
+        
 
     
 
@@ -429,9 +427,12 @@ def log(message, level='INFO', uuid=uuid.uuid4().hex, request:Request = None, re
             
             message = f'REQUEST | < [{request.remote_addr}] - \'[{request.method}] {request.path}\' - {message}:\n\tDATA : {json.dumps(json_data)} >'
 
+        time = log.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         
         if uuid:
             message = f"[{uuid}]: {message}"
+            
+            print(f"[{time}] [{level}] - {message}")
             
             log_uuid = {"level": level, "message": message, "error": str(error) if error else None, "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             
