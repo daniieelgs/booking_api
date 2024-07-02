@@ -427,7 +427,7 @@ def log(message, level='INFO', uuid=uuid.uuid4().hex, request:Request = None, re
             
             message = f'REQUEST | < [{request.remote_addr}] - \'[{request.method}] {request.path}\' - {message}:\n\tDATA : {json.dumps(json_data)} >'
 
-        time = log.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         if uuid:
             message = f"[{uuid}]: {message}"
