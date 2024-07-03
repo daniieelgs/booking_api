@@ -9,6 +9,11 @@ from globals import DATABASE_HOST, DATABASE_NAME, DATABASE_PASS_ROOT, DATABASE_P
 from helpers.Database import DatabaseConnection, export_database
 
 def upload_file(file_path, api_url, _uuid_log = None):
+    
+    if not HOST_BACKUP_API:
+        log('Failed. Backup API is not set', uuid=_uuid_log)
+        return
+    
     api_url = HOST_BACKUP_API + api_url
     with open(file_path, 'r') as file:
         files = {'file': (file_path, file)}  
