@@ -22,3 +22,4 @@ benchmark/test.json
 package.json
 app.log
 app.log.*
+celerybeat-schedule
