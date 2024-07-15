@@ -12,10 +12,8 @@ tests/public
 tests/performance
 dockerfile-dev
 docker-compose-dev.yml
-celerybeat-schedule
 docker-compose.override.yml
 logs
-celerybeat-schedule
 mock
 benchmark/results
 benchmark/test.json
@@ -23,3 +21,4 @@ package.json
 app.log
 app.log.*
 celerybeat-schedule
+./celerybeat-schedule

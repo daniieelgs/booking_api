@@ -33,6 +33,7 @@ services:
     volumes:
       - db-data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -47,6 +48,7 @@ services:
     depends_on:
       - redis
       - web
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -61,6 +63,7 @@ services:
     depends_on:
       - redis
       - web
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -75,6 +78,7 @@ services:
       - TZ=Europe/Madrid
     depends_on:
       - web
+    restart: always
     logging:
       driver: "json-file"
       options:
