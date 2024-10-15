@@ -1,34 +1,38 @@
-FROM python:3.11.9-alpine
+# Utilizar una imagen base compatible con Apache y mod_wsgi
+FROM python:3.11-slim
 
+# Establecer el directorio de trabajo
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev linux-headers mariadb-client
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    apache2 \
+    libapache2-mod-wsgi-py3 \
+    mariadb-client \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    gettext \
+    && rm -rf /var/lib/apt/lists/*
 
-#Set date and time Madrid/Europe
+# Configurar la zona horaria
 ENV TZ=Europe/Madrid
-
-RUN apk add --no-cache tzdata && \
+RUN apt-get update && apt-get install -y tzdata && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Crear un usuario para ejecutar la aplicación
 RUN adduser --disabled-password --gecos '' apiuser
 
-RUN mkdir ./private
-RUN mkdir ./private/logs
-
-COPY requirements.txt requirements.txt
-
-RUN pip install -r requirements.txt
-RUN pip install gunicorn
-
+# Copiar el código de la aplicación
 COPY . .
 
-RUN chmod -R 777 /app
-RUN chown -R apiuser:apiuser /app
+RUN pip install --no-cache-dir -r requirements.txt
 
-USER apiuser
+# Hacer que el script de entrada sea ejecutable
+RUN chmod +x /app/docker-entrypoint.sh
 
-CMD ["sh", "-c", "if [ \"$FLASK_ENV\" = 'production' ]; then \
-                    exec gunicorn --bind $FLASK_RUN_HOST:$FLASK_RUN_PORT --certfile=/etc/ssl/certs/fullchain.pem --keyfile=/etc/ssl/private/privkey.pem --workers $FLASK_RUN_WORKERS --timeout $FLASK_RUN_TIMEOUT --access-logfile '-' --error-logfile '-' app:app; \
-                 else \
-                    exec flask run --host=$FLASK_RUN_HOST --port=$FLASK_RUN_PORT; \
-                 fi"]
+# Exponer el puerto (se especificará en el archivo .env)
+EXPOSE ${PORT}
+
+# Establecer el script de entrada
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

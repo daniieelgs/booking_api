@@ -813,7 +813,7 @@ class BookingSession(MethodView):
             comment = data['comment']
         
         try:
-            cancelBooking(booking, comment=comment)
+            cancelBooking(booking, comment=comment) #TODO: Add comment?
             log(f"Booking '{booking.id}' cancelled by session.", uuid=_uuid) 
             log(f"Sending cancelled email for booking '{booking.id}'.", uuid=_uuid)
             send_cancelled_mail_async(booking.local_id, booking.id, _uuid=_uuid)
@@ -1027,7 +1027,7 @@ class BookingCancelId(MethodView):
             comment = data['comment']
         
         try:
-            cancelBooking(booking, comment=comment)
+            cancelBooking(booking, comment=comment) #TODO comment?
             
             if notify:
                 log(f"Sending cancelled email for booking '{booking.id}'.", uuid=_uuid)

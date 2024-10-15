@@ -26,7 +26,11 @@ def upload_file(file_path, api_url, _uuid_log = None):
 def backup_database(_uuid_log = None):
     log('Backuping database', uuid = _uuid_log)
     log(f'Backup file: {DB_BACKUP_FOLDER}', uuid = _uuid_log)
-    databse_connection = DatabaseConnection(DATABASE_NAME, DATABASE_USER_ROOT, DATABASE_HOST, DATABASE_PORT, DATABASE_PASS_ROOT)
+    try:
+        databse_connection = DatabaseConnection(DATABASE_NAME, DATABASE_USER_ROOT, DATABASE_HOST, DATABASE_PORT, DATABASE_PASS_ROOT)
+    except ValueError as e:
+        log('Error: Missing required parameters. Not doing DB backup.', uuid=_uuid_log, level='ERROR', error=e)
+        return
     export_database(databse_connection, DB_BACKUP_FOLDER, _uuid_log = _uuid_log)
     upload_file(DB_BACKUP_FOLDER, DB_BACKUP_ENDPOINT, _uuid_log = _uuid_log)
 

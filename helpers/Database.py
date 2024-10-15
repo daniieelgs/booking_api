@@ -16,6 +16,9 @@ class DatabaseConnection():
         self.port = db_port
         self.password = db_passwd
 
+        if not self.name or not self.user or not self.host or not self.port or not self.password:
+            raise ValueError("DatabaseConnection: Missing required parameters")
+
 cache_memory = {}
 cache_expiry_time = {}
 
