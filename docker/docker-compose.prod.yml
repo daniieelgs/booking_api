@@ -9,6 +9,7 @@ services:
       - PORT=${PORT:-443}
       - SSL_CERT_FILE=${SSL_CERT_PATH}
       - SSL_KEY_FILE=${SSL_KEY_PATH}
+      - SERVER_NAME=${SERVER_NAME}
       - APACHE_LOG_DIR=/var/log/apache2
     volumes:
       - ${SSL_CERT_PATH}:/etc/ssl/certs/fullchain.pem:ro
