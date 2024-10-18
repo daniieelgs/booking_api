@@ -1,3 +1,5 @@
+ServerName ${SERVER_NAME}
+
 <VirtualHost *:80>
     ServerName ${SERVER_NAME}
     ServerAlias www.${SERVER_NAME}
