@@ -24,6 +24,3 @@ fi
 
 # Finalización
 echo "Construcción de imágenes completada con éxito."
-
-# Levantar los servicios con Docker Compose
-docker-compose -f "$dockerFolder/docker-compose.yml" up

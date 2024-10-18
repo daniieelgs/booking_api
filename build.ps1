@@ -20,6 +20,3 @@ if ($LASTEXITCODE -ne 0) {
 
 # Finalización
 Write-Host "Construcción de imágenes completada con éxito." -ForegroundColor Green
-
-# Levantar los servicios con Docker Compose
-docker-compose -f "$dockerFolder/docker-compose.yml" up

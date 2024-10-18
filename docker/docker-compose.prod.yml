@@ -2,8 +2,6 @@ version: '3'
 services:
   web:
     image: booking-flask
-    env_file:
-      - ../.env
     environment:
       - FLASK_ENV=${FLASK_ENV:-production}
       - FLASK_DEBUG=${FLASK_DEBUG:-0}
@@ -24,7 +22,7 @@ services:
   database:
     image: mariadb:10.5.19
     ports:
-      - "3307:3306"
+      - "${DB_PORT:-3307}:3306"
     environment:
       - TZ=Europe/Madrid
     env_file:
@@ -57,7 +55,7 @@ services:
   redis:
     image: redis:alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     environment:
       - TZ=Europe/Madrid
     restart: always
