@@ -1,6 +1,6 @@
 <VirtualHost *:80>
-    ServerName booking-api.es
-    ServerAlias www.booking-api.es
+    ServerName ${SERVER_NAME}
+    ServerAlias www.${SERVER_NAME}
 
     # Redirigir todo el tráfico HTTP a HTTPS
     RewriteEngine On
@@ -9,8 +9,8 @@
 </VirtualHost>
 
 <VirtualHost *:${PORT}>
-    ServerName booking-api.es
-    ServerAlias www.booking-api.es
+    ServerName ${SERVER_NAME}
+    ServerAlias www.${SERVER_NAME}
 
     # Configuración de SSL
     SSLEngine on
