@@ -1,5 +1,5 @@
 # Utilizar la imagen base que hemos construido
-FROM daniieelgs/booking-base
+FROM booking-base
 
 # Instalar Apache y mod_wsgi
 RUN apt-get update && apt-get install -y \
@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Hacer que el script de entrada sea ejecutable
-RUN chmod +x /docker/docker-entrypoint.sh
+RUN chmod +x ./docker/docker-entrypoint.sh
 
 # Exponer el puerto para el tráfico web
 EXPOSE ${PORT:-443}
 
 # Usar el entrypoint para iniciar Apache y Flask
-ENTRYPOINT ["/docker/docker-entrypoint.sh"]
+ENTRYPOINT ["./docker/docker-entrypoint.sh"]

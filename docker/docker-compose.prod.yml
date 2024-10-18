@@ -1,14 +1,12 @@
 version: '3'
 services:
   web:
-    build:
-      context: ../
-      dockerfile: daniieelgs/booking-flask:latest
+    image: booking-flask
     env_file:
       - ../.env
     environment:
-      - FLASK_ENV=production
-      - FLASK_DEBUG=0
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-0}
       - TZ=Europe/Madrid
       - PORT=${PORT:-443}
       - SSL_CERT_FILE=${SSL_CERT_FILE}
@@ -18,7 +16,7 @@ services:
       - ${SSL_KEY_FILE_HOST}:${SSL_KEY_FILE}:ro
       - ..:/app
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT:-443}:${PORT:-443}"
     depends_on:
       - database
     restart: always
@@ -37,9 +35,7 @@ services:
     restart: always
 
   worker:
-    build:
-      context: ../
-      dockerfile: daniieelgs/booking-base:latest
+    image: booking-base
     command: celery -A make_celery.celery worker --loglevel=info -Q priority,default
     volumes:
       - ..:/app
@@ -49,9 +45,7 @@ services:
     restart: always
 
   beat:
-    build:
-      context: ../
-      dockerfile: daniieelgs/booking-base:latest
+    image: booking-base
     command: celery -A make_celery.celery beat --loglevel=info
     volumes:
       - ..:/app
