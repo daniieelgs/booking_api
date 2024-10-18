@@ -16,7 +16,7 @@ services:
       - ${SSL_KEY_FILE}:/etc/ssl/private/privkey.pem:ro
       - ..:/app
     ports:
-      - "${PORT:-443}:${PORT:-443}"
+      - "${PORT:-443}:443"
     depends_on:
       - database
     restart: always
