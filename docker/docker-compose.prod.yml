@@ -7,13 +7,13 @@ services:
       - FLASK_DEBUG=${FLASK_DEBUG:-0}
       - TZ=Europe/Madrid
       - PORT=${PORT:-443}
-      - SSL_CERT_FILE=${SSL_CERT_PATH}
-      - SSL_KEY_FILE=${SSL_KEY_PATH}
+      - SSL_CERT_FILE=${SSL_CERT_FILE}
+      - SSL_KEY_FILE=${SSL_KEY_FILE}
       - SERVER_NAME=${SERVER_NAME}
       - APACHE_LOG_DIR=/var/log/apache2
     volumes:
-      - ${SSL_CERT_PATH}:/etc/ssl/certs/fullchain.pem:ro
-      - ${SSL_KEY_PATH}:/etc/ssl/private/privkey.pem:ro
+      - ${SSL_CERT_FILE}:/etc/ssl/certs/fullchain.pem:ro
+      - ${SSL_KEY_FILE}:/etc/ssl/private/privkey.pem:ro
       - ..:/app
     ports:
       - "${PORT:-443}:${PORT:-443}"

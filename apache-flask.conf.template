@@ -14,8 +14,8 @@
 
     # Configuración de SSL
     SSLEngine on
-    SSLCertificateFile ${SSL_CERT_FILE}
-    SSLCertificateKeyFile ${SSL_KEY_FILE}
+    SSLCertificateFile /etc/ssl/certs/fullchain.pem
+    SSLCertificateKeyFile /etc/ssl/private/privkey.pem
 
     # Configuración de WSGI
     WSGIDaemonProcess booking-api python-path=/app
