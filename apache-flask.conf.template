@@ -21,7 +21,7 @@ ServerName ${SERVER_NAME}
 
     # Configuración de WSGI
     WSGIPassAuthorization On
-    WSGIDaemonProcess booking-api python-path=/app
+    WSGIDaemonProcess booking-api python-path=/app user=apiuser group=apiuser
     WSGIProcessGroup booking-api
     WSGIScriptAlias / /app/wsgi.py
 

@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y tzdata && \
 
 RUN adduser --disabled-password --gecos '' apiuser
 
+RUN chown -R apiuser:apiuser /app/private
+
 COPY ./ .
 
 RUN pip install --no-cache-dir -r requirements.txt
