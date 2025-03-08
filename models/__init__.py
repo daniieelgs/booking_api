@@ -13,3 +13,4 @@ from models.weekday import WeekdayModel
 from models.timetable import TimetableModel
 from models.local_settings import LocalSettingsModel
 from models.smtp_settings import SmtpSettingsModel
+from models.closed import ClosedModel

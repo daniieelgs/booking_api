@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    mariadb-client \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    gettext \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Europe/Madrid
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN adduser --disabled-password --gecos '' apiuser
+
+COPY ./ .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE ${PORT}

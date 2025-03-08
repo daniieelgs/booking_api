@@ -147,7 +147,7 @@ class ServiceById(MethodView):
                 abort(409, message = 'The service has bookings.')
             elif force and bookings:
                 for booking in bookings:
-                    cancelBooking(booking, params['comment'] if 'comment' in params else None)
+                    cancelBooking(booking, params['comment'] if 'comment' in params else None) #TODO add comment
             
             deleteAndCommit(service)
             return {}

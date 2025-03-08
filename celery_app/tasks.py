@@ -39,7 +39,7 @@ def check_booking_status(booking_id):
         return
 
     if booking.status.status == PENDING_STATUS:
-        cancelBooking(booking)
+        cancelBooking(booking) #TODO comment
         
         if is_email_test_mode(): return send_mail_task(booking.local_id, booking_id, int(EmailType.CANCELLED_EMAIL))
         
@@ -126,4 +126,4 @@ def daily_worker():
     
     log('Daily worker finished at:', time.strftime('%X'), uuid=uuid, save_cache=True)
     
-    #TODO: Add more tasks. Crear vistas en la base datos y eliminar reservas antiguas.
+    #TODO: Add more tasks. Crear vistas en la base datos y eliminar reservas antiguas. Optimizar la base de datos.

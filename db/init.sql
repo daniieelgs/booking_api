@@ -266,6 +266,15 @@ CREATE TABLE service_booking (
     FOREIGN KEY (booking_id) REFERENCES booking(id) ON DELETE CASCADE
 );
 
+CREATE TABLE closed (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    datetime_init DATETIME NOT NULL,
+    datetime_end DATETIME NOT NULL,
+    description MEDIUMTEXT,
+    local_id CHAR(32) NOT NULL,
+    FOREIGN KEY (local_id) REFERENCES local(id) ON DELETE CASCADE
+)
+
 -- Insertar datos en la tabla 'weekday'
 INSERT INTO weekday (id, weekday, name) VALUES (1, 'MO', 'Monday');
 INSERT INTO weekday (id, weekday, name) VALUES (2, 'TU', 'Tuesday');

@@ -28,6 +28,7 @@ from resources.booking import blp as BookingBlueprint
 from resources.files import blp as FilesBlueprint
 from resources.public_files import blp as PublicFilesBlueprint
 from resources.admin import blp as AdminBlueprint
+from resources.close import blp as ClosedBlueprint
 
 from resources.test import blp as TestBlueprint
 
@@ -257,6 +258,7 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(FilesBlueprint, url_prefix=getApiPrefix('files'))
     api.register_blueprint(PublicFilesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}')
     api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
+    api.register_blueprint(ClosedBlueprint, url_prefix=getApiPrefix('close'))
     
     if DEBUG: api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
     

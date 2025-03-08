@@ -349,3 +349,13 @@ class LocalAdminParams(Schema):
     date_created = fields.DateTime(required=False, description='Espfica la fecha de creación para filtrar locales.')
     datetime_init = fields.DateTime(required=False, description='Espfica una fecha y hora inicial de creación para filtrar locales.')
     datetime_end = fields.DateTime(required=False, description='Espfica una fecha y hora final de creación para filtrar locales.')
+    
+class CloseDaysSchema(Schema):
+    id = fields.Int(required=True, dump_only=True)
+    datetime_init = fields.DateTime(required=True, description='Fecha de inicio del cierre.')
+    datetime_end = fields.DateTime(required=True, description='Fecha de fin del cierre.')
+    description = fields.Str(description='Descripción del cierre.')
+    
+class CloseDaysParams(Schema):
+    datetime_init = fields.DateTime(required=False, description='Espefica una fecha y hora inicial para ver los cierres.')
+    datetime_end = fields.DateTime(required=False, description='Espefica una fecha y hora final para ver los cierres.')

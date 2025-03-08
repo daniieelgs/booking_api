@@ -11,6 +11,8 @@ from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT
 from helpers.Database import create_redis_connection, delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
+from helpers.closed import getClosedDays
+from helpers.error.ClosedDaysError.ClosedDayException import ClosedDayException
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from helpers.error.BookingError.AlredyBookingException import AlredyBookingExceptionException
@@ -335,6 +337,9 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         
         if not force and not getTimetable(local_id, week_day.id, datetime_init=datetime_init, datetime_end=datetime_end):
             raise LocalUnavailableException()
+        
+        if not force and getClosedDays(local_id, datetime_init, datetime_end):
+            raise ClosedDayException()
         
         if worker_id:
             worker = WorkerModel.query.get(worker_id)

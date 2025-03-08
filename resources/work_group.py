@@ -211,7 +211,7 @@ class WorkGroupByID(MethodView):
                 abort(409, message = 'The work group has bookings.')
             elif force and bookings:
                 for booking in bookings:
-                    cancelBooking(booking, params['comment'] if 'comment' in params else None)
+                    cancelBooking(booking, params['comment'] if 'comment' in params else None) #TODO add comment
             
             deleteAndCommit(work_group)
         except SQLAlchemyError as e:

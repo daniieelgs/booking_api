@@ -1,0 +1,34 @@
+ServerName ${SERVER_NAME}
+
+<VirtualHost *:80>
+    ServerName ${SERVER_NAME}
+    ServerAlias www.${SERVER_NAME}
+
+    # Redirigir todo el tráfico HTTP a HTTPS
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName ${SERVER_NAME}
+    ServerAlias www.${SERVER_NAME}
+
+    # Configuración de SSL
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/fullchain.pem
+    SSLCertificateKeyFile /etc/ssl/private/privkey.pem
+
+    # Configuración de WSGI
+    WSGIDaemonProcess booking-api python-path=/app
+    WSGIProcessGroup booking-api
+    WSGIScriptAlias / /app/wsgi.py
+
+    <Directory /app>
+        Require all granted
+    </Directory>
+
+    # Configuración de logs
+    ErrorLog ${APACHE_LOG_DIR}/booking-api_error.log
+    CustomLog ${APACHE_LOG_DIR}/booking-api_access.log combined
+</VirtualHost>

@@ -243,7 +243,7 @@ class PublicWorkerByID(MethodView):
                     if worker_id:
                         booking.worker_id = worker_id
                     else:
-                        cancelBooking(booking, params['comment'] if 'comment' in params else None)
+                        cancelBooking(booking, params['comment'] if 'comment' in params else None) #TODO add comment
         
             if force: addAndCommit(*bookings)
             deleteAndCommit(worker)
