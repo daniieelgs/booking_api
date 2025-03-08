@@ -1,5 +1,6 @@
 import functools
 import json
+import traceback
 from flask import Request, Response, request
 import werkzeug
 
@@ -26,6 +27,7 @@ def log_route(f):
             log("Response generated", uuid=uuid, request=request, save_cache=True, response=response)
             raise e
         except Exception as e:
+            traceback.print_exc()
             response = Response(response=json.dumps({"message": "Internal server error"}), status=500, mimetype='application/json')
             log("FATAL ERROR", uuid=uuid, request=request, error=e, level="ERROR", save_cache=True, response=response)
             raise e
