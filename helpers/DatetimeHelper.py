@@ -16,3 +16,6 @@ def now(location=DEFAULT_LOCATION_TIME):
 def naiveToAware(datetime, timezone=DEFAULT_LOCATION_TIME):
     timezone = pytz.timezone(timezone)
     return timezone.localize(datetime)
+
+def isAware(dt):
+    return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None

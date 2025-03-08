@@ -22,3 +22,5 @@ app.log
 app.log.*
 celerybeat-schedule
 ./celerybeat-schedule
+private/
+private/*

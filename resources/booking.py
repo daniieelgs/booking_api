@@ -3,6 +3,7 @@ import json
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
+from helpers.error.ClosedDaysError.ClosedDayException import ClosedDayException
 from jwt import ExpiredSignatureError
 from helpers.BookingController import calculatEndTimeBooking, calculateExpireBookingToken, cancelBooking, confirmBooking, createOrUpdateBooking, deserializeBooking, getBookings, getBookingBySession as getBookingBySessionHelper, unregisterBooking
 from helpers.BookingEmailController import send_cancelled_mail_async, send_confirmed_mail_async, send_updated_mail_async, start_waiter_booking_status
@@ -430,7 +431,7 @@ class Booking(MethodView):
         except ValueError as e:
             log(f"Error creating booking for local '{local.name}'.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error creating booking for local '{local.name}'.", uuid=_uuid, level='WARNING', error=e)
             abort(409, message = str(e))
         except Exception as e:
@@ -523,7 +524,7 @@ class BookingAdmin(MethodView):
         except ValueError as e:
             log(f"Error updating booking '{booking_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error updating booking '{booking_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(409, message = str(e))
         except Exception as e:
@@ -593,7 +594,7 @@ class BookingAdmin(MethodView):
         except ValueError as e:
             log(f"Error updating booking '{booking_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error updating booking '{booking_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(409, message = str(e))
         except Exception as e:
@@ -715,7 +716,7 @@ class BookingSession(MethodView):
         except ValueError as e:
             log(f"Error updating booking '{booking.id}' by session.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error updating booking '{booking.id}' by session.", uuid=_uuid, level='WARNING', error=e) 
             abort(409, message = str(e))
         except Exception as e:
@@ -772,7 +773,7 @@ class BookingSession(MethodView):
         except ValueError as e:
             log(f"Error updating booking '{booking.id}' by session.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error updating booking '{booking.id}' by session.", uuid=_uuid, level='WARNING', error=e)
             abort(409, message = str(e))
         except Exception as e:
@@ -887,7 +888,7 @@ class BookingSession(MethodView):
         except ValueError as e:
             log(f"Error creating booking by local. Local: '{local_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message = str(e))
-        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
+        except (PastDateException, WrongServiceWorkGroupException, LocalUnavailableException, ClosedDayException, WrongWorkerWorkGroupException, WorkerUnavailableException, AlredyBookingExceptionException) as e:
             log(f"Error creating booking by local. Local: '{local_id}'.", uuid=_uuid, level='WARNING', error=e)
             abort(409, message = str(e))
         except Exception as e:
