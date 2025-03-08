@@ -20,6 +20,7 @@ ServerName ${SERVER_NAME}
     SSLCertificateKeyFile /etc/ssl/private/privkey.pem
 
     # Configuración de WSGI
+    WSGIPassAuthorization On
     WSGIDaemonProcess booking-api python-path=/app
     WSGIProcessGroup booking-api
     WSGIScriptAlias / /app/wsgi.py
