@@ -2,6 +2,12 @@
 
 set -e
 
+if [ -f /app/.env ]; then
+    set -a
+    . /app/.env
+    set +a
+fi
+
 # Exportar variables necesarias para envsubst
 export PORT SSL_CERT_FILE SSL_KEY_FILE SERVER_NAME
 
