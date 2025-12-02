@@ -197,7 +197,13 @@ class PublicWorkerByID(MethodView):
         
         try:
                     
-            if not force and work_groups != worker.work_groups:
+
+            workGroupsIds = set([work_group.id for work_group in work_groups])
+            workerWorkGroupsIds = set([work_group.id for work_group in worker.work_groups])
+            
+            print("work_groups: ", workGroupsIds, "worker.work_groups: ", workerWorkGroupsIds, flush=True)
+                    
+            if not force and workGroupsIds != workerWorkGroupsIds:
                 bookings = getBookings(get_jwt_identity(), datetime_init=DATETIME_NOW,datetime_end=None, status=[CONFIRMED_STATUS, PENDING_STATUS], worker_id=worker.id)
                 
                 if bookings:
