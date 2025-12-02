@@ -3,6 +3,8 @@
 set -e
 
 if [ -f /app/.env ]; then
+    # Convertir formato de línea de CRLF a LF si es necesario
+    sed -i 's/\r$//' /app/.env 2>/dev/null || true
     set -a
     . /app/.env
     set +a

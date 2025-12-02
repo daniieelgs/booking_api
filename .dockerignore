@@ -2,7 +2,6 @@ __pycache__
 .pytest_cache
 instance
 *.db
-private
 test/public
 .env.docker
 docker-compose-dev.yml

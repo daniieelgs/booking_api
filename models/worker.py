@@ -9,6 +9,7 @@ class WorkerModel(db.Model):
     email = db.Column(db.String(70))
     tlf = db.Column(db.String(13))
     image = db.Column(db.String(300))
+    password = db.Column(db.String(200), unique=False, nullable=True)
     datetime_created = db.Column(db.DateTime, nullable=True)
     datetime_updated = db.Column(db.DateTime, nullable=True)
     

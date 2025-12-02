@@ -8,10 +8,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Hacer que el script de entrada sea ejecutable
-RUN chmod +x ./docker/docker-entrypoint.sh
-
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# Convertir formato de línea de CRLF a LF y dar permisos
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 # Exponer el puerto para el tráfico web
 EXPOSE ${PORT:-443}
 
 # Usar el entrypoint para iniciar Apache y Flask
-ENTRYPOINT ["./docker/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
