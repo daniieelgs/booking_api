@@ -14,13 +14,14 @@ from helpers.path import createPathFromLocal, removePath
 from helpers.security import check_admin_request, decodeJWT, generatePassword, generateTokens, generateUUID, logOutAll
 from flask_smorest import Blueprint, abort
 from flask.views import MethodView
+from models.worker import WorkerModel
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from passlib.hash import pbkdf2_sha256
 
 from db import addAndFlush, commit, deleteAndCommit, addAndCommit, deleteAndFlush, rollback
 
-from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE, MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING, log
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, DEBUG, LOCAL_ROLE, MIN_TIMEOUT_CONFIRM_BOOKING, TIMEOUT_CONFIRM_BOOKING, WORKER_ROLE, log
 from models.local_settings import LocalSettingsModel
 from models.session_token import SessionTokenModel
 from models.smtp_settings import SmtpSettingsModel
@@ -419,12 +420,21 @@ class AccessLocal(MethodView):
                 
         local = LocalModel.query.filter_by(email=login_data['email']).first()
                 
+        workerId = None
+                
         if not local or not pbkdf2_sha256.verify(login_data['password'], local.password):
-            abort(401, message = 'Invalid credentials.')
-        
-        log(f'Logging in local "{local.id}". [{login_data["email"]}:{login_data["email"]}]', uuid=_uuid)
             
-        access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True)
+            worker = WorkerModel.query.filter_by(email=login_data['email']).first()
+            
+            if not worker or not pbkdf2_sha256.verify(login_data['password'], worker.password):
+                abort(401, message = 'Invalid credentials.')
+                
+            workerId = worker.id
+            local = worker.work_groups.first().local
+        
+        log(f'Logging in local "{local.id}". [{login_data["email"]}:{login_data["email"]}]. Worker id: {workerId}', uuid=_uuid)
+            
+        access_token, refresh_token = generateTokens(local.id, local.id, access_token=True, refresh_token=True, user_role = WORKER_ROLE if workerId else LOCAL_ROLE, user_id = workerId)
             
         return {'access_token': access_token, 'refresh_token': refresh_token, 'local': local}
         

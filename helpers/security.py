@@ -28,7 +28,7 @@ def generatePassword(size = PASSWORD_SIZE):
     characters = string.ascii_letters + string.digits + string.punctuation
     return ''.join(secrets.choice(characters) for i in range(size))
 
-def generateTokens(identity, localId, access_token = False, refresh_token = True, claims = {}, expire_refresh = datetime.timedelta(days=EXPIRE_TOKEN), expire_access = datetime.timedelta(minutes=EXPIRE_ACCESS), user_role = LOCAL_ROLE):
+def generateTokens(identity, localId, access_token = False, refresh_token = True, claims = {}, expire_refresh = datetime.timedelta(days=EXPIRE_TOKEN), expire_access = datetime.timedelta(minutes=EXPIRE_ACCESS), user_role = LOCAL_ROLE, user_id = None):
     
     token_fresh = None
     token_refresh = None
@@ -51,7 +51,7 @@ def generateTokens(identity, localId, access_token = False, refresh_token = True
        
     user_session_id = UserSessionModel.query.filter_by(user = user_role).first().id
        
-    addAndCommit(*[SessionTokenModel(id = decode_token(token)['token'], jti = decode_token(token)['jti'], local_id = localId, user_session_id = user_session_id) for token in saveToken])
+    addAndCommit(*[SessionTokenModel(id = decode_token(token)['token'], jti = decode_token(token)['jti'], local_id = localId, user_session_id = user_session_id, user_id = user_id) for token in saveToken])
     
     if token_fresh and token_refresh: 
         return token_fresh, token_refresh

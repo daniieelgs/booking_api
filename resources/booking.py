@@ -33,9 +33,10 @@ from models.booking import BookingModel
 from db import addAndFlush, addAndCommit, commit, deleteAndCommit, deleteAndFlush, rollback
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
+import jwt
 import traceback
 
-from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET, log
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET, WORKER_ROLE, log
 from models.local import LocalModel
 from models.service import ServiceModel
 from models.service_booking import ServiceBookingModel
@@ -44,7 +45,7 @@ from models.status import StatusModel
 from models.timetable import TimetableModel
 from models.weekday import WeekdayModel
 from models.worker import WorkerModel
-from schema import BookingAdminListSchema, BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, NotifyParams, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams
+from schema import BookingAdminListSchema, BookingAdminParams, BookingAdminPatchSchema, BookingAdminSchema, BookingAdminWeekParams, BookingListSchema, BookingParams, BookingPatchSchema, BookingSchema, BookingSessionParams, BookingWeekParams, CommentSchema, NewBookingSchema, NotifyParams, PublicBookingListSchema, PublicBookingSchema, StatusSchema, UpdateParams, WorkerBookingSchema
 
 blp = Blueprint('booking', __name__, description='Control de reservas.')
 
@@ -84,6 +85,39 @@ def patchBooking(booking, booking_data, admin = False):
         booking_deserialized.pop('status', None)
         
     return booking_deserialized
+
+def getBookingsAsWorker(bookings: list[BookingModel] | BookingModel | None) -> list[WorkerBookingSchema] | WorkerBookingSchema:
+    if isinstance(bookings, list):
+        bookingsWorker = []
+        for booking in bookings:
+            schema = WorkerBookingSchema().dump(booking)
+            schema['datetime_created'] = booking.datetime_created
+            schema['datetime_updated'] = booking.datetime_updated
+            bookingsWorker.append(schema)
+        return bookingsWorker
+    elif isinstance(bookings, BookingModel):
+        schema = WorkerBookingSchema().dump(bookings)
+        schema['datetime_created'] = bookings.datetime_created
+        schema['datetime_updated'] = bookings.datetime_updated
+        return schema
+    else:
+        return []
+    
+def isWorkerSession(request, _uuid = None) -> bool:
+    token_header = request.headers.get('Authorization')
+    token = token_header.split(' ', 1)[1]
+    
+    try:
+        token_decoded = decodeJWT(token)
+    except jwt.exceptions.ExpiredSignatureError:
+        log("The token has expired.", uuid=_uuid, level="WARNING")
+        abort(401, message = 'The token has expired.')
+        
+    id = token_decoded['token']
+    
+    token = SessionTokenModel.query.get_or_404(id)
+    
+    return token.user_session.user == WORKER_ROLE, token.user_id
 
 @blp.route('/local/<string:local_id>')
 class SeePublicBooking(MethodView):
@@ -217,10 +251,12 @@ class SeeBookingWeek(MethodView):
         Devuelve las reservas privadas de una fecha específica.
         """      
         
+        workerSession, workerId = isWorkerSession(request, _uuid)
+                
         try:
             datetime_init, datetime_end = getDataRequest(request)
             
-            worker_id = request.args.get(WORKER_ID_GET, None)
+            worker_id = workerId or request.args.get(WORKER_ID_GET, None)
             work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
             status = request.args.get(STATUS_LIST_GET, None)
             if status:
@@ -236,6 +272,11 @@ class SeeBookingWeek(MethodView):
             
             bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
             
+            if workerSession:
+                bookings = getBookingsAsWorker(bookings)
+                from flask import jsonify
+                return jsonify({"bookings": bookings, "total": len(bookings)})
+                        
         except ValueError as e:
             log(f"Invalid date format.", uuid=_uuid, level='WARNING', error=e)
             abort(400, message=str(e))
@@ -263,10 +304,12 @@ class SeeBookingWeek(MethodView):
         Devuelve las reservas privadas de una semana.
         """
         
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         try:
             datetime_init, datetime_end = getWeekDataRequest(request)
             
-            worker_id = request.args.get(WORKER_ID_GET, None)
+            worker_id = workerId or request.args.get(WORKER_ID_GET, None)
             work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
             status = request.args.get(STATUS_LIST_GET, None)
             if status:
@@ -281,6 +324,11 @@ class SeeBookingWeek(MethodView):
             log(f"Searching bookings for local '{get_jwt_identity()}' in date '{datetime_init}' to '{datetime_end}'. [worker_id: {worker_id}, work_group_id: {work_group_id}, status: {status}, client_filter: {json.dumps(client_filter)}]", uuid=_uuid)
                 
             bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            
+            if workerSession:
+                bookings = getBookingsAsWorker(bookings)
+                from flask import jsonify
+                return jsonify({"bookings": bookings, "total": len(bookings)})
             
         except ValueError as e:
             log(f"Invalid date format.", uuid=_uuid, level='WARNING', error=e)
@@ -309,10 +357,12 @@ class SeeBookingMonth(MethodView):
         Devuelve las reservas privadas de un mes.
         """
         
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         try:
             datetime_init, datetime_end = getMonthDataRequest(request)
             
-            worker_id = request.args.get(WORKER_ID_GET, None)
+            worker_id = workerId or request.args.get(WORKER_ID_GET, None)
             work_group_id = request.args.get(WORK_GROUP_ID_GET, None)
             status = request.args.get(STATUS_LIST_GET, None)
             if status:
@@ -327,6 +377,11 @@ class SeeBookingMonth(MethodView):
             log(f"Searching bookings for local '{get_jwt_identity()}' in date '{datetime_init}' to '{datetime_end}'. [worker_id: {worker_id}, work_group_id: {work_group_id}, status: {status}, client_filter: {json.dumps(client_filter)}]", uuid=_uuid)
                 
             bookings = getBookings(get_jwt_identity(), datetime_init, datetime_end, status=status, worker_id=worker_id, work_group_id=work_group_id, client_filter=client_filter)
+            
+            if workerSession:
+                bookings = getBookingsAsWorker(bookings)
+                from flask import jsonify
+                return jsonify({"bookings": bookings, "total": len(bookings)})
             
         except ValueError as e:
             log(f"Invalid date format.", uuid=_uuid, level='WARNING', error=e)
@@ -454,9 +509,16 @@ class BookingAdmin(MethodView):
         """
         Devuelve una reserva. Identificado por el local.
         """
+        
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         log(f"Getting booking '{booking_id}'.", uuid=_uuid)
         
         booking = BookingModel.query.get_or_404(booking_id)
+                
+        if workerSession and workerId != booking.worker_id:
+            log(f"Getting booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
+            abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
                 
         if not booking.local_id == get_jwt_identity():
             log(f"Getting booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
@@ -479,16 +541,22 @@ class BookingAdmin(MethodView):
         Actualiza una reserva. Por parte del local.
         """
         
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         log(f"Updating booking '{booking_id}' by local.", uuid=_uuid)
         
         booking = BookingModel.query.get(booking_id)
         
-        force = 'force' in params and params['force']
+        force = 'force' in params and params['force'] and not workerSession
         notify = 'notify' in params and params['notify']
         
         if not booking:
             log(f"Booking '{booking_id}' not found.", uuid=_uuid, level='WARNING')
             abort(404, message = f'The booking [{booking_id}] was not found.')
+            
+        if workerSession and workerId != booking.worker_id:
+            log(f"Updating booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
+            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
                 
         log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
         
@@ -548,10 +616,12 @@ class BookingAdmin(MethodView):
         Actualiza una reserva indicando los campos a modificar. Por parte del local.
         """
 
+        workerSession, workerId = isWorkerSession(request, _uuid)
+
         log(f"Updating booking '{booking_id}' by local.", uuid=_uuid)
         
         notify = 'notify' in params and params['notify']
-        force = 'force' in params and params['force']
+        force = 'force' in params and params['force'] and not workerSession
         
         booking = BookingModel.query.get(booking_id)
 
@@ -561,6 +631,10 @@ class BookingAdmin(MethodView):
         if not booking:
             log(f"Booking '{booking_id}' not found.", uuid=_uuid, level='WARNING')
             abort(404, message = f'The booking [{booking_id}] was not found.')
+            
+        if workerSession and workerId != booking.worker_id:
+            log(f"Updating booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
+            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
                 
         if booking.local_id != get_jwt_identity():
             log(f"Unauthorized to update booking '{booking_id}'.", uuid=_uuid, level='WARNING')
@@ -613,6 +687,11 @@ class BookingAdmin(MethodView):
         """
         Elimina una reserva. WARNING: No se recomienda ya que, no se puede deshacer. Si se desea cancelar una reserva, se recomienda cambiar el estado de la reserva o bien utilizar el endpoint para cancelar una reserva [cancel/{booking_id}].
         """
+        
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
+        if workerSession:
+            abort(401, message = 'You are not allowed to delete this booking.')
         
         log(f"Deleting booking '{booking_id}'.", uuid=_uuid)
         
@@ -837,12 +916,18 @@ class BookingSession(MethodView):
         """
         Crea una nueva reserva identificada por parte del local, identificado por el token de sesión refresco.
         """
+        
+        workerSession, workerId = isWorkerSession(request, _uuid)
                 
-        force = 'force' in params and params['force']
+        force = 'force' in params and params['force'] and not workerSession
         notify = 'notify' in params and params['notify']
         
         session = None
         
+        if workerSession:
+            new_booking['worker_id'] = workerId
+            force = False
+                    
         try:
             
             local_id = get_jwt_identity()
@@ -953,6 +1038,8 @@ class BookingConfirmId(MethodView):
         Confirma una reserva por parte del local identificado por el token de refresco. Cambia el estado a confirmado.
         """
         
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         booking = BookingModel.query.get_or_404(booking_id)
         
         log(f"Confirming booking '{booking.id}' by local.", uuid=_uuid)
@@ -965,6 +1052,10 @@ class BookingConfirmId(MethodView):
         notify = 'notify' in params and params['notify']
         
         if not booking.local_id == local.id:
+            log(f"Unauthorized to confirm booking '{booking.id}'.", uuid=_uuid, level='WARNING')
+            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+        
+        if workerSession and workerId != booking.worker_id:
             log(f"Unauthorized to confirm booking '{booking.id}'.", uuid=_uuid, level='WARNING')
             abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
         
@@ -1003,6 +1094,9 @@ class BookingCancelId(MethodView):
         """
         Cancela una reserva por parte del local identificado por el token de refresco. Cambia el estado a cancelado.
         """
+        
+        workerSession, workerId = isWorkerSession(request, _uuid)
+        
         booking = BookingModel.query.get_or_404(booking_id)
         
         log(f"Cancelling booking '{booking.id}' by local.", uuid=_uuid)
@@ -1015,6 +1109,10 @@ class BookingCancelId(MethodView):
         notify = 'notify' in params and params['notify']
         
         if not booking.local_id == local.id:
+            log(f"Unauthorized to cancel booking '{booking.id}'.", uuid=_uuid, level='WARNING')
+            abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
+        
+        if workerSession and workerId != booking.worker_id:
             log(f"Unauthorized to cancel booking '{booking.id}'.", uuid=_uuid, level='WARNING')
             abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
         

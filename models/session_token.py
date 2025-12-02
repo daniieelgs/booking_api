@@ -10,5 +10,6 @@ class SessionTokenModel(db.Model):
     datetime_created = db.Column(db.DateTime, nullable=True)
     user_session_id = db.Column(db.Integer, db.ForeignKey('user_session.id'), nullable=False)
     name = db.Column(db.String(30), nullable=True)
+    user_id = db.Column(db.Integer, nullable=True)
     
     user_session = db.relationship('UserSessionModel', back_populates='tokens')

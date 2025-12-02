@@ -168,16 +168,17 @@ class PublicWorkerSchema(Schema):
     id = fields.Int(required=True, dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     last_name = fields.Str()
-    image = fields.Str()
+    image = fields.Str(required=False, allow_none=True)
 
 class PublicWorkerListSchema(ListSchema):
     workers = fields.Nested(PublicWorkerSchema, many=True, dump_only=True)   
 class WorkerSchema(PublicWorkerSchema):
     email = fields.Str(validate=validate.Email())
-    tlf = fields.Str(validate=validate.Length(min=9, max=13))
+    tlf = fields.Str(validate=validate.Length(min=9, max=13), required=False, allow_none=True)
     datetime_created = fields.DateTime(dump_only=True)
     datetime_updated = fields.DateTime(dump_only=True)
     work_groups = fields.List(fields.Int(), required=True, load_only=True)
+    password = fields.Str(required=False, load_only=True, allow_none=True)
 
 class WorkerListSchema(ListSchema):
     workers = fields.Nested(WorkerSchema, many=True, dump_only=True)
@@ -258,7 +259,18 @@ class BookingSchema(PublicBookingSchema):
     uuid_log = fields.Str(required=False, dump_only=True)
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
-        
+    
+class WorkerBookingSchema(PublicBookingSchema):
+    client_name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
+    comment = fields.Str()
+    datetime_created = fields.DateTime(dump_only=True)
+    datetime_updated = fields.DateTime(dump_only=True)
+    status = fields.Nested(StatusSchema(), dump_only=True)
+    total_price = fields.Float(required=True, dump_only=True)
+    services = fields.Nested(ServiceSchema(), many=True, dump_only=True)
+    uuid_log = fields.Str(required=False, dump_only=True)
+    services_ids = fields.List(fields.Int(), required=True, load_only=True)
+    worker_id = fields.Int(required=False, load_only=True)
 
 class BookingPatchSchema(PublicBookingPatchSchema):
     client_name = fields.Str(required=False, validate=validate.Length(min=3, max=45))

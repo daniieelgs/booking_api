@@ -1,3 +1,4 @@
+from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
@@ -82,6 +83,9 @@ class Worker(MethodView):
                 
         if not work_groups_ids:
             abort(404, message = f"The work groups were not found.")
+            
+        if 'password' in worker_data:
+            worker_data['password'] = pbkdf2_sha256.hash(worker_data['password']) if worker_data['password'] else None
         
         worker = WorkerModel(**worker_data)
         
@@ -102,7 +106,6 @@ class Worker(MethodView):
             abort(500, message = str(e) if DEBUG else 'Could not create the worker.')
             
         return worker
-    
 @blp.route('/private/<int:worker_id>/work_group')
 class WorkerWorkGroupByID(MethodView):
 
@@ -204,6 +207,9 @@ class PublicWorkerByID(MethodView):
                 
             for key, value in worker_data.items():
                 setattr(worker, key, value)
+        
+            if 'password' in worker_data:
+                worker.password = pbkdf2_sha256.hash(worker_data['password']) if worker_data['password'] else None
         
             addAndCommit(worker)
         except SQLAlchemyError as e:
