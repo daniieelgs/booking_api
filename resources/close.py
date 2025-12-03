@@ -1,6 +1,7 @@
 import traceback
 from db import addAndCommit, deleteAndCommit, rollback
 from flask.views import MethodView
+from flask import request
 from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from globals import DEBUG
@@ -9,6 +10,7 @@ from helpers.error.ClosedDaysError.BadDatetimesClosedDaysException import BadDat
 from helpers.error.ClosedDaysError.ConflictClosedDaysException import ConflictClosedDaysException
 from models.closed import ClosedModel
 from models.local import LocalModel
+from resources.booking import isWorkerSession
 from schema import CloseDaysParams, CloseDaysSchema
 
 blp = Blueprint('close', __name__, description='CRUD de dias de cierres.')
@@ -25,6 +27,11 @@ class CloseDays(MethodView):
         """
         Agrega una fecha de cierre
         """
+        
+        workerSession, workerId = isWorkerSession(request)
+        
+        if workerSession:
+            abort(401, message = 'You are not allowed to add a closed day.')
         
         local = LocalModel.query.get(get_jwt_identity())
         
@@ -71,6 +78,11 @@ class CloseDay(MethodView):
         Elimina una fecha de cierre
         """
         
+        workerSession, workerId = isWorkerSession(request)
+        
+        if workerSession:
+            abort(401, message = 'You are not allowed to delete a closed day.')
+        
         closedDay = ClosedModel.query.get_or_404(close_id)
         
         try:
@@ -91,6 +103,11 @@ class CloseDay(MethodView):
         """
         Modifica una fecha de cierre
         """
+        
+        workerSession, workerId = isWorkerSession(request)
+        
+        if workerSession:
+            abort(401, message = 'You are not allowed to modify a closed day.')
         
         closedDay = ClosedModel.query.get_or_404(close_id)
         
