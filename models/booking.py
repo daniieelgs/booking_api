@@ -27,6 +27,7 @@ class BookingModel(db.Model):
     email_cancelled = db.Column(db.Boolean, nullable=False, default=False)
     email_updated = db.Column(db.Boolean, nullable=False, default=False)
     uuid_log = db.Column(db.String(36), nullable=True)
+    server_name = db.Column(db.String(100), nullable=True)
     
     status = db.relationship('StatusModel', back_populates='bookings')
     services = db.relationship(

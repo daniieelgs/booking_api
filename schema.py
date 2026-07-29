@@ -257,9 +257,10 @@ class BookingSchema(PublicBookingSchema):
     total_price = fields.Float(required=True, dump_only=True)
     services = fields.Nested(ServiceSchema(), many=True, dump_only=True)
     uuid_log = fields.Str(required=False, dump_only=True)
+    server_name = fields.Str(required=False, dump_only=True, description='Servidor (primario/secundario) en el que se creó la reserva.')
     services_ids = fields.List(fields.Int(), required=True, load_only=True)
     worker_id = fields.Int(required=False, load_only=True)
-    
+
 class WorkerBookingSchema(PublicBookingSchema):
     client_name = fields.Str(required=True, validate=validate.Length(min=3, max=45))
     comment = fields.Str()
