@@ -7,7 +7,7 @@ import time
 
 import redis
 from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, USER_ROLE, WEEK_DAYS, is_redis_test_mode, log
+from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, SERVER_NAME, USER_ROLE, WEEK_DAYS, is_redis_test_mode, log
 from helpers.Database import create_redis_connection, delete_key_value_cache, get_key_value_cache, register_key_value_cache
 from helpers.DatetimeHelper import DATETIME_NOW, naiveToAware, now
 from helpers.TimetableController import getTimetable
@@ -383,8 +383,13 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         new_booking['status_id'] = status.id
         new_booking['worker_id'] = worker_id
         
+        is_new_booking = bookingModel is None
+
         booking = bookingModel or BookingModel(**new_booking)
         booking.services = services
+
+        if is_new_booking:
+            booking.server_name = SERVER_NAME
         
         booking.uuid_log = uuid
         

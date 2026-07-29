@@ -36,7 +36,7 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import jwt
 import traceback
 
-from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET, WORKER_ROLE, log
+from globals import ADMIN_IDENTITY, ADMIN_ROLE, CANCELLED_STATUS, DEBUG, CONFIRMED_STATUS, DONE_STATUS, PENDING_STATUS, SERVER_NAME, SESSION_GET, STATUS_LIST_GET, USER_ROLE, WEEK_DAYS, WORK_GROUP_ID_GET, WORKER_ID_GET, WORKER_ROLE, log
 from models.local import LocalModel
 from models.service import ServiceModel
 from models.service_booking import ServiceBookingModel
@@ -1192,10 +1192,11 @@ class BookingAdmin(MethodView):
         status = StatusModel.query.filter_by(status=CONFIRMED_STATUS).first()
         
         booking = BookingModel(**booking_data)
-        
+
         booking.services = services
         booking.worker = worker
         booking.status = status
+        booking.server_name = SERVER_NAME
         booking = calculatEndTimeBooking(booking)
         
         try:
