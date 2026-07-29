@@ -1,7 +1,7 @@
 from flask_testing import TestCase
 
 from app import create_app, db
-from globals import API_VERSION
+from globals import VERSION
 from tests import config_test
 
 
@@ -30,7 +30,7 @@ class TestStatus(TestCase):
         response = self.client.get('/version')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {'version': API_VERSION})
+        self.assertEqual(response.json, {'version': VERSION})
 
     def test_health_does_not_require_authentication(self):
         response = self.client.get('/health')
