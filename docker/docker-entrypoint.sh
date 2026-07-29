@@ -18,6 +18,7 @@ envsubst '$SSL_CERT_FILE $SSL_KEY_FILE $SERVER_NAME' < /app/apache-flask.conf.te
 
 # Habilitar módulos necesarios de Apache
 a2enmod ssl
+a2enmod headers
 a2enmod rewrite
 a2enmod wsgi
 

@@ -18,6 +18,8 @@ RUN adduser --disabled-password --gecos '' apiuser
 
 COPY ./ .
 
+RUN mkdir -p ./private
+
 RUN chown -R apiuser:apiuser /app/private
 
 RUN pip install --no-cache-dir -r requirements.txt
