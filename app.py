@@ -31,6 +31,7 @@ from resources.public_files import blp as PublicFilesBlueprint
 from resources.admin import blp as AdminBlueprint
 from resources.close import blp as ClosedBlueprint
 from resources.report import blp as ReportBlueprint
+from resources.status import blp as StatusBlueprint
 
 from resources.test import blp as TestBlueprint
 
@@ -264,6 +265,7 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     api.register_blueprint(ClosedBlueprint, url_prefix=getApiPrefix('close'))
     api.register_blueprint(ReportBlueprint, url_prefix=getApiPrefix('report'))
+    api.register_blueprint(StatusBlueprint, url_prefix='/')
 
     if DEBUG: api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
     

@@ -375,3 +375,9 @@ class CloseDaysParams(Schema):
 class FallbackReportResponseSchema(Schema):
     id = fields.Str(required=True, dump_only=True)
     datetime = fields.DateTime(required=True, dump_only=True)
+
+class HealthSchema(Schema):
+    status = fields.Str(required=True, dump_only=True)
+
+class VersionSchema(Schema):
+    version = fields.Str(required=True, dump_only=True)

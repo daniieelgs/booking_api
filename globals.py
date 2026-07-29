@@ -14,6 +14,8 @@ from flask import Request, Response
 
 load_dotenv(verbose=True, override=True)
 
+VERSION = '1.0.0'
+
 DEFAULT_SECRET_JWT = '303333537232571254035672536717968198213'
 DEFAULT_CRYPTO_JWT = 'RkElcKTNxr_IfO-puTA7ZjiD9EisBbi0Zeo_Z00NrPA='
 DEFAULT_CRYPTO_KEY_ENDS_EQUAL = 0
