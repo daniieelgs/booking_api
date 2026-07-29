@@ -371,3 +371,7 @@ class CloseDaysSchema(Schema):
 class CloseDaysParams(Schema):
     datetime_init = fields.DateTime(required=False, description='Espefica una fecha y hora inicial para ver los cierres.')
     datetime_end = fields.DateTime(required=False, description='Espefica una fecha y hora final para ver los cierres.')
+
+class FallbackReportResponseSchema(Schema):
+    id = fields.Str(required=True, dump_only=True)
+    datetime = fields.DateTime(required=True, dump_only=True)

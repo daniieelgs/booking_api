@@ -16,6 +16,7 @@ from db import db, deleteAndCommit
 from default_config import DefaultConfig
 
 from globals import API_PREFIX, BACKUP_COUNT_LOG, DAILY_HOUR, DAILY_MINUTE, DB_BACKUP_FOLDER, DEBUG, CERT_SSL, FILENAME_LOG, KEY_SSL, LOG_NAME, LOGGING_FORMAT, LOGGING_LEVEL, MAX_BYTES_LOG, ROTATING_LOG_WHEN, TEST_PERFORMANCE, TIMEZONE, log, setApp, setLogger
+from helpers.ReportController import ensureReportsFolder
 from models.session_token import SessionTokenModel
 
 from resources.local import blp as LocalBlueprint
@@ -29,6 +30,7 @@ from resources.files import blp as FilesBlueprint
 from resources.public_files import blp as PublicFilesBlueprint
 from resources.admin import blp as AdminBlueprint
 from resources.close import blp as ClosedBlueprint
+from resources.report import blp as ReportBlueprint
 
 from resources.test import blp as TestBlueprint
 
@@ -67,6 +69,8 @@ def create_app(config: Config = DefaultConfig()):
 
     if not os.path.exists(DB_FOLDER):
         os.makedirs(DB_FOLDER)
+
+    ensureReportsFolder()
 
     setLogger()
 
@@ -259,7 +263,8 @@ def create_app(config: Config = DefaultConfig()):
     api.register_blueprint(PublicFilesBlueprint, url_prefix=f'/{PUBLIC_FOLDER_URL}')
     api.register_blueprint(AdminBlueprint, url_prefix=getApiPrefix('admin'))
     api.register_blueprint(ClosedBlueprint, url_prefix=getApiPrefix('close'))
-    
+    api.register_blueprint(ReportBlueprint, url_prefix=getApiPrefix('report'))
+
     if DEBUG: api.register_blueprint(TestBlueprint, url_prefix=getApiPrefix('test'))
     
     ##Loal Routes

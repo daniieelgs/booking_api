@@ -133,6 +133,14 @@ DEFAULT_DB_BACKUP_FOLDER = 'private/db/backup.sql'
 
 #----------------------------------
 
+#---- FALLBACK REPORT CONFIG ------
+
+DEFAULT_REPORTS_FILE = 'private/reports/fallback_reports.json'
+DEFAULT_MAX_REPORT_SIZE = 1024 * 64 # 64KB
+DEFAULT_MAX_REPORTS_FILE_SIZE = 1024 * 1024 * 10 # 10MB
+
+#----------------------------------
+
 #---- API BACKUP CONFIG ------------
 
 DEFAULT_DB_BACKUP_ENDPOINT = '/upload/sql'
@@ -271,6 +279,14 @@ _LOGGING_LEVEL = os.getenv('LOGGING_LEVEL', DEFAULT_LOGGING_LEVEL)
 LOGGING_LEVEL = LOGGING_LEVELS[_LOGGING_LEVEL] if _LOGGING_LEVEL in LOGGING_LEVELS else LOGGING_LEVELS[DEFAULT_LOGGING_LEVEL]
 
 #---------------------------------
+
+#---- FALLBACK REPORT CONFIG ------
+
+REPORTS_FILE = os.getenv('REPORTS_FILE', DEFAULT_REPORTS_FILE)
+MAX_REPORT_SIZE = int(os.getenv('MAX_REPORT_SIZE', DEFAULT_MAX_REPORT_SIZE))
+MAX_REPORTS_FILE_SIZE = int(os.getenv('MAX_REPORTS_FILE_SIZE', DEFAULT_MAX_REPORTS_FILE_SIZE))
+
+#----------------------------------
 
 #---- API BACKUP CONFIG ------------
 
