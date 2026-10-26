@@ -13,9 +13,19 @@ def make_celery(app):
     
     celery.config_from_object(app.config["CELERY"])
     
+    redis_socket_options = {
+        'socket_keepalive': True,
+        'socket_connect_timeout': 10,
+        'retry_on_timeout': True,
+        'health_check_interval': 30,
+    }
+
     celery.conf.update(
         broker_connection_retry=True,
-        broker_connection_retry_on_startup=True
+        broker_connection_retry_on_startup=True,
+        broker_connection_max_retries=None,
+        broker_transport_options=redis_socket_options,
+        result_backend_transport_options=redis_socket_options
     )
     
     celery.set_default()
