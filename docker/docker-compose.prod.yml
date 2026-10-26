@@ -43,6 +43,14 @@ services:
       - redis
       - database
     restart: always
+    labels:
+      - autoheal=true
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A make_celery.celery inspect ping -d celery@$$HOSTNAME -t 15"]
+      interval: 300s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
 
   beat:
     image: booking-base
@@ -55,14 +63,28 @@ services:
     restart: always
 
   redis:
-    image: redis:alpine
+    image: redis:7.2.4-bookworm
     ports:
       - "${REDIS_PORT:-6379}:6379"
     environment:
       - TZ=Europe/Madrid
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     volumes:
       - redis-data:/data
+
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
 
 volumes:
   db-data:

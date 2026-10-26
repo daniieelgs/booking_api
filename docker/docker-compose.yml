@@ -47,7 +47,7 @@ services:
     restart: always
 
   redis:
-    image: redis:alpine
+    image: redis:7.2.4-bookworm
     ports:
       - "${REDIS_PORT:-6379}:6379"
     environment:
