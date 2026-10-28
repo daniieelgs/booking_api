@@ -15,6 +15,8 @@ services:
 
   database:
     image: mariadb:10.5.19
+    ports:
+      - "${DB_PORT:-3307}:3306"
     environment:
       - TZ=Europe/Madrid
     env_file:
