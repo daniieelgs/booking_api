@@ -225,7 +225,13 @@ def waitAndRegisterBooking(local_id, date, max_timeout=MAX_TIMEOUT_WAIT_BOOKING,
     time_init = datetime.now()
 
     while (datetime.now() - time_init).seconds < max_timeout:
-        success = perform_atomic_booking(redis_connection, local_id, date, uuid=uuid)
+        try:
+            success = perform_atomic_booking(redis_connection, local_id, date, uuid=uuid)
+        except (redis.ConnectionError, redis.TimeoutError, ConnectionError, OSError) as e:
+            log(f"Redis connection error, reconnecting: {e}", uuid=uuid, level='WARNING')
+            time.sleep(min(sleep_time * 5, 1.0))
+            redis_connection = create_redis_connection()
+            continue
         if success:
             log(f"Local {local_id} registered booking for date {date}.", uuid=uuid)
             return uuid

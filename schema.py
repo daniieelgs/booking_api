@@ -379,6 +379,7 @@ class FallbackReportResponseSchema(Schema):
 
 class HealthSchema(Schema):
     status = fields.Str(required=True, dump_only=True)
+    redis = fields.Str(dump_only=True)
 
 class VersionSchema(Schema):
     version = fields.Str(required=True, dump_only=True)

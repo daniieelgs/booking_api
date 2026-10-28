@@ -2,6 +2,7 @@ from flask_smorest import Blueprint
 from flask.views import MethodView
 
 from globals import VERSION
+from helpers.Database import ping_redis
 from schema import HealthSchema, VersionSchema
 
 blp = Blueprint('status', __name__, description='Estado y versión de la API.')
@@ -14,8 +15,13 @@ class Health(MethodView):
     def get(self):
         """
         Comprueba que la API está funcionando. No requiere autenticación.
+        Incluye el estado de Redis.
         """
-        return {'status': 'ok'}
+        redis_ok = ping_redis()
+        return {
+            'status': 'ok' if redis_ok else 'degraded',
+            'redis': 'ok' if redis_ok else 'error',
+        }
 
 
 @blp.route('/version')

@@ -4,8 +4,30 @@ import os
 import mysql.connector
 from mysql.connector.cursor import MySQLCursor
 import redis
+from redis.retry import Retry
+from redis.backoff import ExponentialBackoff
 
 from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, is_redis_test_mode, log
+
+_redis_pool = None
+
+def _get_redis_pool():
+    global _redis_pool
+    if _redis_pool is None and not is_redis_test_mode():
+        _redis_pool = redis.ConnectionPool(
+            host=REDIS_HOST,
+            port=int(REDIS_PORT),
+            password=REDIS_PASSWORD,
+            db=0,
+            socket_keepalive=True,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            retry_on_timeout=True,
+            retry=Retry(ExponentialBackoff(cap=2, base=0.1), retries=3),
+            retry_on_error=[redis.ConnectionError, redis.TimeoutError],
+            health_check_interval=15,
+        )
+    return _redis_pool
 
 class DatabaseConnection():
     
@@ -87,65 +109,82 @@ def remove_database(db: DatabaseConnection):
     
     cursor.execute(f"DROP DATABASE {db.name};")
 
-def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT, password = REDIS_PASSWORD) -> redis.Redis:
+def create_redis_connection() -> redis.Redis:
 
     if is_redis_test_mode():
-        print("Redis test mode activated.")
         return None
 
-    return redis.Redis(host=host, port=port, password=password, db=0)
+    return redis.Redis(connection_pool=_get_redis_pool())
 
-def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = create_redis_connection(), pipeline = None):
-    
+def ping_redis() -> bool:
+    if is_redis_test_mode():
+        return True
+    try:
+        r = create_redis_connection()
+        return r is not None and r.ping()
+    except Exception:
+        return False
+
+def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = None, pipeline = None):
+
     if is_redis_test_mode():
         cache_memory[key] = value
         cache_expiry_time[key] = time.time() + exp
         return
-    
+
+    if redis_connection is None:
+        redis_connection = create_redis_connection()
+
     if pipeline:
         pipeline.multi()
         pipeline.setex(key, exp, value)
         pipeline.execute()
         return
-    
+
     with redis_connection.pipeline() as pipe:
-        pipe.multi()            
+        pipe.multi()
         pipe.setex(key, exp, value)
         pipe.execute()
-        
-def get_key_value_cache(key, redis_connection = create_redis_connection(), pipeline = None):
-    
+
+def get_key_value_cache(key, redis_connection = None, pipeline = None):
+
     if is_redis_test_mode():
-        
+
         exp = cache_expiry_time.get(key, None)
         if exp and exp < time.time():
             cache_memory.pop(key, None)
             cache_expiry_time.pop(key, None)
             return None
-        
+
         return cache_memory.get(key, None)
-    
+
+    if redis_connection is None:
+        redis_connection = create_redis_connection()
+
     if pipeline:
         pipeline.get(key)
         return
-    
+
     with redis_connection.pipeline() as pipe:
         pipe.multi()
         pipe.get(key)
         result = pipe.execute()
         return result[0] if result else None
-    
-def delete_key_value_cache(key, redis_connection = create_redis_connection(), pipeline = None):
-    
+
+def delete_key_value_cache(key, redis_connection = None, pipeline = None):
+
     if is_redis_test_mode():
         cache_memory.pop(key, None)
         cache_expiry_time.pop(key, None)
         return
-    
+
+    if redis_connection is None:
+        redis_connection = create_redis_connection()
+
     if pipeline:
         pipeline.delete(key)
         return
-    
+
     with redis_connection.pipeline() as pipe:
         pipe.multi()
         pipe.delete(key)
