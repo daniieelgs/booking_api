@@ -73,7 +73,7 @@ services:
 
   redis:
     image: redis:7.2.4-bookworm
-    command: redis-server --requirepass ${REDIS_PASSWORD} --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD} --save 60 1 --appendonly yes --appendfsync everysec --loglevel warning --maxmemory 256mb --maxmemory-policy noeviction
     environment:
       - TZ=Europe/Madrid
       - REDISCLI_AUTH=${REDIS_PASSWORD}
