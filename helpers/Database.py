@@ -5,7 +5,7 @@ import mysql.connector
 from mysql.connector.cursor import MySQLCursor
 import redis
 
-from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, is_redis_test_mode, log
+from globals import MAX_TIMEOUT_WAIT_BOOKING, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, is_redis_test_mode, log
 
 class DatabaseConnection():
     
@@ -87,13 +87,13 @@ def remove_database(db: DatabaseConnection):
     
     cursor.execute(f"DROP DATABASE {db.name};")
 
-def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT) -> redis.Redis:
-    
+def create_redis_connection(host = REDIS_HOST, port = REDIS_PORT, password = REDIS_PASSWORD) -> redis.Redis:
+
     if is_redis_test_mode():
         print("Redis test mode activated.")
         return None
-    
-    return redis.Redis(host=host, port=port, db=0)
+
+    return redis.Redis(host=host, port=port, password=password, db=0)
 
 def register_key_value_cache(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = create_redis_connection(), pipeline = None):
     
