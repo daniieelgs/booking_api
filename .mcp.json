@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "booking-db": {
+      "command": "python",
+      "args": ["mcp_servers/db_server.py"]
+    }
+  }
+}

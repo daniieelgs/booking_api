@@ -26,5 +26,9 @@ celerybeat-schedule
 private/
 private/*
 
-# Private server access config (see .claude/servers.example.md)
+# Private Claude Code config (see .claude/servers.example.md)
 .claude/servers.local.md
+.claude/settings.local.json
+
+# MCP server credentials (each dev creates their own from mcp_servers/.env.example)
+mcp_servers/.env
