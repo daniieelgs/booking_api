@@ -21,7 +21,7 @@ All commands assume the working directory is the repo root (`booking_api/`) — 
 **Docker**
 - Build images: `./build.sh` or `./build.ps1` (builds `booking-base` from `docker/Dockerfile.base`, then `booking-flask` from `docker/Dockerfile.flask`).
 - Run dev stack: `docker-compose --env-file ./docker/.env -f ./docker/docker-compose.yml up`
-- Run prod stack: `docker-compose --env-file ./docker/.env -f ./docker/docker-compose.prod.yml up` (HTTPS via Apache + mod_wsgi, see `docker/docker-entrypoint.sh` and `apache-flask.conf.template`).
+- Run prod stack: `docker compose --env-file ./docker/.env -f ./docker/docker-compose.prod.yml up -d` (HTTPS via Apache + mod_wsgi, see `docker/docker-entrypoint.sh` and `apache-flask.conf.template`). The primary server only has Compose v2 (`docker compose`, not `docker-compose`). The Compose project name is `docker` (derived from the `docker/` folder), hence the container names `docker-web-1`, `docker-worker-1`, etc.
 
 **Tests**
 - Tests use `flask_testing.TestCase` (unittest-style), not pytest fixtures, and default to a local SQLite DB (`TEST_DATABASE_URI`) — no real DB/Redis needed.
@@ -60,3 +60,66 @@ Session tokens are revocable: `SessionTokenModel` backs a JWT blocklist checked 
 **Domain errors live under `helpers/error/<Domain>Error/`** (one exception class per file, e.g. `helpers/error/BookingError/AlredyBookingException.py`). Resource handlers catch these and translate them via `abort(code, message=str(e) if DEBUG else '<generic message>')` — never leak internal error details when `DEBUG` is off.
 
 **Tests** (`tests/`) use `flask_testing.TestCase`. The shared fixture pattern: `create_app()` returns `create_app(config_test)`; `setUp()` calls `db.create_all()` then `config_test.config(db=db)`; `tearDown()` calls `db.session.remove()`, `db.drop_all()`, `config_test.drop(self.locals)`. `tests/config_test.py` also exposes `getUrl(*parts)` (prefixes with `api/v1/`) and `setParams(url, **params)` for building request URLs in tests.
+
+## Product context
+
+Multi-tenant booking backend ("locals" = businesses). Today there is a single customer, **SUBLIME HAIR SALON** (local id `151b1bf60f3e4026814183ffe9c75148`), with a public website (https://www.sublimebarberia.com/) and a staff backoffice (https://backend.sublimebarberia.com/). Both are separate frontends that only consume this API. The full endpoint list is in `/openapi.json` (Swagger UI only with `FLASK_DEBUG=1`).
+
+**Customer flow (no registration).** The site lists services, prices, durations, opening hours and contact/social info; the customer picks a service, optionally a worker (otherwise the backend assigns one), a free slot, and fills name/email/phone. Then:
+1. Optional confirmation email: only if `local_settings.booking_timeout` is set (minutes); if the customer does not confirm in time the booking is auto-cancelled (`check_booking_status`). `NULL`/`-1` disables it — **disabled for Sublime**, so bookings go straight to confirmed.
+2. "Booking confirmed" email with the booking data and a link containing a user token (valid until the booking ends) to cancel — and update, but **update is disabled for Sublime** (no frontend yet).
+3. Cancelling/updating sends another email (cancelled / updated).
+
+**Backoffice flow.** Only a local's workers authenticate (`/api/v1/local/login`). They see booking history and upcoming bookings with status, cancel bookings, and manage services, timetable, closed dates (holidays), workers and which services each worker offers.
+
+**Auth levels.** Public (services, timetable, free slots, public files), local/worker (JWT, private booking data), user (token from the email, own booking only), admin (hand-rolled admin token). Roles: `A` admin, `L` local, `U` user. Booking status codes: `P` pending, `C` confirmed, `D` done, `X` cancelled.
+
+## Data model (one table per concept)
+
+`booking` (all bookings of all locals: start/end, client name/phone/email/comment, status, worker, services, `email_confirmed`/`email_cancelled`/`email_updated` flags, `uuid_log`, `server_name` = which server created it), `closed` (closing dates), `file` (public files per local: email templates, logos, gallery), `local` (business data + password hash), `local_settings` (public settings: domain, socials, contact, confirm/cancel/update link templates containing the user-token placeholder, `booking_timeout`), `service` (price, duration), `session_token` (user and worker tokens; also the JWT blocklist), `smtp_settings` (per-local SMTP providers), `timetable`, `worker`, `work_group` (a local can have several groups, e.g. nails vs hair, each with its own services and workers). Join tables: `service_booking`, `work_group_worker`; lookup tables: `status`, `weekday`.
+
+## Booking concurrency and Redis
+
+A worker can never have two overlapping bookings. Two layers: (1) `waitAndRegisterBooking`/`perform_atomic_booking` in `helpers/BookingController.py` take a short-lived Redis lock per local (`WATCH` + `SETEX`, key = `local_id`, expiry `MAX_TIMEOUT_WAIT_BOOKING`) so two concurrent requests cannot take the same slot; (2) the DB is the source of truth — `getBookings(...)` checks overlaps for `C`/`P` bookings before inserting. Redis connection helpers live in `helpers/Database.py` (pooled, retry with backoff, password from `REDIS_PASSWORD`). Redis is also the Celery broker/result backend, so **Redis must not lose or evict data**: it runs with AOF + `--maxmemory-policy noeviction`, a password, and a named volume (`redis-data`). `/health` reports `degraded` when Redis does not answer. Note: the secondary server has its **own** Redis, so the lock does not span both servers — only the DB overlap check does.
+
+## Email system
+
+- Sent by Celery task `send_mail_task` (queue `priority`, `max_retries=3`, retry delay `60 * RETRY_SEND_EMAIL` seconds = 2 h by default) in `celery_app/tasks.py`; rendering/sending in `helpers/EmailController.py`. `check_booking_status` and `daily_worker` (backup at `DAILY_HOUR:DAILY_MINUTE`, default 03:00) run on queue `default`; beat schedules only `daily_worker`.
+- Templates are per-local HTML files stored as public files: `public/<local_id>/pages/email_{confirmation,confirmed,cancelled,updated}.html`, uploaded through `POST /api/v1/files/pages` (served at `/public/pages/local/<local_id>/<name>`). The `<title>` is the email subject; `KEYWORDS_PAGES` placeholders in `globals.py` are substituted in `render_page`. **`public/` is gitignored** — templates exist only on each server's disk.
+- Providers: `local.local_settings.smtp_settings` rows, tried in `priority` order by `mail_local_sender`. Each row has daily/monthly caps, counters and reset dates; when a provider hits its free-tier cap or fails, the next one is used. Sublime has three (Brevo `smtp-relay.brevo.com`, SendGrid `smtp.sendgrid.net`, `smtp.servidor-correo.net`) so the combined free tiers cover the month. Passwords are stored encrypted (`helpers/security.py` `decrypt_str`, key `CRYPTO_KEY`).
+- Hard requirement: every booking must end up with its email, even across SMTP outages or restarts. Keep the queue durable (Redis AOF) and never drop tasks silently.
+
+## Infrastructure and deployment
+
+Two servers, same codebase, both read/write the **same MariaDB (on the primary)**:
+
+| | Primary `booking-api.es` | Secondary `booking-api.ddns.net` |
+|---|---|---|
+| Role | Main API + the database | Fallback when the primary is down or a booking returns 500; the frontend then posts a report to `POST /api/v1/report/fallback` |
+| Stack | Docker Compose prod: `web` (`booking-flask`, Apache + mod_wsgi, terminates SSL), `database` (`mariadb:10.5.19`), `worker` + `beat` (`booking-base`, Celery), `redis` (`redis:7.2.4-bookworm`), `autoheal` | Docker; `flask run --port 5001` (Werkzeug), own Celery worker/beat and own Redis, DB = primary's published port 3307 |
+| Project path | `/home/ubuntu/booking_api` (bind-mounted as `/app` in every container) | `/home/daniieelgs/booking/backend/booking_api` |
+| Git branch deployed | `master` | `develop` (as of 2026-11-02 it is ~10 commits behind `master`; check before assuming parity) |
+| Access | see `.claude/servers.local.md` (private, gitignored) | same |
+
+The secondary is a personal server of the owner with unrelated confidential services; treat it as least-privilege territory (see the agent rules).
+
+**Production runbook (primary).**
+- Containers: `sudo docker ps`; Compose project `docker`, files in `docker/docker-compose.prod.yml`; commands run from the repo root with `--env-file ./docker/.env`.
+- Code is bind-mounted, so `git pull` changes the live files but processes keep the old code: restart what changed (`sudo docker restart docker-web-1` for API/Apache config, `docker-worker-1` and `docker-beat-1` for tasks/email code). Rebuild images (`./build.sh`) only when `Dockerfile.*` or `requirements.txt` change.
+- Logs: app log is `private/logs/app.log` (rotated at midnight, 3 backups; both web and worker write there since `home=/app`). Celery/task output is in `sudo docker logs --tail N docker-worker-1` (can be huge: always use `--tail` + `grep`). The Apache logs of the API are inside `docker-web-1`; host `/var/log/apache2` is unrelated scanner noise.
+- Health: `GET /health` (status + redis), `GET /version`, `sudo docker ps` shows `(healthy)` for redis/worker/autoheal. Queue depth: `sudo docker exec docker-redis-1 redis-cli llen priority` (Redis has a password; the container sets `REDISCLI_AUTH`). Worker liveness: `sudo docker exec docker-worker-1 celery -A make_celery.celery inspect ping`.
+- Run git and edit files as the file owner (`ubuntu`, uid 1000): the worker/beat containers run as uid 1000 and root-owned files in `private/` break log rotation and writes.
+- Published ports: web 443, MariaDB 3307 (needed by the secondary; restrict it to the secondary's IP if possible). Redis is not published.
+
+## Production lessons learned (read before debugging)
+
+- **Paths depend on `os.getcwd()`.** Under mod_wsgi the daemon's cwd was `/home/apiuser`, so uploaded email templates were saved inside the web container while the worker read stale copies from `/app/public`. Fixed with `WSGIDaemonProcess ... home=/app` in `apache-flask.conf.template` (2026-10-21). Symptom to remember: "the URL shows the new template but emails use the old one" = web and worker are not reading the same directory.
+- **Worker silently hung after Redis was recreated** (2026-10-16 to 2026-10-21): the `priority` queue grew (23 stuck emails) while the container showed "Up". Mitigations now in `master`: robust reconnect options in `celery_app/celery_config.py`, worker healthcheck (`celery inspect ping`) + `autoheal`, Redis healthcheck/AOF/noeviction. When emails stop, check `llen priority` and `inspect ping` first, then restart `docker-worker-1`; queued emails are delivered on restart (late ones too).
+- `max_retries=3` with a 2 h delay means an email can still be lost after prolonged SMTP failure; there is no reconciliation job for bookings whose `email_*` flag is false. Consider one if touching this area.
+- `helpers/EmailController.py` (`send_mail`) logs the SMTP password in clear text (`Pass: ...`). Do not paste those log lines anywhere; fixing it and rotating the Brevo key are pending.
+- The `prod_changes` branch has an unpushed local commit containing a full DB dump (`private/db/backup.sql`). Never push database dumps, `.env` files or anything under `private/`.
+- `develop` and the secondary's branch can lag behind `master`; hotfixes have been committed straight to `master`. Ask which branch to target before pushing.
+
+## Private server configuration and the ops agent
+
+Server access details (SSH targets, project paths, what each account may do) live in **`.claude/servers.local.md`**, which is gitignored; `.claude/servers.example.md` is the template. The project agent `booking-api-ops` (`.claude/agents/booking-api-ops.md`) reads that file and this document before touching production. Never commit credentials, `.env` files, SMTP passwords, tokens or DB dumps.
