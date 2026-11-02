@@ -101,6 +101,8 @@ Two servers, same codebase, both read/write the **same MariaDB (on the primary)*
 | Git branch deployed | `master` | `develop` (as of 2026-11-02 it is ~10 commits behind `master`; check before assuming parity) |
 | Access | see `.claude/servers.local.md` (private, gitignored) | same |
 
+**Branch per server (by design):** the primary always runs `master`; the secondary always runs `develop`. Changes reach the secondary through `develop` and the primary through `master`, so keep both branches aligned (merge `master` into `develop` after hotfixes, and `develop` into `master` for releases) and re-deploy the secondary after every alignment.
+
 The secondary is a personal server of the owner with unrelated confidential services; treat it as least-privilege territory (see the agent rules).
 
 **Production runbook (primary).**
@@ -123,3 +125,31 @@ The secondary is a personal server of the owner with unrelated confidential serv
 ## Private server configuration and the ops agent
 
 Server access details (SSH targets, project paths, what each account may do) live in **`.claude/servers.local.md`**, which is gitignored; `.claude/servers.example.md` is the template. The project agent `booking-api-ops` (`.claude/agents/booking-api-ops.md`) reads that file and this document before touching production. Never commit credentials, `.env` files, SMTP passwords, tokens or DB dumps.
+
+## Roadmap: pending tasks
+
+Ordered roughly by priority. Treat each as a project of its own: propose a plan and get approval before touching production.
+
+### Infrastructure and data
+
+1. **Automatic database backups (critical).** There is no real backup system. The only thing today is `daily_worker` (beat, `DAILY_HOUR:DAILY_MINUTE`, default 03:00) calling `helpers/Backup.py` `backup_all`, which runs one `mysqldump` into `private/db/backup.sql` on the same host (overwritten every day, no retention, no copy elsewhere; the upload step logs "Backup API is not set"). Needed: scheduled dumps with retention (e.g. daily/weekly/monthly), compression, off-server copy (the DB lives only on the primary), encryption of the copies, failure alerts, and a documented and *tested* restore procedure. Never write dumps inside the git tree (`private/` is gitignored but the `prod_changes` branch already leaked one).
+2. **Data warehouse database.** The operational DB keeps every past booking forever and grows without limit, which will eventually exhaust disk space. Create a separate analytical/historical database (own schema, ETL job that moves or copies bookings older than a retention window, keeps the data needed for reporting, then purges them from the operational DB safely and idempotently). Decide retention, what stays operational (`booking`, `service_booking`, tokens) and how reports read the warehouse.
+3. **Data cleanup jobs.** Expired rows are never removed: `session_token` rows for expired user/worker tokens (they accumulate on every booking email), old `closed` dates, stale `file` records, old rotated logs and `private/reports/fallback_reports.json`. Add Celery beat tasks (queue `default`) that delete in small batches, log what they remove and never delete tokens that are still valid or that back the JWT blocklist of live sessions.
+4. **Observability stack: logs, metrics, health and alerts.** Today the only signals are `private/logs/app.log`, `docker logs` and `GET /health`. Implement a monitoring stack (e.g. Prometheus + Grafana + Loki/Promtail or an equivalent, plus Alertmanager) covering: centralized and searchable logs from both servers (with the SMTP password already redacted), container/host metrics, API latency and error rate, Celery queue depth (`priority`/`default`) and worker liveness, Redis and MariaDB health, disk usage, email delivery failures/provider caps, backup job success, and alerts to a channel the owners read (email/Telegram/etc.). Keep it light enough for the servers and do not expose its ports publicly; the secondary is a personal server, so deploy nothing there without the owner's approval.
+
+### Security and reliability fixes found during incidents
+
+5. **Stop logging the SMTP password.** `helpers/EmailController.py` `send_mail` logs `Pass: <password>` at INFO. Remove it from the log line, purge/rotate the old logs that contain it, and **rotate the Brevo SMTP key** (and any other provider key that appeared in logs).
+6. **Never lose an email.** `send_mail_task` has `max_retries=3` with 2 h delays, then the task fails for good. Add a reconciliation beat task that re-queues bookings whose expected `email_*` flag is false (with a cap and de-duplication) and alerts when emails have been pending too long.
+7. **Align `develop` with `master`, re-deploy the secondary and test.** The primary runs `master`, the secondary runs `develop`, and `develop` is ~10 commits behind (Redis password/resilience, worker reconnect, `home=/app`, healthcheck). Merge `master` into `develop`, push, then re-deploy the secondary together with the owner (its `.env` needs a `REDIS_PASSWORD` matching its own Redis, rebuild/restart containers as needed). Afterwards test end to end on the secondary: `/health`, a test booking, email delivery, worker `inspect ping`, and the fallback report flow from the frontend.
+8. **Restrict the published MariaDB port (3307).** The secondary connects to the primary's DB over it; limit it with firewall rules to the secondary's IP (and consider TLS) instead of leaving it open.
+9. **Disable SSH password authentication on the primary** (`PasswordAuthentication no`) once every account is confirmed to use keys; it is currently enabled while bots brute-force the host.
+10. **Secrets hygiene on the secondary.** Several `.env*` files and `private/db/backup.sql` inside the project folder were world-readable (`644`/`664`), and a read-only account for Isma exists there. Set them to `600` and rotate any secret that may have been exposed; review `.git` history for committed secrets.
+
+### Repo and process housekeeping
+
+11. **Branch cleanup.** Delete or neutralize the local `prod_changes` commit that contains a DB dump (never push it), and decide the branching model (`develop` vs straight-to-`master` hotfixes) so the deployed branches stay in sync.
+12. **Keep agent docs in sync.** `AGENTS.md` (untracked copy for Codex) is outdated relative to this file: either update it from `CLAUDE.md` or remove it. Remove the leftover `backup/pages_pre_fix_20261021` folder on the primary once the template fix is confirmed.
+13. **Update the tests and make the whole suite pass.** Several recent changes (Redis password and resilient connections in `helpers/Database.py`, `/health` now returning `redis` status, `server_name` on bookings, `home=/app`) were made without running or updating `tests/`. Run `python -m pytest tests/`, fix or update outdated tests, add tests for the new behaviour (health/degraded, Redis failure paths, cleanup and backup tasks once they exist) and record the baseline result here.
+14. **Implement CI/CD.** There is no pipeline. Add CI (e.g. GitHub Actions) running the test suite on every push/PR to `develop` and `master`, plus lint and a security scan for committed secrets. Then add CD: automatic deploy of `master` to the primary and `develop` to the secondary (SSH-based or pull-based), with image rebuild only when `Dockerfile.*`/`requirements.txt` change, container restarts, a post-deploy health check, automatic rollback on failure, and notifications. Secrets go in the CI secret store, never in the repo; deploying to the secondary needs the owner's explicit approval of the mechanism and its access scope.
+15. **Multi-server booking lock.** The secondary has its own Redis, so the short slot lock is not shared across servers; only the DB overlap check protects against double bookings when both servers accept bookings. Evaluate whether this is acceptable or the lock should move to the shared DB.
