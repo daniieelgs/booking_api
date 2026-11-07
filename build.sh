@@ -22,5 +22,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Construir la imagen del servicio de backups de la base de datos
+docker build -t booking-backup -f "$dockerFolder/Dockerfile.backup" .
+if [ $? -ne 0 ]; then
+    echo "Error construyendo la imagen de backups."
+    exit 1
+fi
+
 # Finalización
 echo "Construcción de imágenes completada con éxito."

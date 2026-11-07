@@ -1,0 +1,34 @@
+# Image for the database backup service (see dbbackup/ and docs/db-backups.md).
+#
+# It only contains tools. The Python code is bind-mounted read-only from the repo
+# (../dbbackup:/opt/dbbackup:ro), the same convention as the other containers:
+# `git pull` + restart is enough, no rebuild. Nothing from the application
+# (.env, private/, public/) is copied in or visible to this container.
+#
+# Client tools come from Debian's mariadb-client (mariadb-dump, mariadb, mariadb-binlog); `age` encrypts
+# what is sent to the secondary and `rsync` + `openssh-client` deliver it.
+#
+# Pinned to bookworm on purpose: it ships the 10.11 client, the closest to the 10.5 server. The unpinned
+# python:3.11-slim moved to trixie (client 11.8), which drops the legacy `mysqlbinlog` alias and requires
+# TLS by default, so it cannot talk to the plain 10.5 server inside the Docker network.
+FROM python:3.11-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        mariadb-client \
+        age \
+        rsync \
+        openssh-client \
+        tzdata \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Europe/Madrid \
+    PYTHONPATH=/opt \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /opt
+
+CMD ["python3", "-m", "dbbackup.service"]

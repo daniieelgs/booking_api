@@ -18,5 +18,12 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# Construir la imagen del servicio de backups de la base de datos
+docker build -t booking-backup -f "$dockerFolder/Dockerfile.backup" .
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error construyendo la imagen de backups." -ForegroundColor Red
+    exit 1
+}
+
 # Finalización
 Write-Host "Construcción de imágenes completada con éxito." -ForegroundColor Green
