@@ -1,0 +1,4 @@
+# Shell scripts and Dockerfiles are executed on Linux: they must never be checked out with CRLF
+# (a stray \r breaks the shebang and every `$VAR` comparison).
+*.sh text eol=lf
+docker/Dockerfile.* text eol=lf

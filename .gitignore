@@ -32,3 +32,6 @@ private/*
 
 # MCP server credentials (each dev creates their own from mcp_servers/.env.example)
 mcp_servers/.env
+# Backup service secrets (SSH key, pinned known_hosts): only the folder is tracked
+docker/secrets/*
+!docker/secrets/.gitkeep
