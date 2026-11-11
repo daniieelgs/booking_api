@@ -23,3 +23,8 @@ class TestCeleryConfig(TestCase):
         celery = self.app.extensions['celery']
 
         self.assertTrue(celery.conf.task_acks_late)
+
+    def test_visibility_timeout_is_30_minutes(self):
+        celery = self.app.extensions['celery']
+
+        self.assertEqual(celery.conf.broker_transport_options['visibility_timeout'], 1800)
