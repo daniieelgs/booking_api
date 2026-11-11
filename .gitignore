@@ -38,3 +38,4 @@ docker/secrets/*
 
 # Celery worker log written by tests/integration/services
 tests/integration/services/celery-worker*.log
+tests/integration/services/.exp/

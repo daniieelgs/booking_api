@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 from unittest import mock
 
 from flask_testing import TestCase
@@ -75,6 +76,53 @@ class TestSendMailTask(SendMailTaskTestCase):
         self.assertTrue(result.successful())
         sender.assert_called_once()
         self.assertTrue(self.booking().email_confirmed)
+
+    def test_a_redelivered_copy_of_the_same_task_does_not_send_the_email_twice(self):
+        task_id = uuid.uuid4().hex
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=True) as sender:
+            first = send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
+            second = send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
+
+        self.assertTrue(first.successful())
+        self.assertTrue(second.successful())
+        self.assertEqual(sender.call_count, 1)
+
+    def test_a_copy_of_the_same_task_that_is_sending_right_now_makes_this_one_skip(self):
+        task_id = uuid.uuid4().hex
+        tasks.set_key_if_absent(tasks.email_sent_key(task_id) + ':claim', 1, exp=60)  # the other copy's claim
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=True) as sender:
+            result = send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
+
+        self.assertTrue(result.successful())
+        sender.assert_not_called()
+
+    def test_the_claim_is_released_when_the_task_ends_so_a_later_redelivery_can_send(self):
+        task_id = uuid.uuid4().hex
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=False),                 mock.patch.object(tasks, 'is_email_test_mode', return_value=True):
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
+
+        self.assertTrue(tasks.set_key_if_absent(tasks.email_sent_key(task_id) + ':claim', 1, exp=60))
+
+    def test_a_new_request_for_the_same_booking_and_type_still_sends(self):
+        with mock.patch.object(tasks, 'send_updated_booking_mail', return_value=True) as sender:
+            send_mail_task.apply(args=(self.local_id, self.booking_id, UPDATED), task_id=uuid.uuid4().hex)
+            send_mail_task.apply(args=(self.local_id, self.booking_id, UPDATED), task_id=uuid.uuid4().hex)
+
+        self.assertEqual(sender.call_count, 2)
+
+    def test_a_failed_send_is_not_remembered_so_the_retry_sends_again(self):
+        task_id = uuid.uuid4().hex
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=False) as sender,                 mock.patch.object(tasks, 'is_email_test_mode', return_value=False):
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
+
+        self.assertGreater(sender.call_count, 1)
+
+    def test_if_redis_fails_the_email_is_sent_anyway(self):
+        with mock.patch.object(tasks, 'get_key_value_cache', side_effect=ConnectionError('redis down')),                 mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=True) as sender:
+            result = self.run_task()
+
+        self.assertTrue(result.successful())
+        sender.assert_called_once()
 
     def test_success_marks_cancelled_email_as_sent(self):
         with mock.patch.object(tasks, 'send_cancelled_booking_mail', return_value=True):

@@ -24,6 +24,9 @@ def make_celery(app):
         broker_connection_retry=True,
         broker_connection_retry_on_startup=True,
         broker_connection_max_retries=None,
+        # Acknowledge a task when it FINISHES, not when it starts: if the worker dies in the middle of an email
+        # the message stays in Redis and is redelivered (an email is at-least-once, never lost).
+        task_acks_late=True,
         broker_transport_options=redis_socket_options,
         result_backend_transport_options=redis_socket_options
     )
