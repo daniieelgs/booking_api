@@ -68,6 +68,13 @@ class TestSendMail(unittest.TestCase):
         self.assertTrue(result)
         client.assert_not_called()
 
+    def test_smtp_password_is_never_logged(self):
+        with mock.patch.object(EmailController, 'log') as log:
+            self.run_send()
+
+        logged = ' '.join(str(c) for c in log.call_args_list)
+        self.assertNotIn('smtp-pass', logged)
+
     def test_connects_authenticates_sends_and_quits(self):
         result, client = self.run_send()
 
