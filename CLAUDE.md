@@ -59,6 +59,8 @@ All commands assume the working directory is the repo root (`booking_api/`) — 
 
 Session tokens are revocable: `SessionTokenModel` backs a JWT blocklist checked in `app.py`'s `token_in_blocklist_loader`.
 
+**Status codes for access problems.** `401` = missing, invalid or expired credentials/token; `403` = authenticated but not allowed (another local's data, a worker session doing a local-only action); `404` = the resource does not exist for that local. Booking and closed-day endpoints used to answer `401` for "not allowed" (changed to `403`, which the backoffice must handle: deploy to the secondary first and test it there).
+
 **`@log_route` (`helpers/LoggingMiddleware.py`)** wraps most resource handlers: it generates a request UUID, injects it as an `_uuid` kwarg into the handler, logs the request/response via `globals.log()`, and converts any uncaught exception into a JSON 500 (re-raising afterward so Flask's normal error handling still applies). Handlers under it accept `_uuid=None` as their last parameter.
 
 **DB access goes through `db.py`'s helpers**, not raw `db.session` calls: `addAndCommit`/`deleteAndCommit`/`addAndFlush`/`deleteAndFlush`/`commit`/`rollback`. `addAndCommit`/`addAndFlush` auto-stamp `datetime_created`/`datetime_updated` via `addDateTimes()`.

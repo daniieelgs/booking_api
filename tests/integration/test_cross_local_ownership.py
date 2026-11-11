@@ -9,6 +9,9 @@ import json
 from flask_testing import TestCase
 
 from app import create_app, db
+from globals import WORKER_ROLE
+from helpers.security import generateTokens
+from models.user_session import UserSessionModel
 from tests.config_test import config_test, getUrl
 from tests.configure_local_base import configure
 
@@ -81,6 +84,10 @@ class TestCrossLocalOwnership(TestCase):
 
     def assertRefused(self, response):
         self.assertIn(response.status_code, REFUSED, response.json)
+
+    def assertForbidden(self, response):
+        # authenticated but not allowed: 403 (401 is reserved for missing or invalid credentials)
+        self.assertEqual(response.status_code, 403, response.json)
 
     # --- services ---
 
@@ -160,15 +167,15 @@ class TestCrossLocalOwnership(TestCase):
         return self.call('get', getUrl('booking', self.booking_id), self.refresh(self.a))
 
     def test_other_local_cannot_read_a_booking(self):
-        self.assertRefused(self.call('get', getUrl('booking', self.booking_id), self.refresh(self.b)))
+        self.assertForbidden(self.call('get', getUrl('booking', self.booking_id), self.refresh(self.b)))
 
     def test_other_local_cannot_delete_a_booking(self):
-        self.assertRefused(self.call('delete', getUrl('booking', self.booking_id), self.refresh(self.b)))
+        self.assertForbidden(self.call('delete', getUrl('booking', self.booking_id), self.refresh(self.b)))
 
         self.assertEqual(self.booking_as_owner().status_code, 200)
 
     def test_other_local_cannot_patch_a_booking(self):
-        self.assertRefused(self.call('patch', getUrl('booking', self.booking_id), self.refresh(self.b), {'client_name': 'Hijacked'}))
+        self.assertForbidden(self.call('patch', getUrl('booking', self.booking_id), self.refresh(self.b), {'client_name': 'Hijacked'}))
 
         self.assertEqual(self.booking_as_owner().json['client_name'], 'Client Test')
 
@@ -177,15 +184,15 @@ class TestCrossLocalOwnership(TestCase):
         body = {'client_name': 'Hijacked', 'client_email': 'h@example.com', 'client_tlf': '123456789', 'new_status': 'C',
                 'datetime_init': f'{day} 10:00:00', 'services_ids': [self.a.services[0]['id']]}
 
-        self.assertRefused(self.call('put', getUrl('booking', self.booking_id), self.refresh(self.b), body))
+        self.assertForbidden(self.call('put', getUrl('booking', self.booking_id), self.refresh(self.b), body))
 
         self.assertEqual(self.booking_as_owner().json['client_name'], 'Client Test')
 
     def test_other_local_cannot_confirm_a_booking(self):
-        self.assertRefused(self.call('get', getUrl('booking', 'confirm', self.booking_id), self.refresh(self.b)))
+        self.assertForbidden(self.call('get', getUrl('booking', 'confirm', self.booking_id), self.refresh(self.b)))
 
     def test_other_local_cannot_cancel_a_booking(self):
-        self.assertRefused(self.call('delete', getUrl('booking', 'cancel', self.booking_id), self.refresh(self.b)))
+        self.assertForbidden(self.call('delete', getUrl('booking', 'cancel', self.booking_id), self.refresh(self.b)))
 
         self.assertNotEqual(self.booking_as_owner().json['status']['status'], 'X')
 
@@ -198,3 +205,31 @@ class TestCrossLocalOwnership(TestCase):
                              content_type='application/json')
 
         self.assertIn(r.status_code, (400, 404, 409), r.json)
+
+    # --- worker sessions: a worker only handles its own bookings ---
+
+    def worker_headers(self, worker_id):
+        db.session.add(UserSessionModel(user=WORKER_ROLE, name='Worker'))
+        db.session.commit()
+        token = generateTokens(self.a.local['id'], self.a.local['id'], access_token=False, refresh_token=True,
+                               claims={}, user_role=WORKER_ROLE, user_id=worker_id)
+        return {'Authorization': f'Bearer {token}'}
+
+    def other_worker_id(self):
+        owner = self.call('get', getUrl('booking', self.booking_id), self.refresh(self.a)).json
+        return next(w['id'] for w in self.a.workers if w['id'] != owner['worker']['id'])
+
+    def test_a_worker_cannot_cancel_a_booking_of_another_worker(self):
+        headers = self.worker_headers(self.other_worker_id())
+
+        self.assertForbidden(self.call('delete', getUrl('booking', 'cancel', self.booking_id), headers))
+
+    def test_a_worker_cannot_confirm_a_booking_of_another_worker(self):
+        headers = self.worker_headers(self.other_worker_id())
+
+        self.assertForbidden(self.call('get', getUrl('booking', 'confirm', self.booking_id), headers))
+
+    def test_a_worker_cannot_delete_a_booking(self):
+        headers = self.worker_headers(self.other_worker_id())
+
+        self.assertForbidden(self.call('delete', getUrl('booking', self.booking_id), headers))
