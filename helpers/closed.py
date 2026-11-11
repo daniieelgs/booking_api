@@ -9,13 +9,17 @@ import datetime
 def getClosedDays(localId, datetime_init = None, datetime_end = None):
     closedDays = ClosedModel.query.filter_by(local_id=localId).all()
         
-    for closedDay in closedDays:
-        if closedDay.datetime_end < datetime.datetime.now():
-            try:
-                deleteAndCommit(closedDay)
-                closedDays.remove(closedDay)
-            except:
-                rollback()
+    now = datetime.datetime.now()
+    deleted = []
+    
+    for closedDay in [c for c in closedDays if c.datetime_end < now]:
+        try:
+            deleteAndCommit(closedDay)
+            deleted.append(closedDay)
+        except Exception:
+            rollback()
+    
+    closedDays = [c for c in closedDays if c not in deleted]
     
     if datetime_init:
         if not isAware(datetime_init):
