@@ -310,6 +310,35 @@ class TestMonthlyQuota(SenderTestCase):
         self.assertTrue(self.send(p))
 
 
+class TestNextQuotaReset(unittest.TestCase):
+    NOW = MADRID.localize(datetime.datetime(2030, 1, 15, 12, 0))
+
+    def day(self, k):
+        return datetime.timedelta(days=k)
+
+    def month(self, k):
+        return EmailController.relativedelta(months=+k)
+
+    def test_missing_reset_starts_one_step_from_now_and_keeps_the_counter(self):
+        self.assertEqual(EmailController.next_quota_reset(None, self.NOW, self.day), (datetime.datetime(2030, 1, 16, 12, 0), False))
+
+    def test_future_reset_is_unchanged(self):
+        future = datetime.datetime(2030, 1, 20)
+        self.assertEqual(EmailController.next_quota_reset(future, self.NOW, self.day), (future, False))
+
+    def test_daily_reset_long_overdue_lands_on_the_next_future_occurrence(self):
+        self.assertEqual(EmailController.next_quota_reset(datetime.datetime(2030, 1, 10, 0, 0), self.NOW, self.day),
+                         (datetime.datetime(2030, 1, 16, 0, 0), True))
+
+    def test_monthly_reset_on_the_31st_clips_in_short_months_but_keeps_day_31_after(self):
+        in_february = MADRID.localize(datetime.datetime(2030, 2, 1, 9, 0))
+        self.assertEqual(EmailController.next_quota_reset(datetime.datetime(2030, 1, 31), in_february, self.month),
+                         (datetime.datetime(2030, 2, 28), True))
+        in_march = MADRID.localize(datetime.datetime(2030, 3, 1, 9, 0))
+        self.assertEqual(EmailController.next_quota_reset(datetime.datetime(2030, 1, 31), in_march, self.month),
+                         (datetime.datetime(2030, 3, 31), True))
+
+
 def render_context(**overrides):
     local = SimpleNamespace(id='local-1', name='Sublime', address='Calle Mayor 1')
     local_settings = SimpleNamespace(
