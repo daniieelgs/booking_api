@@ -460,7 +460,7 @@ def calculatEndTimeBooking(booking):
 
 def calculateExpireBookingToken(datetime_end: datetime, location):
                            
-    datetime_end = datetime_end.replace(tzinfo=now().tzinfo)
+    datetime_end = naiveToAware(datetime_end, location)
                            
     diff = datetime_end - now(location)
                         
