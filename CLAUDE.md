@@ -136,6 +136,29 @@ The secondary is a personal server of the owner with unrelated confidential serv
 - Run git and edit files as the file owner (`ubuntu`, uid 1000): the worker/beat containers run as uid 1000 and root-owned files in `private/` break log rotation and writes.
 - Published ports: web 443, MariaDB 3307 (needed by the secondary; restrict it to the secondary's IP if possible). Redis is not published.
 
+## Git workflow (GitFlow, mandatory for every human and agent)
+
+Follow GitFlow and general Git good practice. `master` = production (primary server), `develop` = integration (secondary server). Never commit directly to either; both only change through a **pull request**.
+
+**Branches**
+- New functionality: `feature/<short-name>`. Bug fix: `fix/<short-name>`. Urgent production failure: `hotfix/<short-name>`.
+- `feature/*` and `fix/*` branch off `develop`. `hotfix/*` branches off `master`, is PR'd into `master`, and then `master` must be merged back into `develop` so the branches stay aligned.
+- **One bug = one `fix/*` branch with its own commit(s).** Never fix several bugs in the same branch or the same commit, and never mix a fix with a feature or a refactor. Same for features: one purpose per branch.
+- **Related set of tasks** (several related fixes or features): create an umbrella branch off `develop` (e.g. `feature/<topic>` or `fix/<topic>-batch`), then one sub-branch per fix/feature off the umbrella, each merged into the umbrella by PR (or a no-fast-forward merge). When the whole set is finished and verified, open **one PR umbrella → `develop`**. This way the `develop` CI/CD runs once per set, not once per small task, while every task keeps its own branch and commits.
+- Test-only or docs-only changes also get their own branch (`feature/` or `fix/` by intent); do not hide them inside an unrelated branch.
+
+**Commits and PRs**
+- Small, atomic commits with Conventional Commit messages (`fix:`, `feat:`, `test:`, `docs:`, `chore:`, `refactor:`), imperative subject, body explaining *why*. Each commit should leave the tests passing.
+- A fix commit includes its regression test. Do not rewrite history that is already pushed or shared (no force-push on shared branches); rebase/clean only your own unpushed work.
+- Never commit secrets, `.env*`, DB dumps or anything under `private/` or `public/`.
+- Every PR states what/why, how it was tested and its deployment impact (restart needed, migration, rebuild).
+
+**Promotion path**
+1. Feature/fix branch → PR into `develop` (CI runs) → deployed to the secondary and verified there.
+2. Only when everything works on `develop`: PR `develop` → `master` (full CI incl. integration + real-services), then deploy to the primary.
+3. **Deploying `master` affects production** (the salon and its customers). Do it only in **low-load hours**, outside the business's opening hours (confirm the window with the owner if unsure), never during peak booking times, and verify `/health`, `/version` and the worker right after (`scripts/smoke_test.sh`). A `hotfix/*` for an urgent outage may justify going outside that window, but only with the owner's explicit approval.
+- Agents never merge a PR, push to `master`/`develop` or deploy without the user's explicit confirmation.
+
 ## Production lessons learned (read before debugging)
 
 - **Paths depend on `os.getcwd()`.** Under mod_wsgi the daemon's cwd was `/home/apiuser`, so uploaded email templates were saved inside the web container while the worker read stale copies from `/app/public`. Fixed with `WSGIDaemonProcess ... home=/app` in `apache-flask.conf.template` (2026-10-21). Symptom to remember: "the URL shows the new template but emails use the old one" = web and worker are not reading the same directory.
