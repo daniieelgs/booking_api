@@ -3,6 +3,8 @@ import json
 import uuid
 from unittest import mock
 
+from celery.exceptions import Retry
+
 from flask_testing import TestCase
 
 from app import create_app, db
@@ -102,6 +104,23 @@ class TestSendMailTask(SendMailTaskTestCase):
             send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id)
 
         self.assertTrue(tasks.set_key_if_absent(tasks.email_sent_key(task_id) + ':claim', 1, exp=60))
+
+    def test_two_copies_of_the_same_failed_attempt_schedule_a_single_retry(self):
+        task_id = uuid.uuid4().hex
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=False) as sender,                 mock.patch.object(tasks, 'is_email_test_mode', return_value=False),                 mock.patch.object(send_mail_task, 'retry', side_effect=Retry()) as retry:
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id, retries=0)
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id, retries=0)
+
+        self.assertEqual(sender.call_count, 1)
+        self.assertEqual(retry.call_count, 1)
+
+    def test_the_next_attempt_of_the_same_task_is_not_blocked_by_the_previous_one(self):
+        task_id = uuid.uuid4().hex
+        with mock.patch.object(tasks, 'send_confirmed_booking_mail', return_value=False) as sender,                 mock.patch.object(tasks, 'is_email_test_mode', return_value=False),                 mock.patch.object(send_mail_task, 'retry', side_effect=Retry()):
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id, retries=0)
+            send_mail_task.apply(args=(self.local_id, self.booking_id, CONFIRMED), task_id=task_id, retries=1)
+
+        self.assertEqual(sender.call_count, 2)
 
     def test_a_new_request_for_the_same_booking_and_type_still_sends(self):
         with mock.patch.object(tasks, 'send_updated_booking_mail', return_value=True) as sender:
