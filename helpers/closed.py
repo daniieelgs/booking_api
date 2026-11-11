@@ -1,15 +1,24 @@
 
 from db import deleteAndCommit, rollback
-from helpers.DatetimeHelper import isAware, naiveToAware
+from globals import DEFAULT_LOCATION_TIME
+from helpers.DatetimeHelper import isAware, naiveToAware, now as nowIn
 from helpers.error.ClosedDaysError.BadDatetimesClosedDaysException import BadDatetimesClosedDaysException
 from helpers.error.ClosedDaysError.ConflictClosedDaysException import ConflictClosedDaysException
 from models.closed import ClosedModel
+from models.local import LocalModel
 import datetime
+
+def getLocalLocation(localId):
+    local = LocalModel.query.get(localId)
+    return local.location if local and local.location else DEFAULT_LOCATION_TIME
 
 def getClosedDays(localId, datetime_init = None, datetime_end = None):
     closedDays = ClosedModel.query.filter_by(local_id=localId).all()
-        
-    now = datetime.datetime.now()
+    
+    location = getLocalLocation(localId)
+    
+    # closed days are naive wall-clock times of the local (see helpers/DatetimeHelper.py)
+    now = nowIn(location).replace(tzinfo=None)
     deleted = []
     
     for closedDay in [c for c in closedDays if c.datetime_end < now]:
@@ -23,13 +32,13 @@ def getClosedDays(localId, datetime_init = None, datetime_end = None):
     
     if datetime_init:
         if not isAware(datetime_init):
-            datetime_init = naiveToAware(datetime_init)
-        closedDays = [closedDay for closedDay in closedDays if naiveToAware(closedDay.datetime_end )>= datetime_init]
+            datetime_init = naiveToAware(datetime_init, location)
+        closedDays = [closedDay for closedDay in closedDays if naiveToAware(closedDay.datetime_end, location) >= datetime_init]
         
     if datetime_end:
         if not isAware(datetime_end):
-            datetime_end = naiveToAware(datetime_end)
-        closedDays = [closedDay for closedDay in closedDays if naiveToAware(closedDay.datetime_init) <= datetime_end]
+            datetime_end = naiveToAware(datetime_end, location)
+        closedDays = [closedDay for closedDay in closedDays if naiveToAware(closedDay.datetime_init, location) <= datetime_end]
         
     return closedDays
 

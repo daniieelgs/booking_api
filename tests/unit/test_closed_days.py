@@ -138,3 +138,38 @@ class TestCheckClosedDay(DbTestCase):
         closed_range(day(10), day(12), local='other')
 
         self.assertTrue(checkClosedDay(LOCAL, day(10), day(12)))
+
+
+class TestClosedDaysUseTheLocalsTimezone(DbTestCase):
+    """F-015: naive dates are wall-clock time in the local's own timezone."""
+
+    INSTANT = datetime.datetime(2030, 1, 1, 2, 0, tzinfo=datetime.timezone.utc)  # 11:00 Tokyo, 03:00 Madrid
+
+    def setUp(self):
+        super().setUp()
+        from unittest import mock
+        import pytz
+        import helpers.closed as closed_module
+        self.location = None
+
+        def fake_now(location):
+            self.location = location
+            return self.INSTANT.astimezone(pytz.timezone(location))
+
+        for patcher in (mock.patch.object(closed_module, 'nowIn', side_effect=fake_now),
+                        mock.patch.object(closed_module, 'getLocalLocation', side_effect=lambda local_id: self.zone)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_a_closing_that_ended_in_tokyo_time_is_deleted_for_a_tokyo_local(self):
+        self.zone = 'Asia/Tokyo'
+        closed_range(datetime.datetime(2030, 1, 1, 8, 0), datetime.datetime(2030, 1, 1, 10, 0))
+
+        self.assertEqual(getClosedDays(LOCAL), [])
+        self.assertEqual(self.location, 'Asia/Tokyo')
+
+    def test_the_same_closing_is_still_running_for_a_madrid_local(self):
+        self.zone = 'Europe/Madrid'
+        kept = closed_range(datetime.datetime(2030, 1, 1, 8, 0), datetime.datetime(2030, 1, 1, 10, 0))
+
+        self.assertEqual([c.id for c in getClosedDays(LOCAL)], [kept.id])
