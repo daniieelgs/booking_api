@@ -1,5 +1,4 @@
 from datetime import datetime
-from logging import DEBUG
 import os
 import time
 from celery import shared_task
@@ -13,7 +12,7 @@ from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundE
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from helpers.security import generateTokens, generateUUID
 from models.booking import BookingModel
-from globals import CANCELLED_STATUS, CONFIRMED_STATUS, FILENAME_LOG, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
+from globals import DEBUG, CANCELLED_STATUS, CONFIRMED_STATUS, FILENAME_LOG, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
 from helpers.BookingController import calculateExpireBookingToken, cancelBooking
