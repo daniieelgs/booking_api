@@ -92,6 +92,29 @@ def release_email_claim(task_id):
     except Exception as e:
         log("Could not release the email claim.", level="WARNING", error=e)
 
+# One retry per attempt. A retry waiting longer than the broker's visibility_timeout is redelivered, so several copies
+# of the SAME attempt (same task id and same retries counter) fire. Each copy that fails would schedule its own
+# retry and the tasks would multiply on every cycle (measured: 11 sends in 560 s instead of 5). The first copy to
+# finish an attempt records it; the others skip. Recorded when the attempt ENDS, so a worker that dies mid-attempt
+# leaves it undone and the redelivered message runs it again.
+def attempt_key(task_id, retries):
+    return f'email_attempt_done:{task_id}:{retries}'
+
+def attempt_already_done(task_id, retries):
+    if not task_id: return False
+    try:
+        return bool(get_key_value_cache(attempt_key(task_id, retries)))
+    except Exception as e:
+        log("Could not check if the attempt was already done.", level="WARNING", error=e)
+        return False
+
+def mark_attempt_done(task_id, retries):
+    if not task_id: return
+    try:
+        register_key_value_cache(attempt_key(task_id, retries), 1, exp=EMAIL_SENT_KEY_TTL)
+    except Exception as e:
+        log("Could not remember that the attempt was done.", level="WARNING", error=e)
+
 def mark_email_sent(task_id):
     if not task_id: return
     try:
@@ -108,14 +131,24 @@ def send_mail_task(self, local_id, booking_id, email_type: int, _uuid = None):
         log(f"Email already sent by task {self.request.id}. Skipping the duplicate.", uuid=_uuid, level="WARNING")
         return
     
+    if attempt_already_done(self.request.id, self.request.retries):
+        log(f"Attempt {self.request.retries} of task {self.request.id} was already done by another copy. Skipping.", uuid=_uuid, level="WARNING")
+        return
+    
     if not claim_email(self.request.id):
         log(f"Another copy of task {self.request.id} is sending the email. Skipping.", uuid=_uuid, level="WARNING")
         return
     
     try:
-        return send_mail_task_body(self, local_id, booking_id, email_type, _uuid)
+        try:
+            result = send_mail_task_body(self, local_id, booking_id, email_type, _uuid)
+        except Exception: # includes the Retry that schedules the next attempt
+            mark_attempt_done(self.request.id, self.request.retries)
+            raise
+        mark_attempt_done(self.request.id, self.request.retries)
+        return result
     finally:
-        release_email_claim(self.request.id)
+        release_email_claim(self.request.id) # after marking the attempt: a waiting copy sees one or the other
 
 def send_mail_task_body(self, local_id, booking_id, email_type: int, _uuid = None):
      

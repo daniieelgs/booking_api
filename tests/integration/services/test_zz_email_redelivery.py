@@ -99,3 +99,17 @@ def test_exp3_worker_killed_in_the_middle_of_the_first_attempt_does_not_lose_the
     delivered = wait_until(lambda: email_confirmed(booking_id), timeout=300, interval=2)
     print(f'\nEXP3 delivered={delivered} after {time.time() - killed:.0f}s, sender calls={calls(path)}')
     assert delivered
+
+
+def test_exp4_a_failing_email_keeps_a_single_retry_chain(app, local, exp):
+    """The SMTP always fails; the retry waits 180 s and VT is 10 s, so every retry is redelivered several times. Without
+    one-retry-per-attempt, each copy that fails schedules its own retry and the tasks multiply every cycle.
+    One chain = one call at t=0, 180, 360 and 540 s: at most 5 calls in the 560 s window."""
+    path = exp.attempts_file()
+    exp.start(path, EXP_FAIL_TIMES=1000, EXP_VISIBILITY_TIMEOUT=10, RETRY_SEND_EMAIL=3, EMAIL_CLAIM_TTL=5)
+    booking_id = create_pending_booking(app, local)
+    send(local, booking_id)
+
+    time.sleep(560)
+    print(f'\nEXP4 sender calls in 560 s = {calls(path)} (one chain: 4 or 5)')
+    assert calls(path) <= 5
