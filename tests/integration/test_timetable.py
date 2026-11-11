@@ -46,8 +46,8 @@ class TestTimetable(TestCase):
         self.locals.append(self.local_id)
                 
         new_timetable = {
-                "opening_time": "13:00:00",
-                "closing_time": "15:00:00",
+                "opening_time": "12:00:00",
+                "closing_time": "16:00:00",
                 "weekday_short": "fr"
         }
         
@@ -96,8 +96,8 @@ class TestTimetable(TestCase):
         self.assertEqual(response.status_code, 200)
         
         new_timetable = {
-                "opening_time": "13:00:00",
-                "closing_time": "15:00:00",
+                "opening_time": "12:00:00",
+                "closing_time": "16:00:00",
                 "weekday_short": "fr"
         }
         self.data.append(new_timetable)
