@@ -154,15 +154,15 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     service = ", ".join([service.name for service in book.services])
     cost = str(book.total_price)
     worker = book.worker.name + ((" " + book.worker.last_name ) if book.worker.last_name is not None else "")
-    address_maps = local_settings.maps
-    address = local.address
-    phone_contact = local_settings.phone_contact
-    email_contact = local_settings.email_contact
+    address_maps = local_settings.maps or ''
+    address = local.address or ''
+    phone_contact = local_settings.phone_contact or ''
+    email_contact = local_settings.email_contact or ''
     timeout_confirm_booking = str(int(local_settings.booking_timeout / 60)) if local_settings.booking_timeout and local_settings.booking_timeout > 0 else 0
-    website = local_settings.website
-    whatsapp_link = local_settings.whatsapp
+    website = local_settings.website or ''
+    whatsapp_link = local_settings.whatsapp or ''
     
-    uuid_log = book.uuid_log
+    uuid_log = book.uuid_log or ''
     
     try:
         response = generateFileResponse(local.id, generatePagePath(page))
@@ -193,7 +193,8 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
         
         return (mail_body, subject)
         
-    except:
+    except Exception as e:
+        log(f"Could not render the email page '{page}': {e}", level='ERROR', uuid=book.uuid_log, error=e)
         if DEBUG:
             load_dotenv()
             if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':
