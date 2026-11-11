@@ -70,6 +70,14 @@ class TestCalculateExpireBookingToken(unittest.TestCase):
 
         self.assertEqual(diff, datetime.timedelta(hours=5))
 
+    def test_end_date_is_read_in_the_locals_timezone_not_madrid(self):
+        tokyo = pytz.timezone('Asia/Tokyo')
+        current = tokyo.localize(datetime.datetime(2030, 1, 1, 10, 0))
+        with mock.patch.object(BookingController, 'now', return_value=current):
+            diff = calculateExpireBookingToken(datetime.datetime(2030, 1, 1, 12, 0), 'Asia/Tokyo')
+
+        self.assertEqual(diff, datetime.timedelta(hours=2))
+
     def test_uses_the_requested_location_for_the_current_time(self):
         with mock.patch.object(BookingController, 'now', return_value=self.at(2030, 1, 1, 10)) as now:
             calculateExpireBookingToken(datetime.datetime(2030, 1, 2), 'Europe/Madrid')
