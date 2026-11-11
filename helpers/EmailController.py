@@ -29,7 +29,7 @@ def generate_message_id(domain):
 def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subject, domain, content, type, name = None, _uuid = None) -> bool:
 
     log(f"Sending mail to {to}...", uuid=_uuid)
-    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Pass: {smtp_passwd}. Subject: {subject}", uuid=_uuid)
+    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Subject: {subject}", uuid=_uuid)
 
     email = MIMEMultipart()
     email["From"] = f'{name} <{smtp_mail}>' if name else smtp_mail
