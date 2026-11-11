@@ -77,6 +77,12 @@ class TestValidateTimetable(DbTestCase):
 
         self.assertTrue(validateTimetable(LOCAL))
 
+    def test_slots_that_touch_are_not_an_overlap(self):
+        add(t(9), t(13))
+        add(t(13), t(18))
+
+        self.assertTrue(validateTimetable(LOCAL))
+
     def test_valid_when_there_is_no_timetable(self):
         self.assertTrue(validateTimetable(LOCAL))
 
