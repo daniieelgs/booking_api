@@ -43,7 +43,7 @@ def checkClosedDay(localId, datetime_init, datetime_end, closedDayId = None):
     for closedDay in closedDays:
         if closedDayId and closedDay.id == closedDayId:
             continue
-        if closedDay.datetime_init <= datetime_init < closedDay.datetime_end or closedDay.datetime_init < datetime_end <= closedDay.datetime_end:
+        if closedDay.datetime_init < datetime_end and datetime_init < closedDay.datetime_end:
             raise ConflictClosedDaysException('La fecha de cierre se cruza con otra fecha de cierre.')
             
     return True
