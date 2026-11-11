@@ -171,6 +171,20 @@ def get_key_value_cache(key, redis_connection = None, pipeline = None):
         result = pipe.execute()
         return result[0] if result else None
 
+def set_key_if_absent(key, value, exp = MAX_TIMEOUT_WAIT_BOOKING, redis_connection = None):
+    """Atomic SET NX with expiry. Returns True if this caller created the key (it "owns" it), False if it existed."""
+
+    if is_redis_test_mode():
+        if get_key_value_cache(key) is not None:
+            return False
+        register_key_value_cache(key, value, exp)
+        return True
+
+    if redis_connection is None:
+        redis_connection = create_redis_connection()
+
+    return bool(redis_connection.set(key, value, nx=True, ex=exp))
+
 def delete_key_value_cache(key, redis_connection = None, pipeline = None):
 
     if is_redis_test_mode():

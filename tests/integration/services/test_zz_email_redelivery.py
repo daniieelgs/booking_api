@@ -52,8 +52,8 @@ def send(local, booking_id):
     send_mail_task.delay(local.local['id'], booking_id, int(EmailType.CONFIRMED_EMAIL))
 
 
-def test_exp1_retry_waiting_longer_than_visibility_timeout_duplicates_the_email(app, local, exp):
-    """1st call fails, the retry waits 180 s with VT=10 s. 2 sender calls = no duplicate; more = duplicated email."""
+def test_exp1_retry_waiting_longer_than_visibility_timeout_does_not_duplicate_the_email(app, local, exp):
+    """1st call fails, the retry waits 180 s with VT=10 s. 2 sender calls = no duplicate; more = duplicated email (regression)."""
     path = exp.attempts_file()
     exp.start(path, EXP_FAIL_TIMES=1, EXP_VISIBILITY_TIMEOUT=10, RETRY_SEND_EMAIL=3)
     booking_id = create_pending_booking(app, local)
@@ -87,13 +87,14 @@ def test_exp3_worker_killed_in_the_middle_of_the_first_attempt_does_not_lose_the
     """SIGKILL the worker while it is sending (first attempt sleeps 120 s); start another one. Uses the app's real
     Celery config: without task_acks_late the message was already acknowledged and the email was lost forever."""
     path = exp.attempts_file()
-    worker = exp.start(path, EXP_SLOW_FIRST_SECONDS=120, EXP_VISIBILITY_TIMEOUT=10)
+    # the dead worker's claim must expire before the redelivery (scaled VT of 10 s => claim TTL of 5 s)
+    worker = exp.start(path, EXP_SLOW_FIRST_SECONDS=120, EXP_VISIBILITY_TIMEOUT=10, EMAIL_CLAIM_TTL=5)
     booking_id = create_pending_booking(app, local)
     send(local, booking_id)
     assert wait_until(lambda: calls(path) == 1, timeout=60), 'first attempt never ran'
     worker.kill()
     killed = time.time()
-    exp.start(path, EXP_VISIBILITY_TIMEOUT=10)
+    exp.start(path, EXP_VISIBILITY_TIMEOUT=10, EMAIL_CLAIM_TTL=5)
 
     delivered = wait_until(lambda: email_confirmed(booking_id), timeout=300, interval=2)
     print(f'\nEXP3 delivered={delivered} after {time.time() - killed:.0f}s, sender calls={calls(path)}')

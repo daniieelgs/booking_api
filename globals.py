@@ -116,6 +116,8 @@ DEFAULT_RETRY_SEND_EMAIL = 120
 
 DEFAULT_MAX_RETRIES_SEND_EMAIL = 12
 
+DEFAULT_EMAIL_CLAIM_TTL = 300
+
 DEFAULT_MAX_TIMEOUT_WAIT_BOOKING = 5
 
 DEFAULT_HEALTH_WORKER_TIMEOUT = 1.0
@@ -257,6 +259,10 @@ ADMIN_TOKEN = os.getenv('ADMIN_TOKEN')
 RETRY_SEND_EMAIL = int(os.getenv('RETRY_SEND_EMAIL', DEFAULT_RETRY_SEND_EMAIL))
 
 MAX_RETRIES_SEND_EMAIL = int(os.getenv('MAX_RETRIES_SEND_EMAIL', DEFAULT_MAX_RETRIES_SEND_EMAIL))
+
+# Seconds a copy of an email task 'owns' the send. MUST stay below Celery's visibility_timeout (1 h by default): if a
+# worker dies mid-send, the redelivered message has to find the claim expired.
+EMAIL_CLAIM_TTL = int(os.getenv('EMAIL_CLAIM_TTL', DEFAULT_EMAIL_CLAIM_TTL))
 
 MAX_TIMEOUT_WAIT_BOOKING = int(os.getenv('MAX_TIMEOUT_WAIT_BOOKING', DEFAULT_MAX_TIMEOUT_WAIT_BOOKING))
 
