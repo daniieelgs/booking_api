@@ -430,7 +430,12 @@ class AccessLocal(MethodView):
                 abort(401, message = 'Invalid credentials.')
                 
             workerId = worker.id
-            local = worker.work_groups.first().local
+            work_group = worker.work_groups.first()
+            
+            if not work_group:
+                abort(401, message = 'Invalid credentials.')
+            
+            local = work_group.local
         
         log(f'Logging in local "{local.id}". [{login_data["email"]}:{login_data["email"]}]. Worker id: {workerId}', uuid=_uuid)
             

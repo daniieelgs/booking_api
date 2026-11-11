@@ -22,3 +22,9 @@ class WorkerModel(db.Model):
     )
     
     
+
+    @property
+    def local_id(self):
+        """Id of the local this worker belongs to (through its work groups), or None if it has no work group."""
+        work_group = self.work_groups.first()
+        return work_group.local_id if work_group else None
