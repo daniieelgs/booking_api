@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte de tests y bugs</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --text: #1d2330; --muted: #5d667a; --border: #dde1e9;
+    --ok: #17803d; --ok-bg: #e3f5e9; --fail: #c62828; --fail-bg: #fdeaea;
+    --warn: #9a6200; --warn-bg: #fff3d6; --talk: #6b3fb5; --talk-bg: #efe7fb; --code-bg: #eef0f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151c; --surface: #1b2029; --text: #e6e9f0; --muted: #9aa3b6; --border: #2c3341;
+      --ok: #5fd08a; --ok-bg: #16301f; --fail: #ff8a80; --fail-bg: #3a1b1b;
+      --warn: #f3c56b; --warn-bg: #36290f; --talk: #c4a6f5; --talk-bg: #2a2040; --code-bg: #262c3a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c; --surface: #1b2029; --text: #e6e9f0; --muted: #9aa3b6; --border: #2c3341;
+    --ok: #5fd08a; --ok-bg: #16301f; --fail: #ff8a80; --fail-bg: #3a1b1b;
+    --warn: #f3c56b; --warn-bg: #36290f; --talk: #c4a6f5; --talk-bg: #2a2040; --code-bg: #262c3a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 38px 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 14px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: .86em;
+         font-family: ui-monospace, "Cascadia Code", Consolas, monospace; word-break: break-word; }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: .82rem; margin: 6px 0 0;
+        white-space: pre-wrap; word-break: break-word; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .card .num { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  .card .pct { color: var(--muted); font-size: .95rem; }
+  .card.ok .num { color: var(--ok); } .card.fail .num { color: var(--fail); }
+  .bar { height: 10px; border-radius: 6px; background: var(--fail); overflow: hidden; margin: 8px 0 14px; }
+  .bar > span { display: block; height: 100%; background: var(--ok); }
+  .note { background: var(--warn-bg); border-left: 4px solid var(--warn); padding: 9px 14px; border-radius: 6px; margin: 12px 0; font-size: .92rem; }
+  .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 1100px; }
+  table.narrow { min-width: 640px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { background: var(--code-bg); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  tr.done td { opacity: .6; }
+  td.n { white-space: nowrap; color: var(--muted); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .tag { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: .76rem; font-weight: 600; white-space: nowrap; margin: 1px 0; }
+  .tag.small, .tag.pass, .tag.fixed { background: var(--ok-bg); color: var(--ok); }
+  .tag.medium, .tag.stale { background: var(--warn-bg); color: var(--warn); }
+  .tag.discuss { background: var(--talk-bg); color: var(--talk); }
+  .tag.fail, .tag.open { background: var(--fail-bg); color: var(--fail); }
+  .tag.wontfix { background: var(--code-bg); color: var(--muted); }
+  .tag.sev-critical, .tag.sev-high { background: var(--fail-bg); color: var(--fail); }
+  .tag.sev-medium { background: var(--warn-bg); color: var(--warn); }
+  .tag.sev-low { background: var(--code-bg); color: var(--muted); }
+  .empty { padding: 16px; color: var(--ok); font-weight: 600; }
+  .empty.muted { color: var(--muted); font-weight: 400; }
+  ul.plain { margin: 0; padding-left: 16px; }
+  details { margin-top: 6px; } summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .88rem; color: var(--muted); margin: 8px 0 0; }
+  .toolbar { display: flex; gap: 16px; align-items: center; margin: 12px 0 0; font-size: .9rem; color: var(--muted); }
+  footer { color: var(--muted); font-size: .84rem; margin-top: 40px; }
+  @media (max-width: 600px) { h1 { font-size: 1.4rem; } .card .num { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+<main id="app"><p>Cargando…</p></main>
+
+<script id="embedded-data" type="application/json">__EMBEDDED_DATA__</script>
+<script>
+const TIERS = [['unit', 'Tests unitarios'], ['integration', 'Tests de integración (SQLite)'],
+               ['services', 'Tests con servicios reales (Docker)'], ['backup', 'Tests de backup']];
+const SIZE = { small: ['Pequeño', 'small'], medium: ['Medio', 'medium'], discuss: ['Comentar', 'discuss'] };
+const STATUS = { open: 'Abierto', fixed: 'Arreglado', wontfix: 'Descartado' };
+const SEV = { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' };
+let DATA, SOURCE;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// text with `inline code` between backticks
+const rich = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+const fmt = (n, d = 2) => n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (a, b) => b ? fmt(100 * a / b) + ' %' : '–';
+const tag = (cls, text) => `<span class="tag ${cls}">${esc(text)}</span>`;
+const short = id => String(id).split('::').slice(1).join('::') || id;
+
+async function load() {
+  try {
+    const get = async f => { const r = await fetch(f, { cache: 'no-store' }); if (!r.ok) throw new Error(f); return r.json(); };
+    const [results, findings] = await Promise.all([get('results.json'), get('findings.json')]);
+    SOURCE = 'JSON en vivo (results.json y findings.json)';
+    return { results, findings };
+  } catch (e) {
+    SOURCE = 'copia embebida al generar el HTML (abre el reporte con un servidor http para ver los JSON en vivo)';
+    return JSON.parse(document.getElementById('embedded-data').textContent);
+  }
+}
+
+function totals(results) {
+  const t = { total: 0, passed: 0, failed: 0 };
+  for (const [k] of TIERS) { const c = (results.tiers[k] || {}).counts; if (c) { t.total += c.total; t.passed += c.passed; t.failed += c.failed; } }
+  return t;
+}
+
+function summary(results, findings) {
+  const t = totals(results);
+  const open = findings.filter(f => f.status === 'open' && f.kind === 'test_failure').length;
+  const rows = TIERS.map(([k, label]) => {
+    const tier = results.tiers[k];
+    if (!tier || !tier.counts) return `<tr><td>${esc(label)}</td><td colspan="5" class="muted">sin datos</td></tr>`;
+    const c = tier.counts, mark = tier.status === 'ran' ? '' : ' ' + tag('stale', 'dato anterior');
+    return `<tr><td>${esc(label)}${mark}</td><td class="num">${c.total}</td><td class="num">${c.passed}</td><td class="num">${pct(c.passed, c.total)}</td>
+      <td class="num">${c.failed ? tag('fail', c.failed) : tag('pass', 0)}</td><td class="num">${pct(c.failed, c.total)}</td></tr>`;
+  }).join('');
+  const stale = TIERS.filter(([k]) => results.tiers[k] && results.tiers[k].status !== 'ran' && results.tiers[k].counts)
+    .map(([k, l]) => `<li><strong>${esc(l)}</strong>: ${esc(results.tiers[k].reason || 'no medido')} Se muestra la última medición (${esc(results.tiers[k].measured_at || '?')}).</li>`).join('');
+  return `
+  <div class="cards">
+    <div class="card"><div class="label">Tests ejecutados</div><div class="num">${t.total}</div><div class="pct">100 %</div></div>
+    <div class="card ok"><div class="label">Pasan</div><div class="num">${t.passed}</div><div class="pct">${pct(t.passed, t.total)}</div></div>
+    <div class="card fail"><div class="label">Fallan</div><div class="num">${t.failed}</div><div class="pct">${pct(t.failed, t.total)}</div></div>
+    <div class="card"><div class="label">Bugs abiertos</div><div class="num">${open}</div><div class="pct">de ${findings.filter(f => f.kind === 'test_failure').length} con test</div></div>
+  </div>
+  <div class="bar"><span style="width:${t.total ? 100 * t.passed / t.total : 0}%"></span></div>
+  <div class="scroll"><table class="narrow"><thead><tr><th>Tipo de test</th><th class="num">Ejecutados</th><th class="num">Pasan</th><th class="num">% pasan</th><th class="num">Fallan</th><th class="num">% fallan</th></tr></thead>
+  <tbody>${rows}<tr><td><strong>Total</strong></td><td class="num"><strong>${t.total}</strong></td><td class="num"><strong>${t.passed}</strong></td><td class="num"><strong>${pct(t.passed, t.total)}</strong></td><td class="num"><strong>${t.failed}</strong></td><td class="num"><strong>${pct(t.failed, t.total)}</strong></td></tr></tbody></table></div>
+  ${stale ? `<div class="note">Niveles no medidos en la última ejecución (se muestran los datos anteriores):<ul class="plain">${stale}</ul></div>` : ''}
+  <p class="legend">Tamaño del cambio: ${tag('small', 'Pequeño')} pocas líneas, sin decisiones de diseño
+    ${tag('medium', 'Medio')} varias funciones o una regla de negocio ${tag('discuss', 'Comentar')} afecta al diseño o la arquitectura: decidirlo antes</p>`;
+}
+
+function files(f) {
+  if (!f.affected_files || !f.affected_files.length) return '–';
+  return '<ul class="plain">' + f.affected_files.map(a => `<li><code>${esc(a.path)}${a.lines ? ':' + esc(a.lines) : ''}</code>${a.note ? ' ' + esc(a.note) : ''}</li>`).join('') + '</ul>';
+}
+
+function fix(f) {
+  const s = f.suggested_fix || {};
+  let html = rich(s.summary || '');
+  if (s.steps && s.steps.length) html += '<ul class="plain">' + s.steps.map(x => `<li>${rich(x)}</li>`).join('') + '</ul>';
+  if (s.snippet) html += `<pre>${esc(s.snippet)}</pre>`;
+  return html || '–';
+}
+
+function evidence(f) {
+  if (!f.evidence || !f.evidence.length) return '';
+  const items = f.evidence.map(e => `<li><strong>${esc(e.type || '')}</strong>${e.file ? ` <code>${esc(e.file)}${e.line ? ':' + esc(e.line) : ''}</code>` : ''}<pre>${esc(e.text)}</pre></li>`).join('');
+  return `<details><summary>Evidencia (${f.evidence.length})</summary><ul class="plain">${items}</ul></details>`;
+}
+
+function size(f) {
+  const [label, cls] = SIZE[f.change_size] || ['?', 'medium'];
+  return tag(cls, label) + (f.discuss_reason ? `<div class="sub" style="margin:4px 0 0;font-size:.85rem">${rich(f.discuss_reason)}</div>` : '');
+}
+
+function failureRows(list, showOnlyTest) {
+  return list.map(f => `<tr class="${f.status === 'fixed' || f.status === 'wontfix' ? 'done' : ''}">
+    <td class="n">${esc(f.id)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
+    <td><ul class="plain">${(f.tests || []).map(t => `<li><code>${esc(short(t))}</code></li>`).join('')}</ul>${f.latest_failure && f.status === 'open' ? `<details><summary>Último fallo</summary><pre>${esc(f.latest_failure.message)}</pre></details>` : ''}</td>
+    <td>${rich(f.test_description)}</td>
+    <td><strong>${esc(f.title)}</strong><br>${rich(f.bug_description)}${f.root_cause ? `<details><summary>Causa raíz</summary>${rich(f.root_cause)}</details>` : ''}${evidence(f)}</td>
+    <td>${files(f)}</td><td>${fix(f)}</td><td>${size(f)}</td><td>${tag(f.status, STATUS[f.status] || f.status)}</td></tr>`).join('');
+}
+
+function tierSection(key, label, results, findings, hideDone) {
+  const tier = results.tiers[key] || {};
+  const c = tier.counts || {};
+  const mine = findings.filter(f => f.kind === 'test_failure' && f.tier === key);
+  const visible = mine.filter(f => !(hideDone && f.status !== 'open'));
+  const known = new Set(mine.flatMap(f => f.tests || []));
+  const orphan = Object.entries(tier.failures || {}).filter(([id]) => !known.has(id));
+  const head = `<h2>${esc(label)} · ${c.failed ?? '?'} fallos de ${c.total ?? '?'}</h2>`;
+  let body;
+  if (!tier.counts) body = `<div class="empty muted">Sin datos: este nivel no se ha ejecutado todavía.</div>`;
+  else if (!visible.length && !orphan.length) {
+    body = `<div class="empty">${mine.length ? 'No quedan bugs abiertos en este nivel (' + mine.length + ' arreglados).' : 'Sin fallos.'}</div>`;
+  } else {
+    body = `<table><thead><tr><th>#</th><th>Test que falla</th><th>Qué hace el test</th><th>Bug encontrado</th><th>Archivos y líneas</th><th>Sugerencia de arreglo</th><th>Cambio</th><th>Estado</th></tr></thead><tbody>
+      ${failureRows(visible)}
+      ${orphan.map(([id, d]) => `<tr><td class="n">${tag('fail', 'Sin analizar')}</td><td><code>${esc(short(id))}</code></td><td colspan="6">Falla y aún no tiene hallazgo en findings.json.<pre>${esc(d.message)}</pre></td></tr>`).join('')}
+      </tbody></table>`;
+  }
+  const note = tier.status === 'not_run' ? `<div class="note">${esc(tier.reason || 'No medido en la última ejecución.')}${tier.counts ? ' Datos de ' + esc(tier.measured_at || 'una ejecución anterior') + '.' : ''}</div>` : '';
+  return head + note + `<div class="scroll">${body}</div>`;
+}
+
+function extras(findings, hideDone) {
+  const list = findings.filter(f => f.kind === 'extra' && !(hideDone && f.status !== 'open'));
+  if (!list.length) return '';
+  const rows = list.map(f => `<tr class="${f.status !== 'open' ? 'done' : ''}"><td class="n">${esc(f.id)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
+    <td><strong>${esc(f.title)}</strong><br>${rich(f.bug_description)}${f.root_cause ? `<details><summary>Causa raíz</summary>${rich(f.root_cause)}</details>` : ''}${evidence(f)}</td>
+    <td>${files(f)}</td><td>${fix(f)}</td><td>${size(f)}</td><td>${tag(f.status, STATUS[f.status] || f.status)}</td></tr>`).join('');
+  return `<h2>Otros hallazgos sin un test que falle</h2><p class="sub">Encontrados al analizar el código; algunos no se pueden cubrir con un test.</p>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Hallazgo</th><th>Archivos y líneas</th><th>Sugerencia</th><th>Cambio</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function discuss(findings) {
+  const list = findings.filter(f => f.change_size === 'discuss' && f.status === 'open');
+  if (!list.length) return '';
+  return `<h2>Cambios que conviene comentar antes de tocar código</h2><ul>${list.map(f => `<li><strong>${esc(f.id)} · ${esc(f.title)}</strong>: ${rich(f.discuss_reason || '')}</li>`).join('')}</ul>`;
+}
+
+function render() {
+  const { results, findings: fdata } = DATA;
+  const findings = fdata.findings || [];
+  const hideDone = document.getElementById('hide-done') ? document.getElementById('hide-done').checked : false;
+  const git = results.git || {};
+  document.getElementById('app').innerHTML = `
+    <h1>Reporte de tests y bugs</h1>
+    <p class="sub">${esc(git.branch || '')} ${esc(git.commit || '')}${git.dirty ? ' (con cambios sin commitear)' : ''} · generado ${esc(results.generated_at || '')} · cada test que falla es un bug real del código, no del test.</p>
+    <h2 style="margin-top:6px">Resumen</h2>
+    ${summary(results, findings)}
+    <div class="toolbar"><label><input type="checkbox" id="hide-done" ${hideDone ? 'checked' : ''}> Ocultar bugs ya arreglados o descartados</label></div>
+    ${TIERS.map(([k, l]) => tierSection(k, l, results, findings, hideDone)).join('')}
+    ${extras(findings, hideDone)}
+    ${discuss(findings)}
+    <footer>Datos: ${esc(SOURCE)} · fuente de verdad: <code>results.json</code> y <code>findings.json</code> en esta misma carpeta (un agente puede leerlos sin abrir este HTML ni volver a ejecutar los tests).</footer>`;
+  document.getElementById('hide-done').addEventListener('change', render);
+}
+
+load().then(d => { DATA = d; render(); });
+</script>
+</body>
+</html>
