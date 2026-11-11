@@ -12,7 +12,7 @@ from helpers.error.BookingError.BookingNotFoundException import BookingNotFoundE
 from helpers.error.LocalError.LocalNotFoundException import LocalNotFoundException
 from helpers.security import generateTokens, generateUUID
 from models.booking import BookingModel
-from globals import DEBUG, CANCELLED_STATUS, CONFIRMED_STATUS, FILENAME_LOG, PENDING_STATUS, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
+from globals import DEBUG, CANCELLED_STATUS, CONFIRMED_STATUS, FILENAME_LOG, PENDING_STATUS, MAX_RETRIES_SEND_EMAIL, RETRY_SEND_EMAIL, USER_ROLE, EmailType, is_email_test_mode, log
 from models.local import LocalModel
 from models.session_token import SessionTokenModel
 from helpers.BookingController import calculateExpireBookingToken, cancelBooking
@@ -54,7 +54,7 @@ def set_email_sent(booking, email_type: int, email_sent, commit = True):
     
     return booking
         
-@shared_task(bind=True, queue='priority', max_retries=3, default_retry_delay=60 * RETRY_SEND_EMAIL)
+@shared_task(bind=True, queue='priority', max_retries=MAX_RETRIES_SEND_EMAIL, default_retry_delay=60 * RETRY_SEND_EMAIL)
 def send_mail_task(self, local_id, booking_id, email_type: int, _uuid = None):
      
     log(f"Sending email task. Email Type: {email_type}", uuid=_uuid)

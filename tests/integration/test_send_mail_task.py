@@ -119,7 +119,7 @@ class TestSendMailTask(SendMailTaskTestCase):
 
         self.assertTrue(result.failed())
         self.assertEqual(sender.call_count, send_mail_task.max_retries + 1)
-        self.assertEqual(send_mail_task.max_retries, 3)
+        self.assertEqual(send_mail_task.max_retries, 12)
         self.assertFalse(self.booking().email_confirmed)
 
     def test_exception_while_sending_is_retried(self):
