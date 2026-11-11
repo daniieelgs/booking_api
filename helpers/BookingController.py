@@ -350,7 +350,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         
         if worker_id:
             worker = WorkerModel.query.get(worker_id)
-            if not worker or worker.work_groups.first().local_id != local_id:
+            if not worker or worker.local_id != local_id:
                 raise WorkerNotFoundException(id = worker_id)
             
             if not force and services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
