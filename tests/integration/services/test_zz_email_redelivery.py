@@ -83,18 +83,18 @@ def test_exp2_worker_killed_while_holding_a_waiting_retry(app, local, exp, visib
     assert delivered
 
 
-@pytest.mark.parametrize('acks_late', ['0', '1'], ids=['acks_early_default', 'acks_late'])
-def test_exp3_worker_killed_in_the_middle_of_the_first_attempt(app, local, exp, acks_late):
-    """SIGKILL the worker while it is sending (first attempt sleeps 120 s); start another one."""
+def test_exp3_worker_killed_in_the_middle_of_the_first_attempt_does_not_lose_the_email(app, local, exp):
+    """SIGKILL the worker while it is sending (first attempt sleeps 120 s); start another one. Uses the app's real
+    Celery config: without task_acks_late the message was already acknowledged and the email was lost forever."""
     path = exp.attempts_file()
-    worker = exp.start(path, EXP_SLOW_FIRST_SECONDS=120, EXP_VISIBILITY_TIMEOUT=10, EXP_ACKS_LATE=acks_late)
+    worker = exp.start(path, EXP_SLOW_FIRST_SECONDS=120, EXP_VISIBILITY_TIMEOUT=10)
     booking_id = create_pending_booking(app, local)
     send(local, booking_id)
     assert wait_until(lambda: calls(path) == 1, timeout=60), 'first attempt never ran'
     worker.kill()
     killed = time.time()
-    exp.start(path, EXP_VISIBILITY_TIMEOUT=10, EXP_ACKS_LATE=acks_late)
+    exp.start(path, EXP_VISIBILITY_TIMEOUT=10)
 
     delivered = wait_until(lambda: email_confirmed(booking_id), timeout=300, interval=2)
-    print(f'\nEXP3 acks_late={acks_late}: delivered={delivered} after {time.time() - killed:.0f}s, sender calls={calls(path)}')
+    print(f'\nEXP3 delivered={delivered} after {time.time() - killed:.0f}s, sender calls={calls(path)}')
     assert delivered

@@ -5,7 +5,6 @@ Env:
   EXP_FAIL_TIMES         the first N calls raise (simulated SMTP outage), then the real test-mode sender runs
   EXP_SLOW_FIRST_SECONDS the first call sleeps this long BEFORE sending (a window to kill the worker mid-task)
   EXP_VISIBILITY_TIMEOUT Redis transport visibility_timeout in seconds (Celery default: 3600)
-  EXP_ACKS_LATE          '1' sets task_acks_late
 """
 import os
 import smtplib
@@ -35,5 +34,3 @@ tasks.send_confirmed_booking_mail = experiment_sender
 if os.environ.get('EXP_VISIBILITY_TIMEOUT'):
     celery.conf.broker_transport_options = {**celery.conf.broker_transport_options,
                                             'visibility_timeout': int(os.environ['EXP_VISIBILITY_TIMEOUT'])}
-if os.environ.get('EXP_ACKS_LATE') == '1':
-    celery.conf.task_acks_late = True
