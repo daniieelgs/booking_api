@@ -159,16 +159,16 @@ class GalleryImagesUpload(MethodView):
         return saveImage(request, IMAGE_TYPE_GALLERY)
     
 @blp.route('gallery/<string:name>')
-class LogosImagesUpload(MethodView):
+class GalleryImagesDelete(MethodView):
 
     @jwt_required(refresh=True)   
     @blp.response(404, description='La imagen no existe.')
     @blp.response(204, description='La imagen ha sido eliminada.') 
     def delete(self, name):
-        f"""
+        """
         Elimina una imagen de la galería.
         """
-        deleteImage(name, IMAGE_TYPE_LOGOS)
+        deleteImage(name, IMAGE_TYPE_GALLERY)
         
         return {}
     
