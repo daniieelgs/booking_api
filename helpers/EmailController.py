@@ -144,7 +144,7 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     cancel_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
     
     update_link:str = local_settings.update_link if local_settings.update_link is not None else ""
-    update_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
+    update_link = update_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
     
     client_name = book.client_name
     local_name = local.name
