@@ -6,6 +6,22 @@ Only the SMTP socket is faked (`email_test_mode`). All credentials are throw-awa
 
 ## Run locally
 
+Shortcut (with the project venv activated; it uses the `python` on the PATH): starts the containers, runs all the
+services tests and always removes the containers and volumes at the end, even if the tests fail. Extra arguments go
+straight to pytest, and the exit code is pytest's.
+
+```powershell
+.\scripts\run_services_tests.ps1                              # Windows PowerShell
+.\scripts\run_services_tests.ps1 -k redis -x
+```
+
+```bash
+scripts/run_services_tests.sh                                  # Linux / macOS / Git Bash
+scripts/run_services_tests.sh -m "services and not resilience"
+```
+
+The manual steps below do the same by hand.
+
 Docker must be running; the compose stack is **not** started by the tests (CI does it in the workflow).
 
 Git Bash / Linux / macOS:
@@ -83,4 +99,4 @@ never combine `tests/integration/services` with other test folders in the same c
 | `test_health.py`, `test_zz_health_*.py` | `/health` is `ok` with database, Redis and worker up; `degraded` without worker, `error` with Redis stopped, `critical` with MariaDB stopped (HTTP 200 always), and each recovers |
 | `test_zz_resilience_redis.py` | API keeps booking and the worker keeps consuming after Redis restarts (no process restart); an email queued while the worker is down survives a Redis restart (AOF, like production) |
 | `test_zz_resilience_worker.py` | Tasks queued while the worker is down (graceful stop or SIGKILL) run when it starts again; a confirmation email is retried through real Celery retries until the (simulated) SMTP recovers |
-| `test_zz_resilience_database.py` | API and worker after a MariaDB restart. Both fail today: no `pool_pre_ping`, so stale connections fail (the "emails stop after a DB restart" incident) |
+| `test_zz_resilience_database.py` | API and worker keep working after a MariaDB restart (`pool_pre_ping` in `app.py`; without it the pooled connections die and emails stop until the processes are restarted) |
