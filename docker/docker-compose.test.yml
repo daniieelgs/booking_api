@@ -1,0 +1,43 @@
+# Throw-away MariaDB + Redis for tests/integration/services, pinned to the same versions as production
+# (docker-compose.prod.yml). All credentials below are dummy test values, safe to commit: never put
+# real secrets or docker/.env* values here.
+#
+#   docker compose -f docker/docker-compose.test.yml up -d --wait
+#   RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/services -m services -v
+#   docker compose -f docker/docker-compose.test.yml down -v
+name: booking-test
+
+services:
+  database:
+    image: mariadb:10.5.19
+    ports:
+      - "${TEST_DB_PORT:-3317}:3306"
+    environment:
+      - TZ=Europe/Madrid
+      - MYSQL_ROOT_PASSWORD=test-root-pw
+      - MYSQL_DATABASE=bbdd_test
+      - MYSQL_USER=test_user
+      - MYSQL_PASSWORD=test-pw
+    volumes:
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # No tmpfs: the resilience tests restart this container and the data must survive (`down -v` still wipes it).
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -ptest-root-pw --silent"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+  redis:
+    image: redis:7.2.4-bookworm
+    # Same persistence flags as docker-compose.prod.yml: the queued-email-survives-restart test relies on the AOF.
+    command: redis-server --requirepass test-redis-pw --save 60 1 --appendonly yes --appendfsync everysec --loglevel warning --maxmemory 256mb --maxmemory-policy noeviction
+    ports:
+      - "${TEST_REDIS_PORT:-6380}:6379"
+    environment:
+      - REDISCLI_AUTH=test-redis-pw
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20

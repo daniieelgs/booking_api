@@ -1,0 +1,52 @@
+name: tests
+
+# CI only (verifies, never deploys). Runs on master only, as decided for the project.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # same as docker/Dockerfile.base
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # requirements.txt is UTF-16 encoded: pip reads it fine, but never re-save it as UTF-8.
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit, component and backup tests (SQLite, no services)
+        run: python -m pytest tests -v
+
+      # Real MariaDB 10.5.19 + Redis 7.2.4 (same pins as production). All credentials are
+      # dummy test values defined in docker/docker-compose.test.yml, not secrets.
+      - name: Start test services
+        run: docker compose -f docker/docker-compose.test.yml up -d --wait
+
+      - name: Real-services integration tests
+        env:
+          RUN_INTEGRATION_TESTS: '1'
+        run: python -m pytest tests/integration/services -m services -v
+
+      - name: Service logs (on failure)
+        if: failure()
+        run: |
+          docker compose -f docker/docker-compose.test.yml logs --no-color --tail 200 || true
+          cat tests/integration/services/celery-worker.log || true
+
+      - name: Stop test services
+        if: always()
+        run: docker compose -f docker/docker-compose.test.yml down -v --remove-orphans

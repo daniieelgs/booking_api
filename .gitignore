@@ -35,3 +35,6 @@ mcp_servers/.env
 # Backup service secrets (SSH key, pinned known_hosts): only the folder is tracked
 docker/secrets/*
 !docker/secrets/.gitkeep
+
+# Celery worker log written by tests/integration/services
+tests/integration/services/celery-worker*.log

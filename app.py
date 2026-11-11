@@ -119,6 +119,9 @@ def create_app(config: Config = DefaultConfig()):
     app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri
     
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # Test each pooled connection before using it: after a MariaDB restart the pool holds dead connections and the
+    # first queries of the API and of the Celery worker would fail (OperationalError 2013) until a process restart.
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
     
     app.config['JWT_SECRET_KEY'] = config.secret_jwt
     app.config['JWT_TOKEN_LOCATION'] = ['headers']

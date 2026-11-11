@@ -75,7 +75,7 @@ CREATE TABLE local (
     province VARCHAR(45),
     location VARCHAR(30) NOT NULL,
     password VARCHAR(200) NOT NULL,
-    uuid_log CHAR(32) NOT NULL,
+    uuid_log CHAR(36) NOT NULL,
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL
 );
@@ -95,7 +95,7 @@ CREATE TABLE local_settings (
     maps VARCHAR(800),
     email_contact VARCHAR(70),
     phone_contact VARCHAR(13),
-    email_support VARCHAR(70),
+    email_support VARCHAR(100),
     confirmation_link VARCHAR(500),
     cancel_link VARCHAR(500),
     update_link VARCHAR(500),
@@ -109,12 +109,12 @@ CREATE TABLE local_settings (
 CREATE TABLE smtp_settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     local_settings_id INT NOT NULL,
-    name VARCHAR(45) NOT NULL,
+    name VARCHAR(100) NOT NULL,
     host VARCHAR(100) NOT NULL,
     port INT NOT NULL,
     user VARCHAR(100) NOT NULL,
     mail VARCHAR(100) NOT NULL,
-    password VARCHAR(100) NOT NULL,
+    password VARCHAR(500) NOT NULL,
     priority INT NOT NULL,
     send_per_day INT NOT NULL,
     send_per_month INT NOT NULL,
@@ -144,6 +144,7 @@ CREATE TABLE session_token (
     local_id CHAR(32),
     user_session_id INT NOT NULL,
     name VARCHAR(30),
+    user_id INT,
     datetime_created DATETIME NOT NULL,
     FOREIGN KEY (local_id) REFERENCES local(id) ON DELETE CASCADE,
     FOREIGN KEY (user_session_id) REFERENCES user_session(id)
@@ -199,6 +200,7 @@ CREATE TABLE worker (
     email VARCHAR(70),
     tlf VARCHAR(13),
     image VARCHAR(300),
+    password VARCHAR(200),
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL
 );
@@ -248,7 +250,8 @@ CREATE TABLE booking (
     email_confirmed BOOLEAN NOT NULL DEFAULT 0,
     email_cancelled BOOLEAN NOT NULL DEFAULT 0,
     email_updated BOOLEAN NOT NULL DEFAULT 0,
-    uuid_log CHAR(32) NOT NULL,
+    uuid_log CHAR(36) NOT NULL,
+    server_name VARCHAR(100),
     datetime_created DATETIME NOT NULL,
     datetime_updated DATETIME NOT NULL,
     FOREIGN KEY (status_id) REFERENCES status(id),
@@ -273,7 +276,7 @@ CREATE TABLE closed (
     description MEDIUMTEXT,
     local_id CHAR(32) NOT NULL,
     FOREIGN KEY (local_id) REFERENCES local(id) ON DELETE CASCADE
-)
+);
 
 -- Insertar datos en la tabla 'weekday'
 INSERT INTO weekday (id, weekday, name) VALUES (1, 'MO', 'Monday');
