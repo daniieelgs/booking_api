@@ -145,7 +145,7 @@ class TestClose(TestCase):
     def test_create_close_day_forbidden_for_worker_session(self):
         r = self.post_close(JAN_10, token=self.worker_token())
 
-        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.status_code, 403)
 
     # --- GET /close ---
 
@@ -277,7 +277,7 @@ class TestClose(TestCase):
 
         r = self.put_close(created['id'], JAN_20, token=self.worker_token())
 
-        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.status_code, 403)
 
     # --- DELETE /close/<id> ---
 
@@ -306,7 +306,7 @@ class TestClose(TestCase):
 
         r = self.delete_close(created['id'], token=self.worker_token())
 
-        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.status_code, 403)
 
     # resources/close.py PUT/DELETE look the row up by id only, with no check against the caller's local.
     def test_other_local_cannot_delete_a_close_day(self):
