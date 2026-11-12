@@ -430,7 +430,12 @@ class AccessLocal(MethodView):
                 abort(401, message = 'Invalid credentials.')
                 
             workerId = worker.id
-            local = worker.work_groups.first().local
+            work_group = worker.work_groups.first()
+            
+            if not work_group:
+                abort(401, message = 'Invalid credentials.')
+            
+            local = work_group.local
         
         log(f'Logging in local "{local.id}". [{login_data["email"]}:{login_data["email"]}]. Worker id: {workerId}', uuid=_uuid)
             
@@ -481,7 +486,7 @@ class LocalRefresh(MethodView):
     @blp.response(200, LocalTokensSchema)
     def post(self, _uuid = None):
         """
-        Actualiza el token de acceso. Expira el token de refresco y devuelve uno nuevo.
+        Renueva el token de refresco: expira el token de refresco actual (deja de ser válido) y devuelve uno nuevo. No devuelve token de acceso.
         """
         token = get_jwt()
         tokenId = token.get('token')
@@ -493,4 +498,12 @@ class LocalRefresh(MethodView):
             abort(403, message = 'You are not allowed to refresh this token.')
         
         refresh_token = generateTokens(get_jwt_identity(), get_jwt_identity(), refresh_token=True)
+        
+        try:
+            deleteAndCommit(token) # the old refresh token stops being valid (it backs the JWT blocklist)
+        except SQLAlchemyError as e:
+            traceback.print_exc()
+            rollback()
+            abort(500, message = str(e) if DEBUG else 'Could not expire the refresh token.')
+        
         return {'refresh_token': refresh_token}

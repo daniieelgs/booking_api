@@ -118,7 +118,10 @@ class WorkerWorkGroupByID(MethodView):
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         
-        if worker.work_groups.first().local_id != get_jwt_identity():
+        if worker.local_id is None:
+            abort(404, message = 'The worker does not exist.')
+        
+        if worker.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to access this worker.')
         
         return worker
@@ -147,7 +150,10 @@ class WorkerByID(MethodView):
         
         worker = WorkerModel.query.get_or_404(worker_id)
         
-        if worker.work_groups.first().local_id != get_jwt_identity():
+        if worker.local_id is None:
+            abort(404, message = 'The worker does not exist.')
+        
+        if worker.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to access this worker.')
         
         return worker
@@ -177,7 +183,10 @@ class PublicWorkerByID(MethodView):
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         
-        if worker.work_groups.first().local_id != get_jwt_identity():
+        if worker.local_id is None:
+            abort(404, message = 'The worker does not exist.')
+        
+        if worker.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to update this work group.')
             
         work_groups_ids = set(worker_data.pop('work_groups'))
@@ -237,7 +246,10 @@ class PublicWorkerByID(MethodView):
         """
         worker = WorkerModel.query.get_or_404(worker_id)
         
-        if worker.work_groups.first().local_id != get_jwt_identity():
+        if worker.local_id is None:
+            abort(404, message = 'The worker does not exist.')
+        
+        if worker.local_id != get_jwt_identity():
             abort(403, message = 'You are not allowed to delete this worker.')
         
         force = params['force'] if 'force' in params else False
@@ -250,10 +262,10 @@ class PublicWorkerByID(MethodView):
                 abort(409, message = 'The work group has bookings.')
             elif force and bookings:
                 for booking in bookings:
-                    workers = [worker for worker in list(booking.services[0].work_group.workers.all()) if worker.id != worker_id]
-                    worker_id = searchWorkerBookings(get_jwt_identity(), booking.datetime_init, booking.datetime_end, workers, booking.id)
-                    if worker_id:
-                        booking.worker_id = worker_id
+                    candidates = [candidate for candidate in list(booking.services[0].work_group.workers.all()) if candidate.id != worker_id]
+                    new_worker_id = searchWorkerBookings(get_jwt_identity(), booking.datetime_init, booking.datetime_end, candidates, booking.id)
+                    if new_worker_id:
+                        booking.worker_id = new_worker_id
                     else:
                         cancelBooking(booking, params['comment'] if 'comment' in params else None) #TODO add comment
         

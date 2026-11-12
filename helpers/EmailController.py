@@ -29,7 +29,7 @@ def generate_message_id(domain):
 def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subject, domain, content, type, name = None, _uuid = None) -> bool:
 
     log(f"Sending mail to {to}...", uuid=_uuid)
-    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Pass: {smtp_passwd}. Subject: {subject}", uuid=_uuid)
+    log(f"Host: {smtp_host}:{smtp_port}. User: {smtp_user}. Subject: {subject}", uuid=_uuid)
 
     email = MIMEMultipart()
     email["From"] = f'{name} <{smtp_mail}>' if name else smtp_mail
@@ -62,6 +62,31 @@ def send_mail(smtp_mail, smtp_user, smtp_passwd, smtp_host, smtp_port, to, subje
         return False
 
 
+def next_quota_reset(reset, date_now, step):
+    """
+    Returns (new_reset, expired) for a send-quota reset date (naive, local time).
+
+    - reset is None: the quota had no reset date; start one `step` from now (expired=False, counter is kept).
+    - reset already passed: first reset after now, in steps counted from the ORIGINAL date so a monthly reset on
+      the 31st keeps day 31 in the months that have it (relativedelta clips to the last day otherwise).
+    - otherwise: unchanged.
+    `step` is a function k -> relativedelta/timedelta to add to `reset` for k steps.
+    """
+    now_naive = date_now.replace(tzinfo=None)
+
+    if reset is None:
+        return now_naive + step(1), False
+
+    if reset > now_naive:
+        return reset, False
+
+    k = 1
+    while reset + step(k) <= now_naive:
+        k += 1
+
+    return reset + step(k), True
+
+
 def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, type, name, location_local = DEFAULT_LOCATION_TIME, _uuid = None) -> bool:
     
     smtp_settings = local_settings.smtp_settings.order_by(SmtpSettingsModel.priority).all()
@@ -81,11 +106,10 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
         
         if max_day:
                         
-            date_reset = naiveToAware(smtp.reset_send_per_day, location_local)
+            smtp.reset_send_per_day, expired = next_quota_reset(smtp.reset_send_per_day, date_now, lambda k: datetime.timedelta(days=k))
             
-            if date_reset <= date_now:
+            if expired:
                 smtp.send_per_day = 0
-                smtp.reset_send_per_day = datetime.datetime.combine(date_now.date() + datetime.timedelta(days=1), date_reset.time())
                 
             if smtp.send_per_day >= max_day:
                 log(f"Error. Max send per day reached. Local: {local_settings.local.name}", uuid=_uuid, level="WARNING")
@@ -96,11 +120,10 @@ def mail_local_sender(local_settings: LocalSettingsModel, to, subject, content, 
                 
         if max_month:
                         
-            date_reset = naiveToAware(smtp.reset_send_per_month, location_local)
+            smtp.reset_send_per_month, expired = next_quota_reset(smtp.reset_send_per_month, date_now, lambda k: relativedelta(months=+k))
             
-            if date_reset <= date_now:
+            if expired:
                 smtp.send_per_month = 0
-                smtp.reset_send_per_month = datetime.datetime.combine(date_now.date() + relativedelta(months=+1), date_reset.time()).replace(day=date_reset.day)
             
             if smtp.send_per_month >= max_month:
                 if modify_day:
@@ -144,7 +167,7 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     cancel_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
     
     update_link:str = local_settings.update_link if local_settings.update_link is not None else ""
-    update_link = cancel_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
+    update_link = update_link.replace(KEYWORDS_PAGES['BOOKING_TOKEN'], booking_token)
     
     client_name = book.client_name
     local_name = local.name
@@ -154,15 +177,15 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
     service = ", ".join([service.name for service in book.services])
     cost = str(book.total_price)
     worker = book.worker.name + ((" " + book.worker.last_name ) if book.worker.last_name is not None else "")
-    address_maps = local_settings.maps
-    address = local.address
-    phone_contact = local_settings.phone_contact
-    email_contact = local_settings.email_contact
+    address_maps = local_settings.maps or ''
+    address = local.address or ''
+    phone_contact = local_settings.phone_contact or ''
+    email_contact = local_settings.email_contact or ''
     timeout_confirm_booking = str(int(local_settings.booking_timeout / 60)) if local_settings.booking_timeout and local_settings.booking_timeout > 0 else 0
-    website = local_settings.website
-    whatsapp_link = local_settings.whatsapp
+    website = local_settings.website or ''
+    whatsapp_link = local_settings.whatsapp or ''
     
-    uuid_log = book.uuid_log
+    uuid_log = book.uuid_log or ''
     
     try:
         response = generateFileResponse(local.id, generatePagePath(page))
@@ -193,7 +216,8 @@ def render_page(local: LocalModel, local_settings: LocalSettingsModel, book:Book
         
         return (mail_body, subject)
         
-    except:
+    except Exception as e:
+        log(f"Could not render the email page '{page}': {e}", level='ERROR', uuid=book.uuid_log, error=e)
         if DEBUG:
             load_dotenv()
             if os.getenv('EMAIL_TEST_MODE', 'False') == 'True':

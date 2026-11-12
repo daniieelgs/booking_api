@@ -5,6 +5,7 @@ import random
 from sqlite3 import OperationalError
 import time
 
+import pytz
 import redis
 from db import addAndCommit, addAndFlush, beginSession, deleteAndCommit, new_session, rollback
 from globals import CANCELLED_STATUS, CONFIRMED_STATUS, DONE_STATUS, MAX_TIMEOUT_WAIT_BOOKING, PENDING_STATUS, SERVER_NAME, USER_ROLE, WEEK_DAYS, is_redis_test_mode, log
@@ -99,7 +100,7 @@ def getBookings(local_id, datetime_init, datetime_end, status = None, worker_id 
     remove_bookings = []
     
     for booking in bookings:
-        if naiveToAware(booking.datetime_end) < now(local.location) and booking.status != done_status:
+        if naiveToAware(booking.datetime_end, local.location) < now(local.location) and booking.status != done_status:
             
             log(f"Setting done status booking '{booking.id}'", uuid=_uuid)
             
@@ -128,7 +129,7 @@ def getBookingBySession(token):
     token_id = decoded['token']
     booking_id = decoded['sub']
     exp = decoded['exp'] if 'exp' in decoded else 0
-    exp_date = datetime.fromtimestamp(exp)
+    exp_date = datetime.fromtimestamp(exp, tz=pytz.utc)
     
     token = SessionTokenModel.query.get(token_id)
     
@@ -143,7 +144,7 @@ def getBookingBySession(token):
     if not local:
         raise InvalidTokenException()
     
-    if naiveToAware(exp_date) < now(local.location):
+    if exp_date < now(local.location):
         try:
             deleteAndCommit(token)
         except SQLAlchemyError as e:
@@ -294,7 +295,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
     worker_id = new_booking['worker_id'] if 'worker_id' in new_booking else None
     
     try:
-        datetime_init: datetime = naiveToAware(new_booking['datetime_init'])
+        datetime_init: datetime = naiveToAware(new_booking['datetime_init'], local.location)
     except ValueError:
         raise ValueError('Invalid date format.')
     
@@ -349,7 +350,7 @@ def createOrUpdateBooking(new_booking, local_id: int = None, bookingModel: Booki
         
         if worker_id:
             worker = WorkerModel.query.get(worker_id)
-            if not worker or worker.work_groups.first().local_id != local_id:
+            if not worker or worker.local_id != local_id:
                 raise WorkerNotFoundException(id = worker_id)
             
             if not force and services[0].work_group_id not in [wg.id for wg in worker.work_groups.all()]:
@@ -459,7 +460,7 @@ def calculatEndTimeBooking(booking):
 
 def calculateExpireBookingToken(datetime_end: datetime, location):
                            
-    datetime_end = datetime_end.replace(tzinfo=now().tzinfo)
+    datetime_end = naiveToAware(datetime_end, location)
                            
     diff = datetime_end - now(location)
                         

@@ -31,7 +31,7 @@ class CloseDays(MethodView):
         workerSession, workerId = isWorkerSession(request)
         
         if workerSession:
-            abort(401, message = 'You are not allowed to add a closed day.')
+            abort(403, message = 'You are not allowed to add a closed day.')
         
         local = LocalModel.query.get(get_jwt_identity())
         
@@ -81,9 +81,9 @@ class CloseDay(MethodView):
         workerSession, workerId = isWorkerSession(request)
         
         if workerSession:
-            abort(401, message = 'You are not allowed to delete a closed day.')
+            abort(403, message = 'You are not allowed to delete a closed day.')
         
-        closedDay = ClosedModel.query.get_or_404(close_id)
+        closedDay = ClosedModel.query.filter_by(id=close_id, local_id=get_jwt_identity()).first_or_404()
         
         try:
             deleteAndCommit(closedDay)
@@ -107,9 +107,9 @@ class CloseDay(MethodView):
         workerSession, workerId = isWorkerSession(request)
         
         if workerSession:
-            abort(401, message = 'You are not allowed to modify a closed day.')
+            abort(403, message = 'You are not allowed to modify a closed day.')
         
-        closedDay = ClosedModel.query.get_or_404(close_id)
+        closedDay = ClosedModel.query.filter_by(id=close_id, local_id=get_jwt_identity()).first_or_404()
         
         try:
             checkClosedDay(closedDay.local_id, data['datetime_init'], data['datetime_end'], closedDay.id)

@@ -1,0 +1,14 @@
+# Worker image for the email redelivery tests (tests/integration/services/docker_worker.py).
+# Only dependencies: the code is bind-mounted at /app by the tests. Build from the repo root:
+#   docker build -f docker/Dockerfile.exp-worker -t booking-exp-worker .
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y build-essential libssl-dev libffi-dev tzdata && rm -rf /var/lib/apt/lists/*
+ENV TZ=Europe/Madrid
+
+# requirements.txt is UTF-16 encoded: convert it to UTF-8 and drop the Windows-only packages.
+COPY requirements.txt /tmp/requirements.utf16.txt
+RUN iconv -f UTF-16 -t UTF-8 /tmp/requirements.utf16.txt | tr -d '\r' | grep -viE '^(pywin32|colorama)' > /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
+
+WORKDIR /app

@@ -1,0 +1,79 @@
+name: tests
+
+# CI only (verifies, never deploys).
+#  - develop and master: unit tests (seconds, no Docker).
+#  - master only: additionally the SQLite integration and backup tests, and the real-services tier
+#    (MariaDB 10.5.19 + Redis 7.2.4 + Celery worker in Docker).
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # same as docker/Dockerfile.base
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # requirements.txt is UTF-16 encoded: pip reads it fine, but never re-save it as UTF-8.
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python -m pytest tests/unit -v
+
+      # Not on develop: only for push to master or a PR targeting master.
+      - name: Integration (SQLite) and backup tests
+        if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
+        run: python -m pytest tests/integration tests/backup -v
+
+  services:
+    # Only for master (push to master, or a PR targeting master). Never on develop.
+    if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Real MariaDB 10.5.19 + Redis 7.2.4 (same pins as production). All credentials are
+      # dummy test values defined in docker/docker-compose.test.yml, not secrets.
+      - name: Start test services
+        run: docker compose -f docker/docker-compose.test.yml up -d --wait
+
+      - name: Real-services integration tests
+        env:
+          RUN_INTEGRATION_TESTS: '1'
+        # Not the redelivery tests: each takes minutes and needs the booking-exp-worker image (run them locally).
+        run: python -m pytest tests/integration/services -m "services and not redelivery" -v
+
+      - name: Service logs (on failure)
+        if: failure()
+        run: |
+          docker compose -f docker/docker-compose.test.yml logs --no-color --tail 200 || true
+          cat tests/integration/services/celery-worker*.log || true
+
+      - name: Stop test services
+        if: always()
+        run: docker compose -f docker/docker-compose.test.yml down -v --remove-orphans

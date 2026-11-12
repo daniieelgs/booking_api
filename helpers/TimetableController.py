@@ -1,5 +1,4 @@
 
-from sqlalchemy import and_, or_
 from helpers.error.TimetableError.TimetableOverlapsException import TimetableOverlapsException
 from helpers.error.TimetableError.TimetableTimesException import TimetableTimesException
 from models.timetable import TimetableModel
@@ -30,11 +29,8 @@ def validateTimetable(local_id):
             TimetableModel.local_id == local_id,
             TimetableModel.weekday_id == timetable.weekday_id,
             TimetableModel.id != timetable.id,
-            and_(
-                TimetableModel.opening_time <= timetable.opening_time, TimetableModel.closing_time >= timetable.opening_time,
-                or_(TimetableModel.opening_time <= timetable.closing_time, TimetableModel.closing_time >= timetable.closing_time),
-                or_(timetable.opening_time <= TimetableModel.opening_time, timetable.closing_time >= TimetableModel.closing_time)
-            )
+            TimetableModel.opening_time < timetable.closing_time,
+            TimetableModel.closing_time > timetable.opening_time
         )
         
         if query.first():

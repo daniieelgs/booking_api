@@ -14,7 +14,7 @@ from flask import Request, Response
 
 load_dotenv(verbose=True, override=True)
 
-VERSION = '1.0.1'
+VERSION = '1.1.0'
 
 DEFAULT_SECRET_JWT = '303333537232571254035672536717968198213'
 DEFAULT_CRYPTO_JWT = 'RkElcKTNxr_IfO-puTA7ZjiD9EisBbi0Zeo_Z00NrPA='
@@ -114,7 +114,17 @@ DEFAULT_MIN_TIMEOUT_CONFIRM_BOOKING = 5
 
 DEFAULT_RETRY_SEND_EMAIL = 120
 
+DEFAULT_MAX_RETRIES_SEND_EMAIL = 12
+
+DEFAULT_EMAIL_CLAIM_TTL = 300
+
+DEFAULT_CELERY_VISIBILITY_TIMEOUT = 1800
+
 DEFAULT_MAX_TIMEOUT_WAIT_BOOKING = 5
+
+DEFAULT_HEALTH_WORKER_TIMEOUT = 1.0
+
+DEFAULT_HEALTH_CACHE_SECONDS = 10
 
 #---- LOGGING CONFIG --------------
 
@@ -250,7 +260,20 @@ ADMIN_TOKEN = os.getenv('ADMIN_TOKEN')
 
 RETRY_SEND_EMAIL = int(os.getenv('RETRY_SEND_EMAIL', DEFAULT_RETRY_SEND_EMAIL))
 
+MAX_RETRIES_SEND_EMAIL = int(os.getenv('MAX_RETRIES_SEND_EMAIL', DEFAULT_MAX_RETRIES_SEND_EMAIL))
+
+# Seconds a copy of an email task 'owns' the send. MUST stay below Celery's visibility_timeout (1 h by default): if a
+# worker dies mid-send, the redelivered message has to find the claim expired.
+EMAIL_CLAIM_TTL = int(os.getenv('EMAIL_CLAIM_TTL', DEFAULT_EMAIL_CLAIM_TTL))
+
+# Seconds Redis waits for a worker to acknowledge a task before giving it to another worker (Celery's default is 3600).
+# A dead worker's task is recovered after about this time; keep it above EMAIL_CLAIM_TTL.
+CELERY_VISIBILITY_TIMEOUT = int(os.getenv('CELERY_VISIBILITY_TIMEOUT', DEFAULT_CELERY_VISIBILITY_TIMEOUT))
+
 MAX_TIMEOUT_WAIT_BOOKING = int(os.getenv('MAX_TIMEOUT_WAIT_BOOKING', DEFAULT_MAX_TIMEOUT_WAIT_BOOKING))
+
+HEALTH_WORKER_TIMEOUT = float(os.getenv('HEALTH_WORKER_TIMEOUT', DEFAULT_HEALTH_WORKER_TIMEOUT))
+HEALTH_CACHE_SECONDS = float(os.getenv('HEALTH_CACHE_SECONDS', DEFAULT_HEALTH_CACHE_SECONDS))
 
 CERT_SSL = os.getenv('CERT_SSL', None)
 KEY_SSL = os.getenv('KEY_SSL', None)

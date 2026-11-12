@@ -2,7 +2,7 @@
 
 Sistema de copias de seguridad de la MariaDB del servidor **primario**, con copia cifrada en el **secundario**.
 Todo el código está en `dbbackup/` (solo librería estándar de Python), se ejecuta en su propio contenedor `backup`
-y se prueba con `tests_dbbackup/` (unitarios) y `tests_dbbackup/e2e/run_e2e.sh` (integración con Docker).
+y se prueba con `tests/backup/` (unitarios) y `tests/backup/e2e/run_e2e.sh` (integración con Docker).
 
 ## Qué protege y hasta dónde
 
@@ -171,8 +171,8 @@ recuentos y **te dice los 3 pasos para apuntar la app del secundario a esa BD** 
 ## Pruebas
 
 ```bash
-python -m pytest tests_dbbackup -q          # unitarios, sin Docker ni BD (~1 s)
-bash tests_dbbackup/e2e/run_e2e.sh          # integración completa con MariaDB, rsync/SSH y age en Docker (~5 min)
+python -m pytest tests/backup -q          # unitarios, sin Docker ni BD (~1 s)
+bash tests/backup/e2e/run_e2e.sh          # integración completa con MariaDB, rsync/SSH y age en Docker (~5 min)
 ```
 
 `run_e2e.sh` monta una réplica del proyecto en un directorio temporal y ejecuta los `.sh` reales: dump, binlogs, envío al

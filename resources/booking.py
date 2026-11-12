@@ -502,7 +502,7 @@ class BookingAdmin(MethodView):
     
     @log_route
     @blp.response(404, description='La reserva no existe.')
-    @blp.response(401, description='No tienes permisos para obtener la reserva.')
+    @blp.response(403, description='No tienes permisos para obtener la reserva.')
     @blp.response(200, BookingAdminSchema)
     @jwt_required(refresh=True)
     def get(self, booking_id, _uuid = None):
@@ -518,11 +518,11 @@ class BookingAdmin(MethodView):
                 
         if workerSession and workerId != booking.worker_id:
             log(f"Getting booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to get the booking [{booking_id}].')
                 
         if not booking.local_id == get_jwt_identity():
             log(f"Getting booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to get the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to get the booking [{booking_id}].')
                 
         return booking
     
@@ -532,7 +532,7 @@ class BookingAdmin(MethodView):
     @blp.arguments(BookingAdminSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
-    @blp.response(401, description='No tienes permisos para actualizar la reserva.')
+    @blp.response(403, description='No tienes permisos para actualizar la reserva.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
@@ -556,7 +556,7 @@ class BookingAdmin(MethodView):
             
         if workerSession and workerId != booking.worker_id:
             log(f"Updating booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to update the booking [{booking_id}].')
                 
         log(f"<| Last UUID Log: [{booking.uuid_log}] |>")
         
@@ -564,7 +564,7 @@ class BookingAdmin(MethodView):
                 
         if booking.local_id != get_jwt_identity():
             log
-            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to update the booking [{booking_id}].')
             
         booking_data['status'] = booking_data.pop('new_status')
             
@@ -607,7 +607,7 @@ class BookingAdmin(MethodView):
     @blp.arguments(BookingAdminPatchSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida.')
-    @blp.response(401, description='No tienes permisos para actualizar la reserva.')
+    @blp.response(403, description='No tienes permisos para actualizar la reserva.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
@@ -634,11 +634,11 @@ class BookingAdmin(MethodView):
             
         if workerSession and workerId != booking.worker_id:
             log(f"Updating booking '{booking_id}'. Unauthorized.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to update the booking [{booking_id}].')
                 
         if booking.local_id != get_jwt_identity():
             log(f"Unauthorized to update booking '{booking_id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to update the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to update the booking [{booking_id}].')
             
         if 'new_status' in booking_data: booking_data['status'] = booking_data.pop('new_status')
                         
@@ -680,7 +680,7 @@ class BookingAdmin(MethodView):
     
     @log_route
     @blp.response(404, description='La reserva no existe.')
-    @blp.response(401, description='No tienes permisos para eliminar la reserva.')
+    @blp.response(403, description='No tienes permisos para eliminar la reserva.')
     @blp.response(204, description='La reserva ha sido eliminada.')
     @jwt_required(refresh=True)
     def delete(self, booking_id, _uuid = None):
@@ -691,7 +691,7 @@ class BookingAdmin(MethodView):
         workerSession, workerId = isWorkerSession(request, _uuid)
         
         if workerSession:
-            abort(401, message = 'You are not allowed to delete this booking.')
+            abort(403, message = 'You are not allowed to delete this booking.')
         
         log(f"Deleting booking '{booking_id}'.", uuid=_uuid)
         
@@ -702,7 +702,7 @@ class BookingAdmin(MethodView):
         
         if not booking.local_id == get_jwt_identity():
             log(f"Unauthorized to delete booking '{booking_id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to delete the booking [{booking_id}].')
+            abort(403, message = f'You are not allowed to delete the booking [{booking_id}].')
         
         service_bookings = list(ServiceBookingModel.query.filter_by(booking_id=booking_id).all())
         
@@ -908,7 +908,7 @@ class BookingSession(MethodView):
     @blp.arguments(BookingSchema)
     @blp.response(404, description='El local no existe, el servicio no existe, el trabajador no existe o la reserva no existe.')
     @blp.response(400, description='Fecha no válida o no se ha proporcionado el token de sesión.')
-    @blp.response(401, description='No tienes permisos para crear la reserva.')
+    @blp.response(403, description='No tienes permisos para crear la reserva.')
     @blp.response(409, description='Ya existe una reserva en ese tiempo. El trabajador no está disponible. Los servicios deben ser del mismo grupo de trabajo. El trabajador debe ser del mismo grupo de trabajo que los servicios. El local no está disponible. La fecha está en el pasado.')
     @blp.response(201, BookingSchema)
     @jwt_required(refresh=True)
@@ -1030,7 +1030,7 @@ class BookingConfirmId(MethodView):
     @log_route
     @blp.arguments(NotifyParams, location='query')
     @blp.response(404, description='La reserva no existe.')
-    @blp.response(401, description='No tienes permisos para confirmar la reserva.')
+    @blp.response(403, description='No tienes permisos para confirmar la reserva.')
     @blp.response(200, BookingSchema)
     @jwt_required(refresh=True)
     def get(self, params, booking_id, _uuid = None):
@@ -1053,11 +1053,11 @@ class BookingConfirmId(MethodView):
         
         if not booking.local_id == local.id:
             log(f"Unauthorized to confirm booking '{booking.id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+            abort(403, message = f'You are not allowed to confirm the booking [{booking.id}].')
         
         if workerSession and workerId != booking.worker_id:
             log(f"Unauthorized to confirm booking '{booking.id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to confirm the booking [{booking.id}].')
+            abort(403, message = f'You are not allowed to confirm the booking [{booking.id}].')
         
         if not booking.status.status == PENDING_STATUS:
             log(f"Booking '{booking.id}' is not pending. Status: {booking.status.status}", uuid=_uuid)
@@ -1087,7 +1087,7 @@ class BookingCancelId(MethodView):
     @blp.arguments(NotifyParams, location='query')
     @blp.arguments(CommentSchema)
     @blp.response(404, description='La reserva no existe.')
-    @blp.response(401, description='No tienes permisos para cancelar la reserva.')
+    @blp.response(403, description='No tienes permisos para cancelar la reserva.')
     @blp.response(204, BookingSchema)
     @jwt_required(refresh=True)
     def delete(self, params, data, booking_id, _uuid = None):
@@ -1110,11 +1110,11 @@ class BookingCancelId(MethodView):
         
         if not booking.local_id == local.id:
             log(f"Unauthorized to cancel booking '{booking.id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
+            abort(403, message = f'You are not allowed to cancel the booking [{booking.id}].')
         
         if workerSession and workerId != booking.worker_id:
             log(f"Unauthorized to cancel booking '{booking.id}'.", uuid=_uuid, level='WARNING')
-            abort(401, message = f'You are not allowed to cancel the booking [{booking.id}].')
+            abort(403, message = f'You are not allowed to cancel the booking [{booking.id}].')
         
         if booking.status.status == DONE_STATUS or booking.status.status == CANCELLED_STATUS:
             log(f"Booking '{booking.id}' is done or cancelled. Status: {booking.status.status}", uuid=_uuid)
