@@ -12,7 +12,7 @@ from tests.integration.services.docker_worker import DockerWorker
 from tests.integration.services.resilience_support import (app, create_pending_booking, email_confirmed, flush_broker,  # noqa: F401
                                                            local, wait_until)
 
-pytestmark = [pytest.mark.services, pytest.mark.resilience]
+pytestmark = [pytest.mark.services, pytest.mark.resilience, pytest.mark.redelivery]
 EXP_DIR = os.path.join(os.getcwd(), 'tests', 'integration', 'services', '.exp')
 
 

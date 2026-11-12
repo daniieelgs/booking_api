@@ -65,7 +65,8 @@ jobs:
       - name: Real-services integration tests
         env:
           RUN_INTEGRATION_TESTS: '1'
-        run: python -m pytest tests/integration/services -m services -v
+        # Not the redelivery tests: each takes minutes and needs the booking-exp-worker image (run them locally).
+        run: python -m pytest tests/integration/services -m "services and not redelivery" -v
 
       - name: Service logs (on failure)
         if: failure()

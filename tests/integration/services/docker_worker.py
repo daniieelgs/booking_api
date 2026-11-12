@@ -1,7 +1,10 @@
 """A Celery worker in a Linux container (prefork + event loop, like docker-worker-1 in production).
 
 The host-side Worker in resilience_support runs `--pool=solo` on Windows, which uses the blocking loop and does not
-reproduce the Redis `visibility_timeout` redelivery. Image: `booking-exp-worker` (python:3.11-slim + requirements).
+reproduce the Redis `visibility_timeout` redelivery.
+
+Build the image once from the repo root (`docker build -f docker/Dockerfile.exp-worker -t booking-exp-worker .`); the
+tests that use it are marked `redelivery` and are excluded from CI because each one takes minutes.
 """
 import os
 import subprocess
