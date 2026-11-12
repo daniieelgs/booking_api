@@ -50,7 +50,6 @@ from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
 #TODO desarrollas sistema de LOGs
 
-#TODO cambiar datetime.now() por hora actual del location del local
 def create_app(config: Config = DefaultConfig()):
 
     # Logging Configuration
