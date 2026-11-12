@@ -100,3 +100,20 @@ never combine `tests/integration/services` with other test folders in the same c
 | `test_zz_resilience_redis.py` | API keeps booking and the worker keeps consuming after Redis restarts (no process restart); an email queued while the worker is down survives a Redis restart (AOF, like production) |
 | `test_zz_resilience_worker.py` | Tasks queued while the worker is down (graceful stop or SIGKILL) run when it starts again; a confirmation email is retried through real Celery retries until the (simulated) SMTP recovers |
 | `test_zz_resilience_database.py` | API and worker keep working after a MariaDB restart (`pool_pre_ping` in `app.py`; without it the pooled connections die and emails stop until the processes are restarted) |
+
+## Email redelivery tests (local only)
+
+`test_zz_email_redelivery.py` (marker `redelivery`) checks that no email is lost or duplicated when a retry waits
+longer than Redis' `visibility_timeout`, when a worker is killed mid-send, and that a failing email keeps a single
+retry chain. It runs a prefork Celery worker in a Linux container (the Windows `--pool=solo` worker used elsewhere does
+not reproduce the redelivery) and each test takes minutes, so **GitHub excludes it** (`-m "services and not redelivery"`).
+
+```bash
+docker build -f docker/Dockerfile.exp-worker -t booking-exp-worker .      # once
+docker compose -f docker/docker-compose.test.yml up -d --wait
+RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/services/test_zz_email_redelivery.py -m services -s -v
+docker compose -f docker/docker-compose.test.yml down -v
+```
+
+Run one test at a time on a machine with little memory (each worker container starts 2 processes). If a run is
+interrupted, remove the leftover containers with `docker rm -f $(docker ps -aq --filter name=exp-worker)`.
