@@ -2,7 +2,7 @@
 # Post-deploy smoke test: is the API up, is Redis reachable from it, is the expected version running and
 # is the Celery worker alive? Exit code 0 = healthy, 1 = something is wrong (usable by CI/CD for rollback).
 #
-#   scripts/smoke_test.sh [--url https://booking-api.es] [--expect-version 1.0.0] [--worker docker-worker-1] [--sudo]
+#   scripts/smoke_test.sh [--url https://booking-api.es] [--expect-version 1.1.0] [--worker docker-worker-1] [--sudo]
 #
 # --worker runs `celery inspect ping` inside that container (needs docker access; add --sudo on the primary).
 set -u

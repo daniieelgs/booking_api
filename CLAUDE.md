@@ -49,7 +49,7 @@ All commands assume the working directory is the repo root (`booking_api/`) — 
 
 **Timezone convention.** Every naive `datetime` in the database means wall-clock time in the local's own timezone (`LocalModel.location`); localize it with `naiveToAware(value, local.location)` and compare against `now(local.location)`. Absolute instants (JWT `exp`) use UTC explicitly, never the server's timezone. See the comment in `helpers/DatetimeHelper.py`.
 
-**Two separate "version" concepts** — don't conflate them: `API_VERSION` in `globals.py` (default `'v1'`) is the URL/OpenAPI version tag; `VERSION` in `globals.py` (default `'1.0.0'`) is the application release version returned by `GET /version`.
+**Two separate "version" concepts** — don't conflate them: `API_VERSION` in `globals.py` (default `'v1'`) is the URL/OpenAPI version tag; `VERSION` in `globals.py` (a plain constant, currently `'1.1.0'`; bump it on every release PR to `develop`) is the application release version returned by `GET /version`.
 
 **Resources = flask-smorest blueprints, one file per domain**, registered in `app.py` with a URL prefix built from `API_PREFIX` (`api/v1`) via `getApiPrefix()`. Exceptions: `public_files.py` mounts at `/{PUBLIC_FOLDER_URL}` (default `/public`) and `status.py` mounts at the domain root (`/health`, `/version`) so health checks don't need to know the API version. Endpoint pattern: `MethodView` classes decorated with `@blp.route(...)`, `@blp.arguments(Schema)` for body/query validation, a stack of `@blp.response(code, description=...)` for documented error responses plus one `@blp.response(2xx, Schema)` for the success payload, and the method's docstring as the Swagger description. All Marshmallow schemas live in one monolithic `schema.py`.
 
