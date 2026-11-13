@@ -1,0 +1,37 @@
+name: Bug
+description: Something behaves wrongly (code, tests, deployment).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Public repository: never paste secrets, tokens, SMTP passwords, customer data or logs that contain them."
+  - type: textarea
+    id: summary
+    attributes: {label: Summary, description: "What is wrong and what effect it has (who/what is affected).", }
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes: {label: Steps to reproduce / evidence, description: "Failing test id, request, log excerpt (redacted), or steps."}
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes: {label: Expected vs actual behaviour}
+    validations: {required: true}
+  - type: textarea
+    id: cause
+    attributes: {label: Root cause / affected code, description: "File:line and why, if known."}
+  - type: textarea
+    id: fix
+    attributes: {label: Proposed fix and how to verify, description: "Include the regression test that must pass."}
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["P0 - production down / data loss", "P1 - high", "P2 - normal", "P3 - low"]
+    validations: {required: true}
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, bookings, email, worker-celery, redis, database, backups, auth-security, infra-docker, tests-ci, docs]
+    validations: {required: true}

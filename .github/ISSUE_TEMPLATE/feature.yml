@@ -1,0 +1,29 @@
+name: Feature
+description: New functionality or improvement.
+labels: ["feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes: {label: Problem / goal, description: "Why this is needed and for whom (business value)."}
+    validations: {required: true}
+  - type: textarea
+    id: scope
+    attributes: {label: Proposed solution and scope, description: "What is included and what is explicitly out."}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance criteria, description: "Checklist: `- [ ] ...` verifiable conditions."}
+    validations: {required: true}
+  - type: textarea
+    id: impact
+    attributes: {label: Technical notes and deployment impact, description: "Migration, restart, rebuild, config, API/backoffice changes, risks."}
+  - type: dropdown
+    id: priority
+    attributes: {label: Priority, options: ["P0 - production down / data loss", "P1 - high", "P2 - normal", "P3 - low"]}
+    validations: {required: true}
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, bookings, email, worker-celery, redis, database, backups, auth-security, infra-docker, tests-ci, docs]
+    validations: {required: true}

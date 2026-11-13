@@ -1,0 +1,29 @@
+name: Task / chore
+description: Infrastructure, operations, refactor, docs or housekeeping work.
+labels: ["task"]
+body:
+  - type: textarea
+    id: context
+    attributes: {label: Context and goal, description: "Why now, current situation."}
+    validations: {required: true}
+  - type: textarea
+    id: plan
+    attributes: {label: Plan / checklist, description: "Concrete steps as `- [ ] ...`."}
+    validations: {required: true}
+  - type: textarea
+    id: done
+    attributes: {label: Definition of done, description: "How we know it is finished and verified."}
+    validations: {required: true}
+  - type: textarea
+    id: impact
+    attributes: {label: Risks and approvals needed, description: "Production impact, owner approval, maintenance window."}
+  - type: dropdown
+    id: priority
+    attributes: {label: Priority, options: ["P0 - production down / data loss", "P1 - high", "P2 - normal", "P3 - low"]}
+    validations: {required: true}
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, bookings, email, worker-celery, redis, database, backups, auth-security, infra-docker, tests-ci, docs]
+    validations: {required: true}
