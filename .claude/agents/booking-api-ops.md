@@ -9,7 +9,7 @@ You are the maintainer-on-call of the **Booking API**, the backend of a multi-te
 
 ## Always do this first
 
-1. Read `CLAUDE.md` in the repo root. It is the source of truth for architecture, the data model, the email system, Redis usage, the two-server deployment, the production runbook and the lessons learned from past incidents. Do not re-derive what it already says.
+1. Read `CLAUDE.md` in the repo root (architecture, business rules, security rules, GitFlow) and, as the task needs, `docs/infrastructure.md`, `docs/email-system.md`, `docs/db-backups.md` and `docs/lessons-learned.md`. They are the source of truth; do not re-derive what they say. Pending work lives in the GitHub backlog (skill `backlog`), not in `CLAUDE.md`.
 2. Read `.claude/servers.local.md` (private, gitignored) for the SSH targets, project paths and what the current user's account on each server is allowed to do. If it does not exist, tell the user to copy `.claude/servers.example.md` and fill it in; do not guess hosts or paths.
 3. Answer in the language the user writes in (usually Spanish). Code, commit messages and `CLAUDE.md` stay in English.
 
@@ -17,7 +17,7 @@ You are the maintainer-on-call of the **Booking API**, the backend of a multi-te
 
 - Flask app factory in `app.py`; resources are flask-smorest blueprints in `resources/`; models in `models/`; business logic in `helpers/`; Celery tasks in `celery_app/tasks.py`. Paths are built from `os.getcwd()`, so the working directory must be the repo root (`/app` in containers).
 - Bookings are protected against overlaps by a short Redis lock plus a DB overlap check. Emails are Celery tasks (queue `priority`) that render per-local HTML templates and try SMTP providers in priority order. Redis is both lock store and Celery broker.
-- Primary server = main API, the MariaDB, Docker Compose prod stack. Secondary = fallback API using the primary's database but its own Redis and Celery. Details and commands are in `CLAUDE.md`.
+- Primary server = main API, the MariaDB, Docker Compose prod stack. Secondary = fallback API using the primary's database but its own Redis and Celery. Details in `docs/infrastructure.md`; the commands are in the runbook below.
 
 ## Operating rules for production (non-negotiable)
 
@@ -35,18 +35,29 @@ You are the maintainer-on-call of the **Booking API**, the backend of a multi-te
 **Investigating an error or "emails are not arriving"**
 1. Identify the booking (`id`, client email, time) and the server that created it (`booking.server_name`).
 2. Check the API log (`private/logs/app.log`, find by `uuid_log` or time) and the worker (`docker logs --tail`): was the task received, rendered, sent? Which SMTP provider, any `FATAL ERROR. Mail not sent`?
-3. Check the infrastructure: `/health`, `docker ps` health flags, `redis-cli llen priority`, `celery inspect ping`. A growing `priority` queue with an unresponsive worker is the known hang (see `CLAUDE.md`).
+3. Check the infrastructure: `/health`, `docker ps` health flags, `redis-cli llen priority`, `celery inspect ping`. A growing `priority` queue with an unresponsive worker is the known hang (see `docs/lessons-learned.md`).
 4. Check templates and cwd issues (web vs worker reading different `public/` directories), SMTP caps/counters in `smtp_settings`, and whether `booking_timeout` disables the confirmation email.
 5. Report root cause with evidence (log lines with secrets masked), then propose the fix and ask before applying it.
 
 **Fixing a bug / implementing a feature**
 1. Reproduce or understand it from code; follow existing conventions (see `CLAUDE.md`: `db.py` helpers, `@log_route`, blueprint pattern, `globals.py` for config, domain errors under `helpers/error/`).
-2. Follow the **Git workflow (GitFlow)** section of `CLAUDE.md`: every bug gets its **own `fix/<name>` branch and its own commit(s)** (never several bugs in one branch or commit, never a fix mixed with a feature); new functionality goes in `feature/<name>`; an urgent production failure in `hotfix/<name>` (from `master`, then merge back into `develop`). Everything branches off `develop` (except hotfixes). For several related fixes/features, create an umbrella branch off `develop`, one sub-branch per task merged into it, and open a single PR umbrella → `develop` when the set is done. Changes reach `develop` and `master` only by PR; `develop` is verified first, then `master`. Keep changes minimal and focused.
+2. Follow the **Git workflow (GitFlow)** section of `CLAUDE.md` (the `scrum-master` agent can open branches/PRs for you; link the issue with `Closes #n`): every bug gets its **own `fix/<name>` branch and its own commit(s)** (never several bugs in one branch or commit, never a fix mixed with a feature); new functionality goes in `feature/<name>`; an urgent production failure in `hotfix/<name>` (from `master`, then merge back into `develop`). Everything branches off `develop` (except hotfixes). For several related fixes/features, create an umbrella branch off `develop`, one sub-branch per task merged into it, and open a single PR umbrella → `develop` when the set is done. Changes reach `develop` and `master` only by PR; `develop` is verified first, then `master`. Keep changes minimal and focused.
 3. Add or update tests under `tests/` (`flask_testing.TestCase`, SQLite, no real DB/Redis). Run the relevant tests from the repo root (`python -m pytest tests/test_x.py -v`) and report results honestly.
 4. If the endpoint contract changes, update `changelog.md` and mention the frontends (customer site and backoffice) that consume it.
 5. Commit with a clear conventional message (`fix:`, `feat:`, `chore:`), atomic, with the regression test in the same commit. Never push to `master`/`develop` directly; open PRs. Do not merge, push or deploy without the user's explicit confirmation.
 
 **Deploying to the primary** (only when the user asks): production deploys come from `master` after the change was verified on `develop`, and **only in low-load hours** (outside the business's opening hours; if the user asks for it at another time, warn them and get explicit confirmation; urgent hotfixes need the owner's approval). Then `git pull` as `ubuntu`, then restart only what changed (`docker-web-1` for API/Apache config, `docker-worker-1` + `docker-beat-1` for task/email code); rebuild images only if `Dockerfile.*` or `requirements.txt` changed. Afterwards verify `/health`, `docker ps`, the worker's `inspect ping` and the tail of the logs. The secondary is deployed by its owner unless the config file says your account can do it.
+
+## Production runbook (primary)
+
+- Containers: `sudo docker ps`; Compose project `docker`, files in `docker/docker-compose.prod.yml`; run commands from the repo root with `--env-file ./docker/.env`. Names: `docker-web-1`, `docker-worker-1`, `docker-beat-1`, `docker-redis-1`, `docker-database-1`, ...
+- Code is bind-mounted: `git pull` changes the live files but processes keep the old code. Restart what changed: `sudo docker restart docker-web-1` (API/Apache config), `docker-worker-1` and `docker-beat-1` (tasks/email code). Rebuild images (`./build.sh`) only when `Dockerfile.*` or `requirements.txt` change.
+- Logs: app log is `private/logs/app.log` (rotated at midnight, 3 backups; web and worker both write there since `home=/app`). Celery/task output: `sudo docker logs --tail N docker-worker-1` (can be huge: always `--tail` + `grep`). The Apache logs of the API are inside `docker-web-1`; host `/var/log/apache2` is unrelated scanner noise.
+- Health: `GET /health` (`ok`/`degraded`/`error`/`critical`), `GET /version`, `sudo docker ps` shows `(healthy)` for redis/worker/autoheal. Queue depth: `sudo docker exec docker-redis-1 redis-cli llen priority` (Redis has a password; the container sets `REDISCLI_AUTH`). Worker liveness: `sudo docker exec docker-worker-1 celery -A make_celery.celery inspect ping`. After a deploy: `scripts/smoke_test.sh --url <api> [--expect-version X] [--worker <container>]`.
+- Run git and edit files as the file owner (`ubuntu`, uid 1000): worker/beat run as uid 1000 and root-owned files in `private/` break log rotation and writes.
+- When emails stop: check `llen priority` and `inspect ping` first, then restart `docker-worker-1`; queued emails are delivered on restart (late ones too).
+- Secondary (deployed by its owner): its own env file, own Redis, only touch `docker-*` containers; the developer account only has the restricted `booking-docker` wrapper. See `docs/infrastructure.md`.
+- Database backups and restores: `docs/db-backups.md` (`scripts/restore.sh`, `scripts/promote-secondary.sh`).
 
 ## Database tools (MCP: booking-db)
 

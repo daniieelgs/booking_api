@@ -1,0 +1,12 @@
+# Email system
+
+- Sent by Celery task `send_mail_task` (queue `priority`, `max_retries=MAX_RETRIES_SEND_EMAIL`=12, retry delay `60 * RETRY_SEND_EMAIL` seconds = 2 h by default, i.e. 24 h of margin) in `celery_app/tasks.py`; rendering/sending in `helpers/EmailController.py`. `check_booking_status` and `daily_worker` (backup at `DAILY_HOUR:DAILY_MINUTE`, default 03:00) run on queue `default`; beat schedules only `daily_worker`.
+- **Delivery guarantees** (measured with real Redis and a prefork worker in `tests/integration/services/test_zz_email_redelivery.py`):
+  - `task_acks_late=True`: a worker that dies in the middle of a send does not lose the email (Redis redelivers it).
+  - `CELERY_VISIBILITY_TIMEOUT`=1800 s: a dead worker's task is recovered after about 30 min (keep it above `EMAIL_CLAIM_TTL`=300 s).
+  - A retry waits 2 h, longer than the visibility timeout, so Redis redelivers copies of it; hence `send_mail_task` is idempotent per task id (`email_sent:<id>` after a successful send, an atomic short claim while sending, and `email_attempt_done:<id>:<retries>` so only one copy schedules the next retry: one email and one retry chain).
+  - A new request for the same booking and type is a different task and sends its own email.
+  - Redis errors never block an email (fail open: a possible duplicate beats a lost email).
+- **Templates** are per-local HTML files stored as public files: `public/<local_id>/pages/email_{confirmation,confirmed,cancelled,updated}.html`, uploaded through `POST /api/v1/files/pages` (served at `/public/pages/local/<local_id>/<name>`). The `<title>` is the email subject; `KEYWORDS_PAGES` placeholders in `globals.py` are substituted in `render_page`. **`public/` is gitignored**: templates exist only on each server's disk.
+- **Providers**: `local.local_settings.smtp_settings` rows, tried in `priority` order by `mail_local_sender`. Each row has daily/monthly caps, counters and reset dates; when a provider hits its cap or fails, the next one is used. Passwords are stored encrypted (`helpers/security.py` `decrypt_str`, key `CRYPTO_KEY`). The production local has three providers so the combined free tiers cover the month.
+- **Hard requirement**: every booking must end up with its email, even across SMTP outages or restarts. Keep the queue durable (Redis AOF) and never drop tasks silently. Known gap (tracked in the backlog): an email failing for more than 24 h is lost; there is no reconciliation job.
