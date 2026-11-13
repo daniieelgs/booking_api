@@ -1,9 +1,9 @@
-"""Read-only release readiness check: origin/develop vs origin/master.
+"""Comprobación de solo lectura de si una release está lista: origin/develop frente a origin/master.
 
-    release_check.py            # readiness report
-    release_check.py --notes    # plus Markdown release notes (merged PRs grouped by type, linked issues)
+    release_check.py            # informe de preparación
+    release_check.py --notes    # además, notas de release en Markdown (PR fusionadas por tipo, issues enlazadas)
 
-Needs `git` and `gh` (logged in). Exit code 1 if a blocking problem is found.
+Necesita `git` y `gh` (autenticado). Código de salida 1 si encuentra un problema bloqueante.
 """
 import argparse
 import json

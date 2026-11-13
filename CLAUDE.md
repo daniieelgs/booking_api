@@ -1,106 +1,106 @@
 # CLAUDE.md
 
-Guidance for Claude Code (claude.ai/code) in this repo. Keep this file short: project context, conventions and pointers. Procedures belong in the agents and skills below; deep dives in `docs/`; pending work in the GitHub backlog (Issues + Project), never here.
+Guía para Claude Code (claude.ai/code) en este repositorio. Mantén este fichero corto: contexto del proyecto, convenciones y enlaces. Los procedimientos van en los agentes y skills de abajo, los detalles en `docs/` y el trabajo pendiente en el backlog de GitHub (Issues + Project), nunca aquí.
 
-## Project
+## Proyecto
 
-Multi-tenant booking backend ("locals" = businesses). One customer today: **SUBLIME HAIR SALON** (public site https://www.sublimebarberia.com/, staff backoffice https://backend.sublimebarberia.com/, both separate frontends that only consume this API). Stack: Flask (flask-smorest), Celery, Redis, MariaDB, Docker. Full endpoint list in `/openapi.json` (Swagger UI only with `FLASK_DEBUG=1`).
+Backend de reservas multi-tenant ("locals" = negocios). Hoy hay un único cliente: **SUBLIME HAIR SALON** (web pública https://www.sublimebarberia.com/, backoffice del personal https://backend.sublimebarberia.com/; son dos frontends independientes que solo consumen esta API). Stack: Flask (flask-smorest), Celery, Redis, MariaDB, Docker. La lista completa de endpoints está en `/openapi.json` (Swagger UI solo con `FLASK_DEBUG=1`).
 
-## Map: agents, skills, docs, backlog
+## Mapa: agentes, skills, docs, backlog
 
-| Need | Use |
+| Necesidad | Usar |
 |---|---|
-| Production errors, logs, emails not arriving, deploy, new features/bug fixes in the app | agent **`booking-api-ops`** (holds the production runbook) |
-| Write/run tests, hunt bugs, re-verify fixes | agent **`test-engineer`** + skills **`write-tests`**, **`test-bug-report`** |
-| Backlog, branches, PRs, repo hygiene and settings, hotfix PRs | agent **`scrum-master`** + skill **`backlog`** |
-| Release `develop` → `master`: readiness, notes, deploy checklist | skill **`release`** |
-| Add or change an endpoint/resource | skill **`new-endpoint`** |
-| Security review of a diff/PR/area (read-only) | agent **`security-reviewer`** |
-| Keep docs true to the code, document features, keep this file short | agent **`docs-keeper`** + skill **`docs-check`** |
-| Pending work (bugs, features, tasks, roadmap) | GitHub Issues + Project board of `daniieelgs/booking_api` (see `backlog` skill) |
-| Infrastructure, servers, deployment | `docs/infrastructure.md` |
-| Email delivery guarantees, templates, SMTP providers | `docs/email-system.md` |
-| Test layout, commands, CI, Python env | `docs/testing.md` |
-| Database backups and restore | `docs/db-backups.md` |
-| Past incidents | `docs/lessons-learned.md` |
+| Errores de producción, logs, emails que no llegan, despliegue, nuevas funcionalidades y arreglos de la app | agente **`booking-api-ops`** (contiene el runbook de producción) |
+| Escribir/ejecutar tests, cazar bugs, re-verificar arreglos | agente **`test-engineer`** + skills **`write-tests`**, **`test-bug-report`** |
+| Backlog, ramas, PR, higiene y ajustes del repo, PR de hotfix | agente **`scrum-master`** + skill **`backlog`** |
+| Release `develop` → `master`: preparación, notas, checklist de despliegue | skill **`release`** |
+| Añadir o cambiar un endpoint/recurso | skill **`new-endpoint`** |
+| Revisión de seguridad de un diff/PR/zona (solo lectura) | agente **`security-reviewer`** |
+| Mantener la documentación fiel al código, documentar funcionalidades, mantener corto este fichero | agente **`docs-keeper`** + skill **`docs-check`** |
+| Trabajo pendiente (bugs, features, tareas, roadmap) | Issues + Project de GitHub de `daniieelgs/booking_api` (skill `backlog`) |
+| Infraestructura, servidores, despliegue | `docs/infrastructure.md` |
+| Garantías de entrega de email, plantillas, proveedores SMTP | `docs/email-system.md` |
+| Estructura de tests, comandos, CI, entorno Python | `docs/testing.md` |
+| Backups de la base de datos y restauración | `docs/db-backups.md` |
+| Incidentes pasados | `docs/lessons-learned.md` |
 
-Private server access (SSH, paths, account limits) is in `.claude/servers.local.md` (gitignored; template `servers.example.md`).
+El acceso privado a servidores (SSH, rutas, límites de cuenta) está en `.claude/servers.local.md` (ignorado por git; plantilla `servers.example.md`).
 
-## Language convention
+## Convención de idioma
 
-- **En español**: todas las explicaciones y la documentación: cuerpo de los commits, descripción de las PR y de las issues, `docs/`, `CLAUDE.md`, `changelog.md`, descripciones de Swagger (docstrings de los endpoints), comentarios del código y respuestas al usuario.
+- **En español**: todas las explicaciones y la documentación: cuerpo de los commits, descripción de PR e issues, `docs/`, `CLAUDE.md`, `changelog.md`, descripciones de Swagger (docstrings de los endpoints), comentarios del código y respuestas al usuario.
 - **En inglés**: los nombres: ramas, asunto del commit (`fix: ...` en Conventional Commits), título de PR e issue, rutas y campos de los endpoints, identificadores del código, nombres de tests y los títulos de sección de las plantillas de issue (los scripts los leen). Los textos `message` de los `abort(...)` se mantienen como están para no romper a los frontends.
-- Los ficheros ya escritos en inglés se traducen cuando se toquen (agente `docs-keeper`), sin PR masivas solo de traducción salvo que se pida.
+- Lo que aún esté en inglés se traduce cuando se toque (agente `docs-keeper`).
 
-## Commands
+## Comandos
 
-All from the repo root (`booking_api/`): file paths are built from `os.getcwd()`, running elsewhere breaks image/log/report storage.
+Todos desde la raíz del repo (`booking_api/`): las rutas de ficheros se construyen con `os.getcwd()`, ejecutar desde otro sitio rompe el almacenamiento de imágenes, logs e informes.
 
-- Setup: `.env` in the root (see `.env.example`), plus `docker/.env` and `db/.env` for Docker. `pip install -r requirements.txt` (Python 3.11; the file is **UTF-16**, never re-save it as UTF-8).
-- Run: `flask run` or `python app.py` (both use `create_app()` from `app.py`).
-- Migrations (Flask-Migrate; `migrations/` is gitignored, run `flask db init` once per environment): `flask db migrate -m "..."` then `flask db upgrade`.
-- Celery: `celery -A make_celery.celery worker --loglevel=info -Q priority,default` and `celery -A make_celery.celery beat --loglevel=info`.
-- Admin token: `python access.py --generate <days> --name <name>` (`--help` for more).
-- Docker: build `./build.sh` or `./build.ps1`; dev `docker-compose --env-file ./docker/.env -f ./docker/docker-compose.yml up`; prod `docker compose --env-file ./docker/.env -f ./docker/docker-compose.prod.yml up -d` (details and the secondary's different env file in `docs/infrastructure.md`).
-- Tests: `python -m pytest tests/` (no Docker). Tiers, services tier, redelivery, CI and Python env in `docs/testing.md`. Don't run two pytest processes at once.
+- Preparación: `.env` en la raíz (ver `.env.example`), más `docker/.env` y `db/.env` para Docker. `pip install -r requirements.txt` (Python 3.11; el fichero está en **UTF-16**, nunca lo guardes como UTF-8).
+- Ejecutar: `flask run` o `python app.py` (ambos usan `create_app()` de `app.py`).
+- Migraciones (Flask-Migrate; `migrations/` está en `.gitignore`, ejecuta `flask db init` una vez por entorno): `flask db migrate -m "..."` y `flask db upgrade`.
+- Celery: `celery -A make_celery.celery worker --loglevel=info -Q priority,default` y `celery -A make_celery.celery beat --loglevel=info`.
+- Token de admin: `python access.py --generate <días> --name <nombre>` (`--help` para más).
+- Docker: build con `./build.sh` o `./build.ps1`; dev `docker-compose --env-file ./docker/.env -f ./docker/docker-compose.yml up`; prod `docker compose --env-file ./docker/.env -f ./docker/docker-compose.prod.yml up -d` (detalles y el fichero de entorno distinto del secundario en `docs/infrastructure.md`).
+- Tests: `python -m pytest tests/` (sin Docker). Niveles, nivel de servicios, redelivery, CI y entorno Python en `docs/testing.md`. No ejecutes dos procesos pytest a la vez.
 
-## Architecture
+## Arquitectura
 
-- **App factory, no package layout.** `app.py`'s `create_app(config)` registers blueprints and wires JWT/Celery/CORS/logging; `wsgi.py` and `make_celery.py` import the `app` built at module level there (skipped when `TEST_PERFORMANCE` is set: a separate load-test mode, not the normal suite).
-- **Config layering.** `config.py` (`Config`) ← `default_config.py` (from `globals.py`) ← `tests/config_test.py` / `tests/config_test_performance.py`. `create_app()` takes a config instance so tests swap it.
-- **`globals.py` is the single source of environment config** (`DEFAULT_X = ...` then `X = os.getenv('X', DEFAULT_X)`), the global logger and the `log(...)` function (structured, per-uuid cache). Add new env-driven constants there. If a value must be overridable at runtime (tests), read it with `os.getenv()` inside a getter instead of binding at import (see `helpers/path.py`, `helpers/ReportController.py`).
-- **Versions.** `API_VERSION` (`'v1'`) is the URL/OpenAPI tag; `VERSION` in `globals.py` is the release version returned by `GET /version`. Don't conflate them.
-- **Resources = flask-smorest blueprints, one file per domain** in `resources/`, registered with a prefix from `getApiPrefix()` (`api/v1`). Exceptions: `public_files.py` (`/public`) and `status.py` (`/health`, `/version`) at the root. Pattern: `MethodView` + `@blp.route`, `@blp.arguments(Schema)`, stacked `@blp.response(code, description=...)` for errors plus one 2xx with the schema, docstring = Swagger description. All schemas in `schema.py`.
-- **Auth, three mechanisms mixed per endpoint:** (1) `@jwt_required(refresh=True|fresh=True)`, identity = local id; (2) hand-rolled admin token check (`helpers/security.py` `check_admin_token()`/`check_admin_request()`, `resources/admin.py`) against `SessionTokenModel` + `ADMIN_ROLE`; (3) no decorator = public (`public_files.py`, `status.py`, public GETs in `work_group.py`/`service.py`, `report.py`'s fallback endpoint, which intentionally accepts arbitrary JSON). Session tokens are revocable (`SessionTokenModel` is the JWT blocklist, `token_in_blocklist_loader` in `app.py`).
-- **Status codes:** `401` missing/invalid/expired credentials; `403` authenticated but not allowed (another local's data, worker doing a local-only action); `404` resource does not exist for that local.
-- **`@log_route`** (`helpers/LoggingMiddleware.py`) wraps most handlers: injects `_uuid`, logs request/response, turns uncaught exceptions into JSON 500 (and re-raises). Handlers accept `_uuid=None` last.
-- **DB access through `db.py` helpers** (`addAndCommit`, `deleteAndCommit`, `addAndFlush`, `deleteAndFlush`, `commit`, `rollback`), never raw `db.session`; they stamp `datetime_created/updated`.
-- **Domain errors** in `helpers/error/<Domain>Error/`, one class per file; handlers `abort(code, message=str(e) if DEBUG else '<generic>')`, never leak internals when `DEBUG` is off.
-- **File storage is local disk under `os.getcwd()`**: `helpers/path.py` (`PUBLIC_FOLDER`, re-read per call) and `helpers/ReportController.py` (thread lock + OS file lock, multi-process safe).
-- **Celery:** `celery_app/celery_config.py` `make_celery()`, tasks in `celery_app/tasks.py`, beat schedule inline in `create_app()`.
-- **Timezone:** every naive `datetime` in the DB is wall-clock time in the local's own timezone (`LocalModel.location`): localize with `naiveToAware(value, local.location)`, compare against `now(local.location)`. Absolute instants (JWT `exp`) use UTC explicitly. See `helpers/DatetimeHelper.py`.
+- **Factoría de app, sin estructura de paquete.** `create_app(config)` de `app.py` registra los blueprints y conecta JWT/Celery/CORS/logging; `wsgi.py` y `make_celery.py` importan el `app` construido a nivel de módulo allí (se omite si `TEST_PERFORMANCE` está activo: es un modo aparte de pruebas de carga, no la suite normal).
+- **Capas de configuración.** `config.py` (`Config`) ← `default_config.py` (desde `globals.py`) ← `tests/config_test.py` / `tests/config_test_performance.py`. `create_app()` recibe una instancia de config para que los tests la sustituyan.
+- **`globals.py` es la única fuente de configuración de entorno** (`DEFAULT_X = ...` y luego `X = os.getenv('X', DEFAULT_X)`), además del logger global y de `log(...)` (estructurado, con caché por uuid). Añade ahí las constantes nuevas. Si un valor debe poder cambiarse en ejecución (tests), léelo con `os.getenv()` dentro de una función en vez de fijarlo al importar (ver `helpers/path.py`, `helpers/ReportController.py`).
+- **Versiones.** `API_VERSION` (`'v1'`) es la etiqueta de URL/OpenAPI; `VERSION` en `globals.py` es la versión de release que devuelve `GET /version`. No las confundas.
+- **Recursos = blueprints de flask-smorest, un fichero por dominio** en `resources/`, registrados con un prefijo de `getApiPrefix()` (`api/v1`). Excepciones: `public_files.py` (`/public`) y `status.py` (`/health`, `/version`) en la raíz. Patrón: `MethodView` + `@blp.route`, `@blp.arguments(Schema)`, `@blp.response(code, description=...)` apilados para los errores más un 2xx con el schema, docstring = descripción de Swagger. Todos los schemas en `schema.py`.
+- **Auth, tres mecanismos mezclados según el endpoint:** (1) `@jwt_required(refresh=True|fresh=True)`, identidad = id del local; (2) comprobación manual del token de admin (`helpers/security.py` `check_admin_token()`/`check_admin_request()`, `resources/admin.py`) contra `SessionTokenModel` + `ADMIN_ROLE`; (3) sin decorador = público (`public_files.py`, `status.py`, GET públicos de `work_group.py`/`service.py`, el endpoint fallback de `report.py`, que acepta JSON arbitrario a propósito). Los tokens de sesión son revocables (`SessionTokenModel` es la lista de bloqueo JWT, `token_in_blocklist_loader` en `app.py`).
+- **Códigos de estado:** `401` credenciales ausentes/inválidas/caducadas; `403` autenticado pero sin permiso (datos de otro local, un worker haciendo algo solo de local); `404` el recurso no existe para ese local.
+- **`@log_route`** (`helpers/LoggingMiddleware.py`) envuelve la mayoría de handlers: inyecta `_uuid`, registra petición/respuesta y convierte las excepciones no controladas en un 500 JSON (y las relanza). Los handlers aceptan `_uuid=None` al final.
+- **Acceso a BD mediante los helpers de `db.py`** (`addAndCommit`, `deleteAndCommit`, `addAndFlush`, `deleteAndFlush`, `commit`, `rollback`), nunca `db.session` directo; rellenan `datetime_created/updated`.
+- **Errores de dominio** en `helpers/error/<Domain>Error/`, una clase por fichero; los handlers hacen `abort(code, message=str(e) if DEBUG else '<genérico>')`, nunca filtran internos con `DEBUG` apagado.
+- **El almacenamiento de ficheros es disco local bajo `os.getcwd()`**: `helpers/path.py` (`PUBLIC_FOLDER`, releído en cada llamada) y `helpers/ReportController.py` (lock de hilo + lock de fichero del SO, seguro con varios procesos).
+- **Celery:** `make_celery()` en `celery_app/celery_config.py`, tareas en `celery_app/tasks.py`, schedule de beat definido en línea dentro de `create_app()`.
+- **Zona horaria:** todo `datetime` ingenuo de la BD es hora local de reloj en la zona del propio local (`LocalModel.location`): localízalo con `naiveToAware(value, local.location)` y compara con `now(local.location)`. Los instantes absolutos (`exp` del JWT) usan UTC explícito. Ver `helpers/DatetimeHelper.py`.
 
-## Business rules
+## Reglas de negocio
 
-- **Customer flow (no registration):** pick a service, optionally a worker (else the backend assigns one), a free slot, fill name/email/phone. Optional confirmation email only if `local_settings.booking_timeout` (minutes) is set, otherwise auto-cancel via `check_booking_status`; `NULL`/`-1` disables it (**disabled for Sublime**: bookings go straight to confirmed). Then a "confirmed" email with a user-token link (valid until the booking ends) to cancel (update exists but is **disabled for Sublime**); cancel/update send their own email.
-- **Backoffice:** only a local's workers log in (`/api/v1/local/login`): booking history/upcoming, cancel bookings, manage services, timetable, closed dates, workers and their services.
-- **Auth levels / roles:** public, local/worker (JWT), user (email token, own booking only), admin. Roles `A` admin, `L` local, `U` user. Booking status `P` pending, `C` confirmed, `D` done, `X` cancelled.
-- **A worker can never have two overlapping bookings.** Layer 1: short-lived Redis lock per local (`waitAndRegisterBooking`/`perform_atomic_booking` in `helpers/BookingController.py`, `WATCH` + `SETEX`, key = `local_id`, expiry `MAX_TIMEOUT_WAIT_BOOKING`). Layer 2: the DB is the source of truth (`getBookings(...)` checks `C`/`P` overlaps before inserting). The secondary has its own Redis, so only layer 2 spans both servers.
-- **Every booking must end up with its email**, even across SMTP outages or restarts: keep the queue durable (Redis AOF, `noeviction`) and never drop tasks silently. Details in `docs/email-system.md`.
-- **Data model** (one table per concept): `booking`, `closed`, `file`, `local`, `local_settings`, `service`, `session_token`, `smtp_settings`, `timetable`, `worker`, `work_group` (a local can have several, each with services and workers); join tables `service_booking`, `work_group_worker`; lookups `status`, `weekday`.
+- **Flujo del cliente (sin registro):** elige servicio, opcionalmente un worker (si no, el backend asigna uno), un hueco libre, y rellena nombre/email/teléfono. Email de confirmación opcional solo si `local_settings.booking_timeout` (minutos) está definido; si no se confirma, se autocancela con `check_booking_status`; `NULL`/`-1` lo desactiva (**desactivado para Sublime**: las reservas pasan directas a confirmadas). Después, email de "confirmada" con un enlace con token de usuario (válido hasta que acaba la reserva) para cancelar (existe la modificación, pero está **desactivada para Sublime**); cancelar/modificar envían su propio email.
+- **Backoffice:** solo inician sesión los workers de un local (`/api/v1/local/login`): historial y próximas reservas, cancelar reservas, gestionar servicios, horarios, días cerrados, workers y sus servicios.
+- **Niveles de auth / roles:** público, local/worker (JWT), usuario (token del email, solo su reserva), admin. Roles `A` admin, `L` local, `U` usuario. Estado de reserva `P` pendiente, `C` confirmada, `D` hecha, `X` cancelada.
+- **Un worker nunca puede tener dos reservas solapadas.** Capa 1: lock Redis de corta duración por local (`waitAndRegisterBooking`/`perform_atomic_booking` en `helpers/BookingController.py`, `WATCH` + `SETEX`, clave = `local_id`, caducidad `MAX_TIMEOUT_WAIT_BOOKING`). Capa 2: la BD es la fuente de verdad (`getBookings(...)` comprueba solapes `C`/`P` antes de insertar). El secundario tiene su propio Redis, así que solo la capa 2 abarca ambos servidores.
+- **Toda reserva debe acabar con su email**, incluso con caídas de SMTP o reinicios: mantén la cola duradera (Redis AOF, `noeviction`) y no descartes tareas en silencio. Detalles en `docs/email-system.md`.
+- **Modelo de datos** (una tabla por concepto): `booking`, `closed`, `file`, `local`, `local_settings`, `service`, `session_token`, `smtp_settings`, `timetable`, `worker`, `work_group` (un local puede tener varios, cada uno con sus servicios y workers); tablas de unión `service_booking`, `work_group_worker`; tablas de catálogo `status`, `weekday`.
 
-## Infrastructure (summary)
+## Infraestructura (resumen)
 
-Two servers, same codebase, both on the **same MariaDB (on the primary)**. Primary = `master`, main API + DB + backup container; secondary = `develop`, fallback API with its own Redis/Celery. Code is bind-mounted, so a `git pull` needs a container restart. `GET /health` → `ok`/`degraded`/`error`/`critical`. DB backups: nightly dump + binlog PITR + encrypted copy to the secondary (`dbbackup/`, `docs/db-backups.md`). Everything else: `docs/infrastructure.md`; operations: `booking-api-ops`.
+Dos servidores, mismo código, ambos sobre la **misma MariaDB (en el primario)**. Primario = `master`, API principal + BD + contenedor de backup; secundario = `develop`, API de respaldo con su propio Redis/Celery. El código está montado por bind, así que tras un `git pull` hay que reiniciar contenedores. `GET /health` → `ok`/`degraded`/`error`/`critical`. Backups de BD: dump nocturno + binlog PITR + copia cifrada al secundario (`dbbackup/`, `docs/db-backups.md`). Todo lo demás: `docs/infrastructure.md`; operaciones: `booking-api-ops`.
 
-## Security rules
+## Reglas de seguridad
 
-- Never commit or paste secrets: `.env*`, tokens, SMTP/DB/Redis passwords, DB dumps, anything under `private/` or `public/`. The repository is **public**: issues, PRs, commits and docs must not contain secrets, customer data, raw production logs or server addresses.
-- Never expose internal error details when `DEBUG` is off; keep the `401`/`403`/`404` semantics above; check ownership (`local_id`) on every local-scoped resource.
-- No production access from unattended/cloud sessions (no `servers.local.md`, no `booking-db` credentials): don't ask for or invent credentials. Production, SSH and deployments are done by the owner or in a session he supervises.
-- Agents never merge a PR, push to `master`/`develop`, deploy, change repo settings or run destructive DB/Redis commands without the user's explicit confirmation.
-- Deploying `master` affects the salon's customers: only in low-load hours, outside opening hours; verify with `scripts/smoke_test.sh` afterwards.
+- Nunca subas ni pegues secretos: `.env*`, tokens, contraseñas SMTP/BD/Redis, volcados de BD, nada de `private/` ni `public/`. El repositorio es **público**: issues, PR, commits y docs no pueden contener secretos, datos de clientes, logs de producción en bruto ni direcciones de servidores.
+- No expongas detalles internos de errores con `DEBUG` apagado; respeta la semántica `401`/`403`/`404` de arriba; comprueba la propiedad (`local_id`) en cada recurso de un local.
+- Sin acceso a producción desde sesiones desatendidas/cloud (sin `servers.local.md` ni credenciales de `booking-db`): no pidas ni inventes credenciales. Producción, SSH y despliegues los hace el dueño o una sesión que él supervise.
+- Los agentes nunca fusionan una PR, hacen push a `master`/`develop`, despliegan, cambian ajustes del repo ni ejecutan comandos destructivos de BD/Redis sin confirmación explícita del usuario.
+- Desplegar `master` afecta a los clientes del salón: solo en horas de baja carga, fuera del horario de apertura; verifica después con `scripts/smoke_test.sh`.
 
-## Git workflow (GitFlow, mandatory for humans and agents, local or cloud)
+## Flujo Git (GitFlow, obligatorio para personas y agentes, en local o en cloud)
 
-`master` = production (primary), `develop` = integration (secondary). Never commit directly to either; they change only through a **pull request**.
+`master` = producción (primario), `develop` = integración (secundario). Nunca hagas commit directo en ninguna; solo cambian mediante **pull request**.
 
-- Branches off `develop`: `feature/<name>`, `fix/<name>`; `hotfix/<name>` off `master` (PR into `master`, then merge `master` back into `develop`; the branch rulesets let the repo admin bypass them only via a PR, with the owner's explicit approval; the `scrum-master` agent prepares it). Start with `git fetch origin && git switch -c <type>/<name> origin/develop`; if the environment pre-created another branch, switch to a correct one before committing. `claude/` prefix only if the environment refuses anything else (`claude/feature-<name>`, say so in the PR).
-- **One issue/bug = one branch = one PR** with its own commits; never mix a fix with a feature or refactor. Related set of tasks: umbrella branch off `develop`, one sub-branch per task merged into it, one PR umbrella → `develop`. Tests-only or docs-only changes also get their own branch.
-- **Every PR links its issue** (`Closes #n` in the body; the workflow `close-linked-issues` closes it when the PR merges into `develop`) and follows `.github/pull_request_template.md`: what/why, real test output, deployment impact. Open the PR into `develop` (never `master`).
-- Small atomic Conventional Commits (`fix:`, `feat:`, `test:`, `docs:`, `chore:`, `refactor:`), asunto en inglés e imperativo, cuerpo en español que explica el porqué; a fix includes its regression test. No history rewriting on pushed/shared branches.
-- **Bump `VERSION` in `globals.py`** (SemVer: fix → patch, feature → minor, breaking → major) when behaviour or the API changes; docs/test-only PRs don't. Once per umbrella PR.
-- Run `python -m pytest tests/` before opening the PR (and the services tier when touching DB/Redis/Celery/bookings/email, if Docker is available); paste the results in the PR.
-- Promotion: feature/fix → PR into `develop` → verified on the secondary → PR `develop` → `master` (full CI) → deploy to the primary in low-load hours.
-- If a test fails for an unclear reason or a requirement is ambiguous, stop and report; never mark a failing test as expected-failure. Bugs found while doing something else go to the backlog (skill `backlog`) instead of being fixed inline.
-- Procedures (opening branches/PRs, releases, branch cleanup, repo settings) are carried out by the `scrum-master` agent.
+- Ramas desde `develop`: `feature/<nombre>`, `fix/<nombre>`; `hotfix/<nombre>` desde `master` (PR a `master` y luego merge de `master` a `develop`; los rulesets permiten al admin saltárselos solo mediante una PR, con aprobación explícita del dueño; el agente `scrum-master` la prepara). Empieza con `git fetch origin && git switch -c <tipo>/<nombre> origin/develop`; si el entorno creó otra rama, cambia a una correcta antes de commitear. El prefijo `claude/` solo si el entorno rechaza cualquier otro (`claude/feature-<nombre>`, dilo en la PR).
+- **Una issue/bug = una rama = una PR** con sus propios commits; nunca mezcles un arreglo con una funcionalidad o un refactor. Conjunto de tareas relacionadas: rama paraguas desde `develop`, una subrama por tarea fusionada en ella y una PR paraguas → `develop`. Los cambios solo de tests o solo de docs también tienen su propia rama.
+- **Toda PR enlaza su issue** (`Closes #n` en el cuerpo; el workflow `close-linked-issues` la cierra al fusionar en `develop`) y sigue `.github/pull_request_template.md`: qué/por qué, salida real de tests, impacto en el despliegue. Abre la PR hacia `develop` (nunca `master`).
+- Commits Conventional pequeños y atómicos (`fix:`, `feat:`, `test:`, `docs:`, `chore:`, `refactor:`), asunto en inglés e imperativo, cuerpo en español que explica el porqué; un arreglo incluye su test de regresión. No reescribas el historial de ramas ya subidas y compartidas.
+- **Sube `VERSION` en `globals.py`** (SemVer: fix → patch, feature → minor, breaking → major) cuando cambie el comportamiento o la API; las PR solo de docs/tests no. Una vez por PR paraguas.
+- Ejecuta `python -m pytest tests/` antes de abrir la PR (y el nivel de servicios si tocas BD/Redis/Celery/reservas/email y hay Docker); pega los resultados en la PR.
+- Promoción: feature/fix → PR a `develop` → verificado en el secundario → PR `develop` → `master` (CI completo) → despliegue en el primario en horas de baja carga.
+- Si un test falla sin causa clara o un requisito es ambiguo, para y avisa; nunca marques un test fallido como fallo esperado. Los bugs que encuentres mientras haces otra cosa van al backlog (skill `backlog`) en lugar de arreglarlos en línea.
+- Los procedimientos (abrir ramas/PR, releases, limpieza de ramas, ajustes del repo) los ejecuta el agente `scrum-master`.
 
-## Cloud sessions
+## Sesiones cloud
 
-Same rules, no lighter flow. Cloud ships Python 3.13 but the pinned requirements need 3.11: use `.venv/bin/python -m pytest ...` (a `SessionStart` hook in `.claude/settings.json` creates it; see `docs/testing.md`). Findings must survive the session: `private/` is gitignored and absent in cloud, so put bugs in the backlog (issues) and the PR description.
+Mismas reglas, sin un flujo más ligero. Cloud trae Python 3.13 pero los requirements fijados necesitan 3.11: usa `.venv/bin/python -m pytest ...` (un hook `SessionStart` en `.claude/settings.json` lo crea; ver `docs/testing.md`). Los hallazgos deben sobrevivir a la sesión: `private/` está en `.gitignore` y no existe en cloud, así que los bugs van al backlog (issues) y a la descripción de la PR.
 
-## Agents and skills
+## Agentes y skills
 
-- Agents (`.claude/agents/`): `booking-api-ops` (app + production), `test-engineer` (QA), `scrum-master` (GitHub backlog/branches/PRs/hotfixes), `security-reviewer` (read-only security review), `docs-keeper` (documentation).
-- Skills (`.claude/skills/`): `backlog` (GitHub Issues/labels/board; scripts `issue.py`, `setup_repo.py`), `write-tests` (test conventions per tier, `check_tests.py` guard), `test-bug-report` (run all tiers, analyse failures into `private/reports/tests/*.json` + HTML, publish/link bugs to the backlog), `new-endpoint` (conventions checklist + template), `release` (`release_check.py`: readiness and notes), `docs-check` (`check_docs.py`: broken refs, size budget).
-- When a task has an agent or skill that knows how, don't re-describe the procedure here: put it in the agent/skill.
+- Agentes (`.claude/agents/`): `booking-api-ops` (app + producción), `test-engineer` (QA), `scrum-master` (backlog/ramas/PR/hotfixes en GitHub), `security-reviewer` (revisión de seguridad de solo lectura), `docs-keeper` (documentación).
+- Skills (`.claude/skills/`): `backlog` (Issues/etiquetas/tablero de GitHub; scripts `issue.py`, `setup_repo.py`), `write-tests` (convenciones de tests por nivel, guarda `check_tests.py`), `test-bug-report` (ejecuta todos los niveles, analiza fallos en `private/reports/tests/*.json` + HTML, publica/enlaza bugs al backlog), `new-endpoint` (checklist de convenciones + plantilla), `release` (`release_check.py`: preparación y notas), `docs-check` (`check_docs.py`: referencias rotas, presupuesto de tamaño).
+- Cuando una tarea tenga un agente o skill que sabe hacerla, no describas aquí el procedimiento: ponlo en el agente/skill.

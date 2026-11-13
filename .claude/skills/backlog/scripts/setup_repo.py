@@ -1,10 +1,10 @@
-"""Idempotent repo setup for the backlog: labels, repository settings and the Project board.
+"""Configuración idempotente del repo para el backlog: etiquetas, ajustes del repositorio y tablero Project.
 
-    setup_repo.py labels                 # create/update labels from references/labels.json (renames enhancement->feature...)
-    setup_repo.py settings [--apply]     # show (default) or apply repo settings: delete branch on merge, merge-commit only
-    setup_repo.py project [--apply]      # create the Project v2 board + fields, link it to the repo, store its number in config.json
+    setup_repo.py labels                 # crea/actualiza las etiquetas de references/labels.json (renombra enhancement->feature...)
+    setup_repo.py settings [--apply]     # muestra (por defecto) o aplica los ajustes: borrar rama al fusionar, solo merge commits
+    setup_repo.py project [--apply]      # crea el tablero Project v2 + campos, lo enlaza al repo y guarda su número en config.json
 
-Needs `gh` logged in. `project` also needs the `project` token scope: gh auth refresh -s project
+Necesita `gh` autenticado. `project` necesita además el permiso `project` del token: gh auth refresh -h github.com -s project
 """
 import argparse
 import json
@@ -62,7 +62,7 @@ def project(apply):
         return
     status = gh('auth', 'status', check=False)
     if 'project' not in (status.stdout + status.stderr).split("scopes:")[-1]:
-        sys.exit('Missing "project" token scope. Run: gh auth refresh -s project')
+        sys.exit('Missing "project" token scope. Ejecuta: gh auth refresh -h github.com -s project')
     out = json.loads(gh('project', 'create', '--owner', cfg['owner'], '--title', cfg['project_title'], '--format', 'json').stdout)
     num = out['number']
     gh('project', 'link', str(num), '--owner', cfg['owner'], '--repo', cfg['repo'])

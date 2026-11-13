@@ -1,7 +1,7 @@
 name: close-linked-issues
 
-# GitHub only auto-closes "Closes #n" when the PR merges into the DEFAULT branch (master).
-# Our GitFlow merges feature/fix PRs into develop, so this workflow closes the linked issues then.
+# GitHub solo cierra automáticamente "Closes #n" cuando la PR se fusiona en la rama por defecto (master).
+# Nuestro GitFlow fusiona las PR de feature/fix en develop, así que este workflow cierra entonces las issues enlazadas.
 on:
   pull_request:
     types: [closed]
@@ -16,7 +16,7 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Close issues referenced with closing keywords
+      - name: Cerrar las issues referenciadas con palabras de cierre
         env:
           GH_TOKEN: ${{ github.token }}
           BODY: ${{ github.event.pull_request.body }}
@@ -26,5 +26,5 @@ jobs:
           nums=$(printf '%s' "$BODY" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' | sort -u)
           for n in $nums; do
             gh issue close "$n" --repo "$REPO" --reason completed \
-              --comment "Closed by #$PR (merged into \`develop\`). It ships to production with the next release PR into \`master\`."
+              --comment "Cerrada por #$PR (fusionada en \`develop\`). Llegará a producción con la próxima PR de release a \`master\`."
           done

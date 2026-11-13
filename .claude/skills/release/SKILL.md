@@ -1,41 +1,41 @@
 ---
 name: release
-description: Prepare and verify a Booking API release - check readiness of develop, draft release notes from merged PRs and closed issues, confirm the VERSION bump, and prepare the develop -> master PR plus the deployment checklist (low-load window, smoke test, secondary realignment). Use for "prepare a release", "what is going out", "release notes", "is develop ready for master", "cut v1.2.0". It never merges or deploys by itself.
+description: Prepara y verifica una release de la Booking API - comprueba que develop está listo, redacta las notas de la release a partir de los PRs fusionados y los issues cerrados, confirma el incremento de VERSION y prepara el PR develop -> master más la lista de comprobación del despliegue (ventana de baja carga, smoke test, realineación del secundario). Úsala para "prepara una release", "qué sale", "notas de la release", "está develop listo para master", "corta la v1.2.0". Nunca fusiona ni despliega por sí sola.
 ---
 
-# Release (develop → master → primary)
+# Release (develop → master → primario)
 
-Releases follow `CLAUDE.md` GitFlow: feature/fix PRs land in `develop` (verified on the secondary), then **one PR `develop` → `master`**, then the owner deploys the primary in a low-load window. Milestone = release (`vX.Y.Z`, matches `VERSION` in `globals.py`).
+Las releases siguen el GitFlow de `CLAUDE.md`: los PRs de feature/fix aterrizan en `develop` (verificado en el secundario), luego **un PR `develop` → `master`**, y después el dueño despliega el primario en una ventana de baja carga. Hito = release (`vX.Y.Z`, coincide con `VERSION` en `globals.py`).
 
-## 1. Check readiness (read-only)
+## 1. Comprobar que está lista (solo lectura)
 
 ```bash
 python .claude/skills/release/scripts/release_check.py            # compares origin/develop with origin/master
 python .claude/skills/release/scripts/release_check.py --notes     # also prints release notes (Markdown) for the PR body
 ```
 
-It reports: version on `develop` vs `master` (must be higher, SemVer), merged PRs and the issues they close, latest CI runs on `develop`, open `P0`/`P1` bugs and open issues of the milestone, and whether `master` has commits missing in `develop` (a hotfix not merged back: fix that first).
+Informa de: la versión en `develop` frente a `master` (debe ser mayor, SemVer), los PRs fusionados y los issues que cierran, las últimas ejecuciones de CI en `develop`, los bugs `P0`/`P1` abiertos y los issues abiertos del hito, y si `master` tiene commits que faltan en `develop` (un hotfix no fusionado de vuelta: arréglalo primero).
 
-Stop and tell the user if: CI on `develop` is red, the version was not bumped, there are open `P0` bugs, `master` is ahead of `develop`, or the secondary is not running `develop` yet / was not verified (ask the owner; you cannot see it).
+Detente y avisa al usuario si: la CI en `develop` está en rojo, no se incrementó la versión, hay bugs `P0` abiertos, `master` va por delante de `develop`, o el secundario aún no ejecuta `develop` / no se verificó (pregúntale al dueño; tú no puedes verlo).
 
-## 2. Draft the release PR
+## 2. Redactar el PR de release
 
-Only after the user agrees. Branch protection requires a PR and the `tests` check on `master`.
+Solo cuando el usuario esté de acuerdo. La protección de ramas exige un PR y el check `tests` en `master`.
 
 ```bash
 gh pr create --base master --head develop --title "release: vX.Y.Z" --body-file notes.md
 ```
 
-Body = the `--notes` output plus: deployment impact aggregated from the PRs (restarts: web/worker/beat; migrations; image rebuild; new env variables), `Closes` is **not** needed (issues are already closed by the `close-linked-issues` workflow), and the milestone link.
+Cuerpo = la salida de `--notes` más: el impacto de despliegue agregado de los PRs (reinicios: web/worker/beat; migraciones; reconstrucción de imágenes; nuevas variables de entorno), **no** hace falta `Closes` (los issues ya los cierra el workflow `close-linked-issues`), y el enlace al hito.
 
-## 3. Deployment checklist (the owner executes; production runbook is in the `booking-api-ops` agent)
-- [ ] Low-load window, outside the salon's opening hours.
-- [ ] Merge the PR (owner), `git pull` on the primary as `ubuntu`, rebuild images only if `Dockerfile.*`/`requirements.txt` changed, restart what changed.
-- [ ] `scripts/smoke_test.sh --url <api> --expect-version X.Y.Z --worker <container>` passes.
-- [ ] Watch `/health` and the worker log for a few minutes.
-- [ ] Re-deploy the secondary (it runs `develop`, which now equals `master`).
-- [ ] Close the milestone and move leftover issues to the next one: `gh api -X PATCH repos/daniieelgs/booking_api/milestones/<n> -f state=closed`.
-- [ ] Optionally tag: `git tag -a vX.Y.Z origin/master -m "vX.Y.Z"` and a GitHub release from the notes (ask first; tags are public).
+## 3. Lista de comprobación del despliegue (la ejecuta el dueño; el runbook de producción está en el agente `booking-api-ops`)
+- [ ] Ventana de baja carga, fuera del horario de apertura del salón.
+- [ ] Fusionar el PR (dueño), `git pull` en el primario como `ubuntu`, reconstruir las imágenes solo si cambió `Dockerfile.*`/`requirements.txt`, reiniciar lo que cambió.
+- [ ] `scripts/smoke_test.sh --url <api> --expect-version X.Y.Z --worker <container>` pasa.
+- [ ] Vigilar `/health` y el log del worker durante unos minutos.
+- [ ] Redesplegar el secundario (ejecuta `develop`, que ahora es igual a `master`).
+- [ ] Cerrar el hito y mover los issues sobrantes al siguiente: `gh api -X PATCH repos/daniieelgs/booking_api/milestones/<n> -f state=closed`.
+- [ ] Opcionalmente etiquetar: `git tag -a vX.Y.Z origin/master -m "vX.Y.Z"` y una release de GitHub a partir de las notas (preguntar antes; las etiquetas son públicas).
 
-## Hotfix releases
-Urgent fixes use `hotfix/*` from `master` (see the `scrum-master` agent); bump the patch version in the hotfix PR, then open `master` → `develop`.
+## Releases de hotfix
+Los arreglos urgentes usan `hotfix/*` desde `master` (ver el agente `scrum-master`); incrementa la versión de parche en el PR del hotfix y luego abre `master` → `develop`.

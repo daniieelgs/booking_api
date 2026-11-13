@@ -1,4 +1,4 @@
-# Resource template (adapt names; keep the project's style)
+# Plantilla de recurso (adapta los nombres; mantén el estilo del proyecto)
 
 ```python
 from flask.views import MethodView
@@ -68,11 +68,11 @@ class ThingByID(MethodView):
         return thing
 ```
 
-Register in `app.py`:
+Regístralo en `app.py`:
 
 ```python
 from resources.thing import blp as ThingBlueprint
 api.register_blueprint(ThingBlueprint, url_prefix=getApiPrefix('thing'))
 ```
 
-Integration test skeleton (`tests/integration/test_<domain>.py`): copy the fixture from `tests/integration/test_work_group.py` (`create_app`, `setUp` with `db.create_all()` + `config_test.config(db=db)`, `tearDown`), create two locals through the admin token, and assert: no token → 401, owner → 200/201, other local's token → 403, unknown id → 404, duplicate → 409, bad body → 422.
+Esqueleto del test de integración (`tests/integration/test_<domain>.py`): copia el fixture de `tests/integration/test_work_group.py` (`create_app`, `setUp` con `db.create_all()` + `config_test.config(db=db)`, `tearDown`), crea dos locales mediante el token de admin, y comprueba: sin token → 401, propietario → 200/201, token de otro local → 403, id desconocido → 404, duplicado → 409, body incorrecto → 422.

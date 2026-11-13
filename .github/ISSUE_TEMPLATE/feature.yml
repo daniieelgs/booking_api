@@ -1,25 +1,25 @@
 name: Feature
-description: New functionality or improvement.
+description: Funcionalidad nueva o mejora.
 labels: ["feature"]
 body:
   - type: textarea
     id: problem
-    attributes: {label: Problem / goal, description: "Why this is needed and for whom (business value)."}
+    attributes: {label: Problem / goal, description: "Por qué hace falta y para quién (valor de negocio)."}
     validations: {required: true}
   - type: textarea
     id: scope
-    attributes: {label: Proposed solution and scope, description: "What is included and what is explicitly out."}
+    attributes: {label: Proposed solution and scope, description: "Qué incluye y qué queda explícitamente fuera."}
     validations: {required: true}
   - type: textarea
     id: acceptance
-    attributes: {label: Acceptance criteria, description: "Checklist: `- [ ] ...` verifiable conditions."}
+    attributes: {label: Acceptance criteria, description: "Lista de comprobación: `- [ ] ...` con condiciones verificables."}
     validations: {required: true}
   - type: textarea
     id: impact
-    attributes: {label: Technical notes and deployment impact, description: "Migration, restart, rebuild, config, API/backoffice changes, risks."}
+    attributes: {label: Technical notes and deployment impact, description: "Migración, reinicio, reconstrucción, configuración, cambios de API/backoffice, riesgos."}
   - type: dropdown
     id: priority
-    attributes: {label: Priority, options: ["P0 - production down / data loss", "P1 - high", "P2 - normal", "P3 - low"]}
+    attributes: {label: Priority, options: ["P0 - producción caída / pérdida de datos", "P1 - alta", "P2 - normal", "P3 - baja"]}
     validations: {required: true}
   - type: dropdown
     id: area

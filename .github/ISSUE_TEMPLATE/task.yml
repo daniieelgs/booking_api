@@ -1,25 +1,25 @@
 name: Task / chore
-description: Infrastructure, operations, refactor, docs or housekeeping work.
+description: Trabajo de infraestructura, operaciones, refactor, documentación o mantenimiento.
 labels: ["task"]
 body:
   - type: textarea
     id: context
-    attributes: {label: Context and goal, description: "Why now, current situation."}
+    attributes: {label: Context and goal, description: "Por qué ahora y cuál es la situación actual."}
     validations: {required: true}
   - type: textarea
     id: plan
-    attributes: {label: Plan / checklist, description: "Concrete steps as `- [ ] ...`."}
+    attributes: {label: Plan / checklist, description: "Pasos concretos como `- [ ] ...`."}
     validations: {required: true}
   - type: textarea
     id: done
-    attributes: {label: Definition of done, description: "How we know it is finished and verified."}
+    attributes: {label: Definition of done, description: "Cómo sabemos que está terminado y verificado."}
     validations: {required: true}
   - type: textarea
     id: impact
-    attributes: {label: Risks and approvals needed, description: "Production impact, owner approval, maintenance window."}
+    attributes: {label: Risks and approvals needed, description: "Impacto en producción, aprobación del dueño, ventana de mantenimiento."}
   - type: dropdown
     id: priority
-    attributes: {label: Priority, options: ["P0 - production down / data loss", "P1 - high", "P2 - normal", "P3 - low"]}
+    attributes: {label: Priority, options: ["P0 - producción caída / pérdida de datos", "P1 - alta", "P2 - normal", "P3 - baja"]}
     validations: {required: true}
   - type: dropdown
     id: area

@@ -5,10 +5,10 @@
     findings.py status F-011 wontfix --note "decidido con el equipo"
     findings.py add path/to/finding.json   # append (or replace by id) a finding written by hand
 
-GitHub backlog (needs `gh`; see .claude/skills/backlog):
-    findings.py sync-backlog               # read `bug` issues: link findings to their issue, add the rest as kind "backlog" (B-<n>)
-    findings.py publish F-003 --area email [--dry-run]   # create the GitHub issue for a finding (ASK THE USER FIRST)
-    findings.py link F-003 123             # attach an existing issue number to a finding
+Backlog de GitHub (necesita `gh`; ver .claude/skills/backlog):
+    findings.py sync-backlog               # lee las issues `bug`: enlaza hallazgos con su issue y añade el resto como kind "backlog" (B-<n>)
+    findings.py publish F-003 --area email [--dry-run]   # crea la issue de GitHub de un hallazgo (PREGUNTA ANTES AL USUARIO)
+    findings.py link F-003 123             # asocia un número de issue existente a un hallazgo
 """
 import argparse
 import json

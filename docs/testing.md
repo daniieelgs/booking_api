@@ -1,30 +1,30 @@
-# Testing
+# Tests
 
-How to write tests per tier: skill `write-tests`. How to run everything and analyse failures: skill `test-bug-report`. Agent: `test-engineer`.
+Cómo escribir tests por nivel: skill `write-tests`. Cómo ejecutarlo todo y analizar fallos: skill `test-bug-report`. Agente: `test-engineer`.
 
-## Layout
-- `tests/unit/`: no Flask app over HTTP; pure logic with mocks, `fakeredis` for the real `WATCH` semantics of the booking lock, and `tests/unit/db_support.py` `DbTestCase` (bare Flask + in-memory SQLite + JWT) for helpers that need `db.session`.
-- `tests/integration/`: full Flask app over HTTP with SQLite (`flask_testing.TestCase`); no real DB/Redis.
-- `tests/integration/services/` (marker `services`): real MariaDB 10.5.19 + Redis 7.2.4 + a Celery worker from `docker/docker-compose.test.yml`.
-- `tests/backup/`: the `dbbackup/` suite (stdlib only) plus `tests/backup/e2e/run_e2e.sh` (real MariaDB/rsync/SSH/age in Docker; run it before merging changes to `dbbackup/`, `scripts/` or the compose file).
-- Shared helpers stay in `tests/` (`config_test.py`, `configure_local_base.py`). `pytest.ini` deselects `services` by default. Keep `tests/__init__.py` empty so the backup suite stays independent of the Flask app.
-- The root `conftest.py` sets `FLASK_DEBUG=1` before `globals` is imported (`REDIS_TEST_MODE`/`EMAIL_TEST_MODE` are only honoured with `DEBUG` on), so the suite never depends on a developer's `.env`.
+## Estructura
+- `tests/unit/`: sin la app Flask sobre HTTP; lógica pura con mocks, `fakeredis` para la semántica real de `WATCH` del lock de reservas, y `tests/unit/db_support.py` `DbTestCase` (Flask mínimo + SQLite en memoria + JWT) para helpers que necesitan `db.session`.
+- `tests/integration/`: app Flask completa sobre HTTP con SQLite (`flask_testing.TestCase`); sin BD ni Redis reales.
+- `tests/integration/services/` (marcador `services`): MariaDB 10.5.19 + Redis 7.2.4 + un worker de Celery reales desde `docker/docker-compose.test.yml`.
+- `tests/backup/`: la suite de `dbbackup/` (solo librería estándar) más `tests/backup/e2e/run_e2e.sh` (MariaDB/rsync/SSH/age reales en Docker; ejecútalo antes de fusionar cambios en `dbbackup/`, `scripts/` o el compose).
+- Los helpers compartidos se quedan en `tests/` (`config_test.py`, `configure_local_base.py`). `pytest.ini` deselecciona `services` por defecto. Mantén vacío `tests/__init__.py` para que la suite de backup siga independiente de la app Flask.
+- El `conftest.py` de la raíz fija `FLASK_DEBUG=1` antes de importar `globals` (`REDIS_TEST_MODE`/`EMAIL_TEST_MODE` solo se respetan con `DEBUG` activo), así la suite nunca depende del `.env` de quien la ejecuta.
 
-## Commands (from the repo root)
-- All, no Docker: `python -m pytest tests/`
-- One file / test: `python -m pytest tests/integration/test_work_group.py::TestWorkGroup::test_method -v`
-- Real-services tier: `docker compose -f docker/docker-compose.test.yml up -d --wait`, then `RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/services -m services -v` (run that directory on its own: `globals.py` binds env at import), then `docker compose -f docker/docker-compose.test.yml down -v`. See `tests/integration/services/README.md`.
-- Email redelivery tests (`test_zz_email_redelivery.py`, marker `redelivery`): prefork Celery worker in a Linux container against the real Redis, scaled-down delays; about 25 min in all; needs the image `booking-exp-worker` (`docker build -f docker/Dockerfile.exp-worker -t booking-exp-worker .`). Local only: GitHub runs `-m "services and not redelivery"`.
-- Post-deploy check: `scripts/smoke_test.sh --url <api> [--expect-version X] [--worker <container>]`.
-- Don't run two pytest processes at once: the SQLite test DB (`instance/data_test.db`) is shared.
-- Failing tests stay red: never `xfail`/`expectedFailure` (`check_tests.py` guards it).
-- `TEST_PERFORMANCE=1` is a separate load-test mode that changes `app.py`'s startup path and API prefix (`tests/config_test_performance.py`, `resources/unavaliable_api.py`); don't confuse it with the normal suite.
+## Comandos (desde la raíz del repo)
+- Todo, sin Docker: `python -m pytest tests/`
+- Un fichero / un test: `python -m pytest tests/integration/test_work_group.py::TestWorkGroup::test_method -v`
+- Nivel de servicios reales: `docker compose -f docker/docker-compose.test.yml up -d --wait`, después `RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/services -m services -v` (ejecuta ese directorio solo: `globals.py` fija el entorno al importar), y por último `docker compose -f docker/docker-compose.test.yml down -v`. Ver `tests/integration/services/README.md`.
+- Tests de reentrega de email (`test_zz_email_redelivery.py`, marcador `redelivery`): worker Celery prefork en un contenedor Linux contra el Redis real, con esperas reducidas; unos 25 min en total; necesita la imagen `booking-exp-worker` (`docker build -f docker/Dockerfile.exp-worker -t booking-exp-worker .`). Solo en local: GitHub ejecuta `-m "services and not redelivery"`.
+- Comprobación tras desplegar: `scripts/smoke_test.sh --url <api> [--expect-version X] [--worker <contenedor>]`.
+- No ejecutes dos procesos pytest a la vez: la BD SQLite de tests (`instance/data_test.db`) es compartida.
+- Los tests que fallan se quedan en rojo: nunca `xfail`/`expectedFailure` (lo vigila `check_tests.py`).
+- `TEST_PERFORMANCE=1` es un modo aparte de pruebas de carga que cambia el arranque de `app.py` y el prefijo de la API (`tests/config_test_performance.py`, `resources/unavaliable_api.py`); no lo confundas con la suite normal.
 
-## Fixture pattern
-`flask_testing.TestCase`: `create_app()` returns `create_app(config_test)`; `setUp()` calls `db.create_all()` then `config_test.config(db=db)`; `tearDown()` calls `db.session.remove()`, `db.drop_all()`, `config_test.drop(self.locals)`. `tests/config_test.py` exposes `getUrl(*parts)` (prefixes `api/v1/`) and `setParams(url, **params)`.
+## Patrón de fixtures
+`flask_testing.TestCase`: `create_app()` devuelve `create_app(config_test)`; `setUp()` llama a `db.create_all()` y luego a `config_test.config(db=db)`; `tearDown()` llama a `db.session.remove()`, `db.drop_all()`, `config_test.drop(self.locals)`. `tests/config_test.py` expone `getUrl(*parts)` (antepone `api/v1/`) y `setParams(url, **params)`.
 
 ## CI
-`.github/workflows/tests.yml`: on push/PR to `develop` only the unit tests run; on `master` also SQLite integration + backup tests and the job `services` (real MariaDB/Redis/Celery in Docker) without `redelivery`. Paste the output of what you ran in every PR body (CI on `develop` is minimal).
+`.github/workflows/tests.yml`: en push/PR a `develop` solo corren los tests unitarios; en `master` también los de integración con SQLite, los de backup y el job `services` (MariaDB/Redis/Celery reales en Docker) sin `redelivery`. Pega la salida de lo que hayas ejecutado en el cuerpo de cada PR (el CI de `develop` es mínimo).
 
-## Python environment
-Pinned `requirements.txt` needs Python 3.11 (`lxml==5.1.0`, `greenlet==3.0.2`; CI and `Dockerfile.base` use 3.11). Cloud sessions ship 3.13: if `.venv/` exists use `.venv/bin/python -m pytest ...`; otherwise `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt pytest` (a `SessionStart` hook in `.claude/settings.json` does it automatically). `requirements.txt` is UTF-16 encoded: never re-save it as UTF-8.
+## Entorno Python
+El `requirements.txt` fijado necesita Python 3.11 (`lxml==5.1.0`, `greenlet==3.0.2`; el CI y `Dockerfile.base` usan 3.11). Las sesiones cloud traen 3.13: si existe `.venv/` usa `.venv/bin/python -m pytest ...`; si no, `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt pytest` (un hook `SessionStart` en `.claude/settings.json` lo hace solo). `requirements.txt` está en UTF-16: nunca lo guardes como UTF-8.

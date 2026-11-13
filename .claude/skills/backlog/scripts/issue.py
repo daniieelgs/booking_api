@@ -1,12 +1,12 @@
-"""Create and audit backlog issues so every one is fully specified.
+"""Crea y audita las issues del backlog para que todas estén bien especificadas.
 
     issue.py create --type bug|feature|task --title "..." --body-file body.md --priority P2 --area email
                     [--milestone v1.2.0] [--label needs-discussion ...] [--dry-run]
-    issue.py audit                      # list open issues that are badly specified (missing labels/sections)
+    issue.py audit                      # lista las issues abiertas mal especificadas (faltan etiquetas/secciones)
 
-The body uses the same `### Heading` sections as the issue forms in .github/ISSUE_TEMPLATE, so issues created from
-the web form and from here look identical. `create` refuses a body that lacks the required sections or looks like
-it contains a secret (the repository is public).
+El cuerpo usa las mismas secciones `### Título` que los formularios de .github/ISSUE_TEMPLATE, así que las issues
+creadas desde la web y desde aquí son idénticas. `create` rechaza un cuerpo sin las secciones obligatorias o que
+parezca contener un secreto (el repositorio es público).
 """
 import argparse
 import json

@@ -1,33 +1,33 @@
 ---
 name: new-endpoint
-description: Add or change a REST endpoint (or a whole resource/domain) in the Booking API following the project's conventions - model, Marshmallow schema, flask-smorest blueprint, registration in app.py, ownership checks, error handling, tests (including cross-local), changelog and version bump. Use when asked to "add an endpoint", "expose X in the API", "create a new resource/CRUD", "add a field to the API", or when reviewing that a new endpoint follows the conventions.
+description: Añade o cambia un endpoint REST (o un recurso/dominio completo) en la Booking API siguiendo las convenciones del proyecto - modelo, schema de Marshmallow, blueprint de flask-smorest, registro en app.py, comprobaciones de propiedad, manejo de errores, tests (incluidos los cross-local), changelog e incremento de versión. Úsala cuando te pidan "añade un endpoint", "expón X en la API", "crea un nuevo recurso/CRUD", "añade un campo a la API", o al revisar que un endpoint nuevo sigue las convenciones.
 ---
 
-# New endpoint
+# Nuevo endpoint
 
-Work from an issue on a `feature/*` branch off `develop` (skill `backlog`, GitFlow in `CLAUDE.md`). One endpoint set = one purpose = one PR.
+Trabaja a partir de un issue en una rama `feature/*` desde `develop` (skill `backlog`, GitFlow en `CLAUDE.md`). Un conjunto de endpoints = un propósito = un PR.
 
-## Checklist (in order)
+## Lista de comprobación (en orden)
 
-1. **Read the neighbours first.** Open the closest existing resource in `resources/` (`work_group.py` is a clean CRUD example), its model in `models/` and its schemas in `schema.py`. Copy their style, not this file's memory.
-2. **Model** (`models/<name>.py`, exported in `models/__init__.py`): `db.Model`, `datetime_created`/`datetime_updated` columns, `local_id` FK for anything owned by a local, `UniqueConstraint` where names must be unique per local. A schema change needs a migration plan: say so in the issue/PR (`flask db migrate`, and update `db/init.sql`).
-3. **Schemas** in `schema.py` (single monolithic file): `required=True, dump_only=True` for ids/timestamps, `validate=` for lengths/ranges, a `...ListSchema` (`ListSchema` base) for collections. Never expose secrets or other locals' data; use a separate `Public...Schema` for public routes.
-4. **Resource** in `resources/<domain>.py`, one `Blueprint` per domain, `MethodView` classes with `@blp.route`. Decorator stack: `@blp.arguments(Schema)` (+ `location='query'` for params), `@blp.response(code, description=...)` for every error the handler can return, then one `@blp.response(2xx, Schema)`, then the auth decorator. Docstring = Swagger description. See `references/template.md`.
-5. **Auth and ownership** (the most common source of bugs here):
-   - Local-scoped data: `@jwt_required(refresh=True)` (or `fresh=True` for destructive actions); identity = `get_jwt_identity()` = local id.
-   - Admin-only: hand-rolled check from `helpers/security.py`.
-   - Public: no decorator, and only public data.
-   - **Every** lookup of a resource by id must verify `resource.local_id == get_jwt_identity()` (`403` if not, `404` if it does not exist). Check parent and child ids too (a worker of another local inside my work group).
-6. **Errors:** `401` credentials, `403` not allowed, `404` does not exist, `409` conflicts (`IntegrityError`), `500` on `SQLAlchemyError` with `message = str(e) if DEBUG else '<generic>'` after `rollback()`. Domain errors go in `helpers/error/<Domain>Error/`, one class per file. Never leak internals when `DEBUG` is off.
-7. **DB access** only through `db.py` helpers (`addAndCommit`, `deleteAndCommit`, ...). Naive datetimes are wall-clock in the local's timezone (`naiveToAware`, `now(local.location)`).
-8. **Handlers that do real work** (bookings, emails, anything with side effects) wrap with `@log_route` (accept `_uuid=None`). Booking changes must keep the overlap guarantees (`getBookings`, Redis lock): read `CLAUDE.md` business rules.
-9. **Register** the blueprint in `app.py` (`api.register_blueprint(X, url_prefix=getApiPrefix('<name>'))`).
-10. **Tests** (skill `write-tests`, agent `test-engineer`): integration test file `tests/integration/test_<domain>.py` (401 without token, happy path, validation 422, 404, 409, 403 for another local's data) and add the cross-local case to `tests/integration/test_cross_local_ownership.py`. Run `python -m pytest tests/ -q` and the services tier if it touches DB/Redis/Celery/emails.
-11. **Contract docs:** add the endpoint to `changelog.md` (method, path, request/response format) because the two frontends (customer site and backoffice) consume it; mention breaking changes in the PR.
-12. **Version:** bump `VERSION` in `globals.py` (new endpoint = minor, breaking = major) once per PR/umbrella.
-13. **Before the PR:** run the `security-reviewer` agent on the diff, and `docs-keeper` if behaviour or operations changed.
+1. **Lee primero a los vecinos.** Abre el recurso existente más cercano en `resources/` (`work_group.py` es un ejemplo limpio de CRUD), su modelo en `models/` y sus schemas en `schema.py`. Copia su estilo, no la memoria de este fichero.
+2. **Modelo** (`models/<name>.py`, exportado en `models/__init__.py`): `db.Model`, columnas `datetime_created`/`datetime_updated`, FK `local_id` para todo lo que pertenezca a un local, `UniqueConstraint` donde los nombres deban ser únicos por local. Un cambio de esquema necesita un plan de migración: dilo en el issue/PR (`flask db migrate`, y actualiza `db/init.sql`).
+3. **Schemas** en `schema.py` (fichero monolítico único): `required=True, dump_only=True` para ids/marcas de tiempo, `validate=` para longitudes/rangos, un `...ListSchema` (base `ListSchema`) para colecciones. Nunca expongas secretos ni datos de otros locales; usa un `Public...Schema` aparte para las rutas públicas.
+4. **Recurso** en `resources/<domain>.py`, un `Blueprint` por dominio, clases `MethodView` con `@blp.route`. Pila de decoradores: `@blp.arguments(Schema)` (+ `location='query'` para parámetros), `@blp.response(code, description=...)` para cada error que el handler pueda devolver, luego un único `@blp.response(2xx, Schema)`, y después el decorador de auth. Docstring = descripción de Swagger. Ver `references/template.md`.
+5. **Auth y propiedad** (la fuente de bugs más común aquí):
+   - Datos de ámbito local: `@jwt_required(refresh=True)` (o `fresh=True` para acciones destructivas); identidad = `get_jwt_identity()` = id del local.
+   - Solo admin: la comprobación artesanal de `helpers/security.py`.
+   - Público: sin decorador, y solo datos públicos.
+   - **Toda** búsqueda de un recurso por id debe verificar `resource.local_id == get_jwt_identity()` (`403` si no, `404` si no existe). Comprueba también los ids padre e hijo (un worker de otro local dentro de mi work group).
+6. **Errores:** `401` credenciales, `403` no permitido, `404` no existe, `409` conflictos (`IntegrityError`), `500` ante `SQLAlchemyError` con `message = str(e) if DEBUG else '<generic>'` tras `rollback()`. Los errores de dominio van en `helpers/error/<Domain>Error/`, una clase por fichero. Nunca filtres detalles internos cuando `DEBUG` esté desactivado.
+7. **Acceso a BD** solo mediante los helpers de `db.py` (`addAndCommit`, `deleteAndCommit`, ...). Los datetimes naive son hora de pared en la zona horaria del local (`naiveToAware`, `now(local.location)`).
+8. **Los handlers que hacen trabajo real** (reservas, emails, cualquier cosa con efectos secundarios) se envuelven con `@log_route` (aceptan `_uuid=None`). Los cambios de reservas deben mantener las garantías de solapamiento (`getBookings`, lock de Redis): lee las reglas de negocio de `CLAUDE.md`.
+9. **Registra** el blueprint en `app.py` (`api.register_blueprint(X, url_prefix=getApiPrefix('<name>'))`).
+10. **Tests** (skill `write-tests`, agente `test-engineer`): fichero de tests de integración `tests/integration/test_<domain>.py` (401 sin token, camino feliz, validación 422, 404, 409, 403 para datos de otro local) y añade el caso cross-local a `tests/integration/test_cross_local_ownership.py`. Ejecuta `python -m pytest tests/ -q` y el nivel de servicios si toca BD/Redis/Celery/emails.
+11. **Documentación del contrato:** añade el endpoint a `changelog.md` (método, ruta, formato de petición/respuesta) porque los dos frontends (web del cliente y backoffice) lo consumen; menciona los cambios que rompen compatibilidad en el PR.
+12. **Versión:** incrementa `VERSION` en `globals.py` (endpoint nuevo = minor, cambio incompatible = major) una vez por PR/paraguas.
+13. **Antes del PR:** ejecuta el agente `security-reviewer` sobre el diff, y `docs-keeper` si cambió el comportamiento o las operaciones.
 
-## Don'ts
-- Don't add a second schema file, raw `db.session` calls, or hard-coded env values (use `globals.py`).
-- Don't return `200` with an error body; use `abort(code, message=...)`.
-- Don't change an existing response shape without telling the frontends (changelog + PR note).
+## Qué no hacer
+- No añadas un segundo fichero de schemas, llamadas directas a `db.session` ni valores de entorno fijados en el código (usa `globals.py`).
+- No devuelvas `200` con un cuerpo de error; usa `abort(code, message=...)`.
+- No cambies la forma de una respuesta existente sin avisar a los frontends (changelog + nota en el PR).

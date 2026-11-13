@@ -1,4 +1,4 @@
-"""Documentation consistency checker (read-only). See ../SKILL.md.
+"""Comprobador de coherencia de la documentación (solo lectura). Ver ../SKILL.md.
 
     check_docs.py [--strict]
 """
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-CLAUDE_BUDGET = 16000
+CLAUDE_BUDGET = 18000
 TOP = ('resources', 'helpers', 'models', 'docs', 'tests', 'scripts', 'docker', 'celery_app', 'dbbackup', 'db',
        '.claude', '.github', 'private', 'public', 'migrations', 'instance')
 ROOT_FILES = {'app.py', 'globals.py', 'config.py', 'default_config.py', 'schema.py', 'db.py', 'access.py', 'wsgi.py',

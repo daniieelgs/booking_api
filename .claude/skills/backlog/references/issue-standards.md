@@ -1,33 +1,33 @@
-# Issue standards
+# Estándares de issues
 
-## Priority
-- **P0**: production down, bookings failing, data loss or a live security leak. Hotfix flow; needs the owner now.
-- **P1**: customer-visible risk or a guarantee we promise (e.g. every booking gets its email) at risk; do next.
-- **P2**: normal planned work.
-- **P3**: nice to have / cleanup; do when idle.
+## Prioridad
+- **P0**: producción caída, reservas fallando, pérdida de datos o una fuga de seguridad activa. Flujo de hotfix; necesita al dueño ya.
+- **P1**: riesgo visible para el cliente o una garantía que prometemos (p. ej. que cada reserva reciba su email) en peligro; hacer a continuación.
+- **P2**: trabajo planificado normal.
+- **P3**: deseable / limpieza; hacer cuando haya tiempo libre.
 
-## Type
-- **bug**: behaviour differs from the documented/expected one. Needs reproduction or evidence (failing test id, request, redacted log).
-- **feature**: new capability with business value. Needs acceptance criteria.
-- **task**: operational/infra/refactor/housekeeping with no new user-facing behaviour. Needs a checklist and a definition of done.
-- `docs` and `security` are extra labels combined with a type (e.g. `task` + `security`).
+## Tipo
+- **bug**: el comportamiento difiere del documentado/esperado. Necesita reproducción o evidencia (id del test que falla, petición, log censurado).
+- **feature**: capacidad nueva con valor de negocio. Necesita criterios de aceptación.
+- **task**: trabajo operativo/de infraestructura/refactor/mantenimiento sin comportamiento nuevo de cara al usuario. Necesita una lista de comprobación y una definition of done.
+- `docs` y `security` son etiquetas adicionales que se combinan con un tipo (p. ej. `task` + `security`).
 
-## Title
-Specific and searchable. Bug: the symptom ("Closed-day check lets a worker read another local's data"). Feature/task: the outcome ("Back up the database nightly with binlog PITR"). No "fix:" prefixes (commits and PRs use Conventional Commits, issues do not).
+## Título
+Específico y fácil de buscar. Bug: el síntoma ("Closed-day check lets a worker read another local's data"). Feature/task: el resultado ("Back up the database nightly with binlog PITR"). Sin prefijos "fix:" (los commits y PRs usan Conventional Commits, los issues no). Los títulos van en inglés (convención de idioma de `CLAUDE.md`).
 
-## Good body checklist
-- [ ] Why it matters (who is affected, business or technical impact)
-- [ ] Evidence or current state (test ids, `file:line`, redacted logs)
-- [ ] Scope: what is in and what is explicitly out
-- [ ] Verifiable acceptance criteria / definition of done (including the regression test for bugs)
-- [ ] Deployment impact: restart, migration, rebuild, env vars, owner approval, maintenance window
-- [ ] Links: `Part of #n`, `Blocked by #n`, related findings (`F-012`)
+## Lista de comprobación de un buen cuerpo
+- [ ] Por qué importa (a quién afecta, impacto de negocio o técnico)
+- [ ] Evidencia o estado actual (ids de tests, `file:line`, logs censurados)
+- [ ] Alcance: qué entra y qué queda explícitamente fuera
+- [ ] Criterios de aceptación / definition of done verificables (incluido el test de regresión en los bugs)
+- [ ] Impacto del despliegue: reinicio, migración, reconstrucción, variables de entorno, aprobación del dueño, ventana de mantenimiento
+- [ ] Enlaces: `Part of #n`, `Blocked by #n`, hallazgos relacionados (`F-012`)
 
-## Sizing (board field)
-XS < 1 h, S half a day, M 1-2 days, L about a week, XL must be split.
+## Tamaño (campo del tablero)
+XS < 1 h, S media jornada, M 1-2 días, L aproximadamente una semana, XL debe dividirse.
 
-## Discussion needed
-If a decision is missing (design, data model, business rule, cross-cutting convention), add `needs-discussion`, write the question and the options in the issue, and do not start coding until it is answered.
+## Hace falta discusión
+Si falta una decisión (diseño, modelo de datos, regla de negocio, convención transversal), añade `needs-discussion`, escribe la pregunta y las opciones en el issue, y no empieces a programar hasta que se responda.
 
-## Closing
-Issues close through the PR (`Closes #n`). Closing without a PR (won't fix, duplicate, obsolete) needs a comment with the reason, and the `wontfix`/`duplicate` label.
+## Cierre
+Los issues se cierran mediante el PR (`Closes #n`). Cerrar sin PR (won't fix, duplicado, obsoleto) necesita un comentario con el motivo y la etiqueta `wontfix`/`duplicate`.
