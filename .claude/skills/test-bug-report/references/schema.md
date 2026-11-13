@@ -61,7 +61,8 @@ Cada hallazgo:
 | Campo | Tipo | Contenido |
 |---|---|---|
 | `id` | string | `F-001`, `F-002`... estable: no renumeres al añadir o arreglar. |
-| `kind` | `"test_failure"` \| `"extra"` | `test_failure`: hay tests que fallan por esto. `extra`: hallazgo del análisis de código sin test que falle. |
+| `kind` | `"test_failure"` \| `"extra"` \| `"backlog"` | `test_failure`: hay tests que fallan por esto. `extra`: hallazgo del análisis de código sin test que falle. `backlog`: bug que ya está en el backlog de GitHub (id `B-<nº de issue>`), importado por `findings.py sync-backlog`; no lo escribes tú. |
+| `issue` | `{number, url, state}` \| ausente | Issue de GitHub vinculada (`state`: `open`/`closed`). La ponen `findings.py publish`, `link` y `sync-backlog`. El cuerpo de la issue lleva `<!-- finding: F-xxx -->` para poder re-vincularla. |
 | `severity` | `critical` \| `high` \| `medium` \| `low` | Impacto real: seguridad entre locales/pérdida de datos o de correos = alta o crítica. |
 | `tier` | `unit` \| `integration` \| `services` \| `backup` \| `null` | Nivel de los tests (`null` en `extra`). |
 | `title` | string | Una línea, en el idioma del usuario. |
