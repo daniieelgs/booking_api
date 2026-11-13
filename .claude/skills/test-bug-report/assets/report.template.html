@@ -158,9 +158,23 @@ function size(f) {
   return tag(cls, label) + (f.discuss_reason ? `<div class="sub" style="margin:4px 0 0;font-size:.85rem">${rich(f.discuss_reason)}</div>` : '');
 }
 
+function issueLink(f) {
+  return f.issue ? `<br><a href="${esc(f.issue.url)}" target="_blank" rel="noopener">#${esc(f.issue.number)}</a>` : '';
+}
+
+function backlog(findings, hideDone) {
+  const list = findings.filter(f => f.kind === 'backlog' && !(hideDone && f.status !== 'open'));
+  if (!list.length) return '';
+  const rows = list.map(f => `<tr><td class="n">${esc(f.id)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
+    <td><strong>${esc(f.title)}</strong></td><td>${f.issue ? `<a href="${esc(f.issue.url)}" target="_blank" rel="noopener">#${esc(f.issue.number)}</a>` : ''}</td>
+    <td>${f.discuss_reason ? rich(f.discuss_reason) : '–'}</td></tr>`).join('');
+  return `<h2>Bugs del backlog de GitHub sin test en este reporte</h2><p class="sub">Ya están registrados y trackeados en GitHub; el detalle vive en la issue.</p>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Bug</th><th>Issue</th><th>Nota</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 function failureRows(list, showOnlyTest) {
   return list.map(f => `<tr class="${f.status === 'fixed' || f.status === 'wontfix' ? 'done' : ''}">
-    <td class="n">${esc(f.id)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
+    <td class="n">${esc(f.id)}${issueLink(f)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
     <td><ul class="plain">${(f.tests || []).map(t => `<li><code>${esc(short(t))}</code></li>`).join('')}</ul>${f.latest_failure && f.status === 'open' ? `<details><summary>Último fallo</summary><pre>${esc(f.latest_failure.message)}</pre></details>` : ''}</td>
     <td>${rich(f.test_description)}</td>
     <td><strong>${esc(f.title)}</strong><br>${rich(f.bug_description)}${f.root_cause ? `<details><summary>Causa raíz</summary>${rich(f.root_cause)}</details>` : ''}${evidence(f)}</td>
@@ -192,7 +206,7 @@ function tierSection(key, label, results, findings, hideDone) {
 function extras(findings, hideDone) {
   const list = findings.filter(f => f.kind === 'extra' && !(hideDone && f.status !== 'open'));
   if (!list.length) return '';
-  const rows = list.map(f => `<tr class="${f.status !== 'open' ? 'done' : ''}"><td class="n">${esc(f.id)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
+  const rows = list.map(f => `<tr class="${f.status !== 'open' ? 'done' : ''}"><td class="n">${esc(f.id)}${issueLink(f)}<br>${tag('sev-' + f.severity, SEV[f.severity] || f.severity)}</td>
     <td><strong>${esc(f.title)}</strong><br>${rich(f.bug_description)}${f.root_cause ? `<details><summary>Causa raíz</summary>${rich(f.root_cause)}</details>` : ''}${evidence(f)}</td>
     <td>${files(f)}</td><td>${fix(f)}</td><td>${size(f)}</td><td>${tag(f.status, STATUS[f.status] || f.status)}</td></tr>`).join('');
   return `<h2>Otros hallazgos sin un test que falle</h2><p class="sub">Encontrados al analizar el código; algunos no se pueden cubrir con un test.</p>
@@ -218,6 +232,7 @@ function render() {
     <div class="toolbar"><label><input type="checkbox" id="hide-done" ${hideDone ? 'checked' : ''}> Ocultar bugs ya arreglados o descartados</label></div>
     ${TIERS.map(([k, l]) => tierSection(k, l, results, findings, hideDone)).join('')}
     ${extras(findings, hideDone)}
+    ${backlog(findings, hideDone)}
     ${discuss(findings)}
     <footer>Datos: ${esc(SOURCE)} · fuente de verdad: <code>results.json</code> y <code>findings.json</code> en esta misma carpeta (un agente puede leerlos sin abrir este HTML ni volver a ejecutar los tests).</footer>`;
   document.getElementById('hide-done').addEventListener('change', render);

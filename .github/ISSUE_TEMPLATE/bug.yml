@@ -1,0 +1,37 @@
+name: Bug
+description: Algo se comporta mal (código, tests, despliegue).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Repositorio público: no pegues nunca secretos, tokens, contraseñas SMTP, datos de clientes ni logs que los contengan. Escribe el texto en español; los títulos de sección se quedan en inglés."
+  - type: textarea
+    id: summary
+    attributes: {label: Summary, description: "Qué falla y qué efecto tiene (quién o qué se ve afectado)."}
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes: {label: Steps to reproduce / evidence, description: "Id del test que falla, petición, extracto de log (sin datos sensibles) o pasos."}
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes: {label: Expected vs actual behaviour}
+    validations: {required: true}
+  - type: textarea
+    id: cause
+    attributes: {label: Root cause / affected code, description: "Fichero:línea y por qué, si se conoce."}
+  - type: textarea
+    id: fix
+    attributes: {label: Proposed fix and how to verify, description: "Incluye el test de regresión que debe pasar."}
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["P0 - producción caída / pérdida de datos", "P1 - alta", "P2 - normal", "P3 - baja"]
+    validations: {required: true}
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, bookings, email, worker-celery, redis, database, backups, auth-security, infra-docker, tests-ci, docs]
+    validations: {required: true}

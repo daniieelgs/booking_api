@@ -52,13 +52,29 @@ usa `.venv/Scripts/python.exe` (Windows) o `.venv/bin/python`.
 
 3. **Busca otros hallazgos** (`kind: "extra"`): mientras lees el código afectado, anota lo que veas aunque ningún test lo cubra (patrones repetidos en otros recursos, secretos en logs, imports erróneos, riesgos de pérdida de datos). Pregúntate si el mismo defecto existe en código parecido: un bug de propietario en un endpoint suele estar en sus hermanos. Cada uno con el mismo rigor: dónde, por qué, arreglo. Si dudas de que sea un bug real, dilo en la descripción en vez de afirmarlo.
 
-4. **Guarda y genera**: escribe `findings.json` (añade con `findings.py add fichero.json` o edita el JSON respetando el esquema y conservando los hallazgos y el `history` existentes; no renumeres ids) y ejecuta:
+4. **Guarda** `findings.json` (añade con `findings.py add fichero.json` o edita el JSON respetando el esquema y conservando los hallazgos y el `history` existentes; no renumeres ids).
+
+5. **Backlog de GitHub** (skill `backlog`; necesita `gh` autenticado, si no, dilo y sigue sin esto):
+
+   ```bash
+   python .claude/skills/test-bug-report/scripts/findings.py sync-backlog
+   ```
+
+   Enlaza los hallazgos con su issue (por el marcador `<!-- finding: F-xxx -->`) e **incluye en `findings.json` los bugs abiertos del backlog** como `kind: "backlog"` (`B-<nº>`). Después, **pregunta al usuario** (AskUserQuestion) cuáles de los hallazgos abiertos que aún no tienen issue quiere registrar en el backlog; no publiques nada sin su respuesta (el repo es público: los hallazgos sensibles —seguridad, infraestructura— se describen de forma genérica o se dejan fuera). Para cada uno que acepte:
+
+   ```bash
+   python .claude/skills/test-bug-report/scripts/findings.py publish F-012 --area email [--dry-run]
+   ```
+
+   Crea la issue con todas las secciones (resumen, evidencia, causa, arreglo, verificación), etiquetas `bug` + prioridad según severidad + `from-test-report` (+ `needs-discussion` si el tamaño es `discuss`) y guarda el vínculo en el hallazgo. Si el usuario dice que no, déjalo así y no vuelvas a insistir en la misma ejecución.
+
+6. **Genera el HTML**:
 
    ```bash
    python .claude/skills/test-bug-report/scripts/build_report.py
    ```
 
-5. **Cuenta al usuario** el resumen (ejecutados, pasan y fallan con %), los bugs más graves, los marcados `discuss` y la ruta de `report.html`. Escribe los hallazgos en el idioma del usuario.
+7. **Cuenta al usuario** el resumen (ejecutados, pasan y fallan con %), los bugs más graves, los marcados `discuss` y la ruta de `report.html`. Escribe los hallazgos en el idioma del usuario.
 
 ## Modo B — tras arreglar bugs
 
@@ -85,7 +101,7 @@ python .claude/skills/test-bug-report/scripts/findings.py list --status open    
 python .claude/skills/test-bug-report/scripts/findings.py show F-003               # el hallazgo completo
 ```
 
-`show` da los tests, la causa raíz, la evidencia, los archivos con líneas y el arreglo sugerido. Los hallazgos con
+`show` da los tests, la causa raíz, la evidencia, los archivos con líneas y el arreglo sugerido. Si el hallazgo tiene `issue`, la rama y la PR del arreglo llevan `Closes #<nº>` (skill `backlog`). Los `kind: "backlog"` solo tienen el título: lee el detalle con `gh issue view <nº>`. Los hallazgos con
 `change_size: "discuss"` **no se arreglan sin hablar antes con el usuario**: léele `discuss_reason` y pregúntale. Tras
 el arreglo, Modo B. Las líneas del JSON son de cuando se hizo el análisis: compruébalas antes de editar si el código ha cambiado.
 

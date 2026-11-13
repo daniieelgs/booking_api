@@ -1,0 +1,29 @@
+name: Feature
+description: Funcionalidad nueva o mejora.
+labels: ["feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes: {label: Problem / goal, description: "Por qué hace falta y para quién (valor de negocio)."}
+    validations: {required: true}
+  - type: textarea
+    id: scope
+    attributes: {label: Proposed solution and scope, description: "Qué incluye y qué queda explícitamente fuera."}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance criteria, description: "Lista de comprobación: `- [ ] ...` con condiciones verificables."}
+    validations: {required: true}
+  - type: textarea
+    id: impact
+    attributes: {label: Technical notes and deployment impact, description: "Migración, reinicio, reconstrucción, configuración, cambios de API/backoffice, riesgos."}
+  - type: dropdown
+    id: priority
+    attributes: {label: Priority, options: ["P0 - producción caída / pérdida de datos", "P1 - alta", "P2 - normal", "P3 - baja"]}
+    validations: {required: true}
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, bookings, email, worker-celery, redis, database, backups, auth-security, infra-docker, tests-ci, docs]
+    validations: {required: true}

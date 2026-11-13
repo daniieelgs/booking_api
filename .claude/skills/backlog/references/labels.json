@@ -1,0 +1,29 @@
+{
+  "rename": {"enhancement": "feature", "documentation": "docs"},
+  "labels": [
+    {"name": "bug", "color": "d73a4a", "description": "Something behaves wrongly"},
+    {"name": "feature", "color": "a2eeef", "description": "New functionality or improvement"},
+    {"name": "task", "color": "c5def5", "description": "Infrastructure, operations, refactor or housekeeping"},
+    {"name": "docs", "color": "0075ca", "description": "Documentation only"},
+    {"name": "security", "color": "b60205", "description": "Security hardening or vulnerability (keep details out of public text)"},
+    {"name": "P0", "color": "b60205", "description": "Production down or data loss: drop everything"},
+    {"name": "P1", "color": "d93f0b", "description": "High: next in line"},
+    {"name": "P2", "color": "fbca04", "description": "Normal"},
+    {"name": "P3", "color": "0e8a16", "description": "Low: when there is time"},
+    {"name": "area:api", "color": "ededed", "description": "REST resources, schemas, auth endpoints"},
+    {"name": "area:bookings", "color": "ededed", "description": "Booking logic, slots, concurrency"},
+    {"name": "area:email", "color": "ededed", "description": "Email templates, SMTP providers, send task"},
+    {"name": "area:worker-celery", "color": "ededed", "description": "Celery worker/beat and tasks"},
+    {"name": "area:redis", "color": "ededed", "description": "Redis lock, broker, persistence"},
+    {"name": "area:database", "color": "ededed", "description": "MariaDB, models, migrations, data growth"},
+    {"name": "area:backups", "color": "ededed", "description": "dbbackup, restore, binlogs"},
+    {"name": "area:auth-security", "color": "ededed", "description": "Tokens, secrets, access control"},
+    {"name": "area:infra-docker", "color": "ededed", "description": "Docker, servers, deployment, monitoring"},
+    {"name": "area:tests-ci", "color": "ededed", "description": "Test suite, CI/CD"},
+    {"name": "area:docs", "color": "ededed", "description": "Docs and repo process"},
+    {"name": "needs-discussion", "color": "5319e7", "description": "A decision is needed before anyone codes"},
+    {"name": "blocked", "color": "000000", "description": "Waiting on something external (say what in a comment)"},
+    {"name": "production", "color": "e99695", "description": "Touches production: needs the owner's approval / low-load window"},
+    {"name": "from-test-report", "color": "bfd4f2", "description": "Found by the test-bug-report skill"}
+  ]
+}
