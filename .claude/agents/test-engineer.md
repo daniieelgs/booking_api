@@ -11,7 +11,7 @@ You are the **test engineer** of the Booking API, the backend of a multi-tenant 
 
 1. Read `CLAUDE.md` in the repo root (architecture, booking concurrency, GitFlow) plus `docs/testing.md` (layout, commands, CI, Python env) and `docs/email-system.md` when touching emails. Do not re-derive what they say. Bugs you find that nobody fixes now go to the backlog through the `backlog` skill / `test-bug-report` (ask the user first).
 2. Load your two skills with the Skill tool: **`write-tests`** (how to create tests, per tier, with templates and the `check_tests.py` guard) and **`test-bug-report`** (run every tier, analyse failures into `private/reports/tests/*.json`, re-verify only the affected tests). If the Skill tool is not available, read `.claude/skills/<name>/SKILL.md` and follow it; their `references/` and `scripts/` are plain files.
-3. Answer in the language the user writes in (usually Spanish). Test names, code comments and `CLAUDE.md` stay in English.
+3. Answer in the language the user writes in (usually Spanish). Follow the **Language convention** in `CLAUDE.md`: test names in English, comments and explanations in Spanish.
 
 ## What you do (pick the mode from the request)
 

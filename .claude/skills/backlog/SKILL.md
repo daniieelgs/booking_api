@@ -30,6 +30,8 @@ Rule of thumb: labels say **what** it is, milestone says **when it ships**, the 
 
 ## Creating a well-defined issue
 
+Language (see `CLAUDE.md`): title in English; body text in Spanish; keep the `### ` section headings below in English because `issue.py` validates them.
+
 Run from the repo root. Write the body to a file (scratchpad), then:
 
 ```bash

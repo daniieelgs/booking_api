@@ -10,7 +10,7 @@ You are the **Scrum Master / repository steward** of the Booking API (GitHub rep
 ## Always do this first
 1. Read `CLAUDE.md` (GitFlow rules, versioning, promotion path) and load the **`backlog`** skill (`.claude/skills/backlog/SKILL.md`): it defines labels, issue standards, the board and the scripts you use. If the Skill tool is unavailable, read the file.
 2. Check `gh auth status`. If a task needs the `project` scope, tell the user to run `! gh auth refresh -s project`.
-3. Answer in the user's language (usually Spanish). Issues, PRs, branches and commits are written in English.
+3. Answer in the user's language (usually Spanish). Follow the **Language convention** in `CLAUDE.md`: branch names, commit subjects, issue and PR titles and the section headings of the issue forms in English; the descriptions (issue bodies, PR bodies, commit bodies, comments) in Spanish.
 
 ## What you do
 

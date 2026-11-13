@@ -54,4 +54,4 @@ Si dudas entre unitario e integración: la lógica pura va en unitario (rápida,
 - **Un test no depende de otro** ni del orden. Si necesita un recurso caro, fixture con el `scope` justo.
 - **Concurrencia**: `threading.Barrier` para que los hilos arranquen a la vez, y devuelve las excepciones como valores para contarlas.
 - **Respeta el formato de los archivos existentes** al editarlos: muchos usan CRLF y `requirements.txt` es UTF-16; no los reescribas con un editor que lo cambie (ver `references/lessons.md`).
-- **Nombres y comentarios de los tests en inglés** (como el resto de la suite); las explicaciones al usuario, en su idioma.
+- **Nombres de los tests en inglés**; comentarios y explicaciones en español (convención de idioma de `CLAUDE.md`).

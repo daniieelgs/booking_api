@@ -1,21 +1,21 @@
-## What and why
-<!-- One paragraph. -->
+## Qué y por qué
+<!-- Un párrafo en español. El título de la PR va en inglés (Conventional Commits). -->
 
-Closes #<!-- issue number. One PR = one issue. Use "Refs #n" if it only partially addresses it. -->
+Closes #<!-- número de la issue. Una PR = una issue. Usa "Refs #n" si solo la resuelve en parte. -->
 
-## How it was tested
-<!-- Paste the real output of what you ran (python -m pytest tests/ ...). Say if the services tier was skipped and why. -->
+## Cómo se ha probado
+<!-- Pega la salida real de lo que has ejecutado (python -m pytest tests/ ...). Di si no has pasado el nivel de servicios y por qué. -->
 
-## Deployment impact
-- [ ] Restart needed (web / worker / beat)
-- [ ] Migration / schema change
-- [ ] Image rebuild (Dockerfile / requirements)
-- [ ] New or changed env variables
-- [ ] `VERSION` bumped in `globals.py` (old -> new): 
-- [ ] None
+## Impacto en el despliegue
+- [ ] Hay que reiniciar (web / worker / beat)
+- [ ] Migración / cambio de esquema
+- [ ] Reconstruir imagen (Dockerfile / requirements)
+- [ ] Variables de entorno nuevas o cambiadas
+- [ ] `VERSION` subida en `globals.py` (anterior -> nueva): 
+- [ ] Ninguno
 
-## Checklist
-- [ ] Branch is `feature/*`, `fix/*` or `hotfix/*` and targets `develop` (hotfix: `master`)
-- [ ] Regression test included (fixes) / tests added (features)
-- [ ] No secrets, `.env`, dumps or `private/`/`public/` files
-- [ ] Docs updated if behaviour or operations changed
+## Lista de comprobación
+- [ ] La rama es `feature/*`, `fix/*` o `hotfix/*` y apunta a `develop` (hotfix: `master`)
+- [ ] Incluye test de regresión (fixes) / tests nuevos (features)
+- [ ] Sin secretos, `.env`, volcados ni ficheros de `private/` o `public/`
+- [ ] Documentación actualizada si cambia el comportamiento o la operación

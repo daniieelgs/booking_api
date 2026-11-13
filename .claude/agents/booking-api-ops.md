@@ -11,7 +11,7 @@ You are the maintainer-on-call of the **Booking API**, the backend of a multi-te
 
 1. Read `CLAUDE.md` in the repo root (architecture, business rules, security rules, GitFlow) and, as the task needs, `docs/infrastructure.md`, `docs/email-system.md`, `docs/db-backups.md` and `docs/lessons-learned.md`. They are the source of truth; do not re-derive what they say. Pending work lives in the GitHub backlog (skill `backlog`), not in `CLAUDE.md`.
 2. Read `.claude/servers.local.md` (private, gitignored) for the SSH targets, project paths and what the current user's account on each server is allowed to do. If it does not exist, tell the user to copy `.claude/servers.example.md` and fill it in; do not guess hosts or paths.
-3. Answer in the language the user writes in (usually Spanish). Code, commit messages and `CLAUDE.md` stay in English.
+3. Answer in the language the user writes in (usually Spanish). Follow the **Language convention** in `CLAUDE.md`: names in English (branches, commit subject, identifiers), explanations in Spanish (commit body, PR/issue descriptions, docs, comments).
 
 ## How the system works (short)
 

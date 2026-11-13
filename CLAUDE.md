@@ -26,6 +26,12 @@ Multi-tenant booking backend ("locals" = businesses). One customer today: **SUBL
 
 Private server access (SSH, paths, account limits) is in `.claude/servers.local.md` (gitignored; template `servers.example.md`).
 
+## Language convention
+
+- **En español**: todas las explicaciones y la documentación: cuerpo de los commits, descripción de las PR y de las issues, `docs/`, `CLAUDE.md`, `changelog.md`, descripciones de Swagger (docstrings de los endpoints), comentarios del código y respuestas al usuario.
+- **En inglés**: los nombres: ramas, asunto del commit (`fix: ...` en Conventional Commits), título de PR e issue, rutas y campos de los endpoints, identificadores del código, nombres de tests y los títulos de sección de las plantillas de issue (los scripts los leen). Los textos `message` de los `abort(...)` se mantienen como están para no romper a los frontends.
+- Los ficheros ya escritos en inglés se traducen cuando se toquen (agente `docs-keeper`), sin PR masivas solo de traducción salvo que se pida.
+
 ## Commands
 
 All from the repo root (`booking_api/`): file paths are built from `os.getcwd()`, running elsewhere breaks image/log/report storage.
@@ -82,7 +88,7 @@ Two servers, same codebase, both on the **same MariaDB (on the primary)**. Prima
 - Branches off `develop`: `feature/<name>`, `fix/<name>`; `hotfix/<name>` off `master` (PR into `master`, then merge `master` back into `develop`; the branch rulesets let the repo admin bypass them only via a PR, with the owner's explicit approval; the `scrum-master` agent prepares it). Start with `git fetch origin && git switch -c <type>/<name> origin/develop`; if the environment pre-created another branch, switch to a correct one before committing. `claude/` prefix only if the environment refuses anything else (`claude/feature-<name>`, say so in the PR).
 - **One issue/bug = one branch = one PR** with its own commits; never mix a fix with a feature or refactor. Related set of tasks: umbrella branch off `develop`, one sub-branch per task merged into it, one PR umbrella → `develop`. Tests-only or docs-only changes also get their own branch.
 - **Every PR links its issue** (`Closes #n` in the body; the workflow `close-linked-issues` closes it when the PR merges into `develop`) and follows `.github/pull_request_template.md`: what/why, real test output, deployment impact. Open the PR into `develop` (never `master`).
-- Small atomic Conventional Commits (`fix:`, `feat:`, `test:`, `docs:`, `chore:`, `refactor:`), imperative subject, body explains why; a fix includes its regression test. No history rewriting on pushed/shared branches.
+- Small atomic Conventional Commits (`fix:`, `feat:`, `test:`, `docs:`, `chore:`, `refactor:`), asunto en inglés e imperativo, cuerpo en español que explica el porqué; a fix includes its regression test. No history rewriting on pushed/shared branches.
 - **Bump `VERSION` in `globals.py`** (SemVer: fix → patch, feature → minor, breaking → major) when behaviour or the API changes; docs/test-only PRs don't. Once per umbrella PR.
 - Run `python -m pytest tests/` before opening the PR (and the services tier when touching DB/Redis/Celery/bookings/email, if Docker is available); paste the results in the PR.
 - Promotion: feature/fix → PR into `develop` → verified on the secondary → PR `develop` → `master` (full CI) → deploy to the primary in low-load hours.
